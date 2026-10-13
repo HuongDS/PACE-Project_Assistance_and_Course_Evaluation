@@ -32,7 +32,7 @@ public sealed class RepoAnalysisService(
         List<BusinessFlow> Flows,
         List<DataFlowEdge> Edges);
 
-    public async Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, bool force, CancellationToken ct = default)
+    public async Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, CancellationToken ct = default)
     {
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
         var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
@@ -52,7 +52,7 @@ public sealed class RepoAnalysisService(
 
         try
         {
-            return await AnalyzeAsync(run.Id, force, ct);
+            return await AnalyzeAsync(run.Id, ct);
         }
         catch
         {
@@ -77,11 +77,11 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, bool force, CancellationToken ct)
+    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, CancellationToken ct)
     {
         var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
         if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
-        if (!force && await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, ct))
+        if (await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, ct))
             throw new ConflictException("Repo đã có câu hỏi. Phân tích lại sẽ xoá nghiệp vụ cũ kéo theo câu hỏi và câu trả lời (cascade); gọi với force=true nếu chắc chắn.");
 
         if (!AnalysisRunLock.TryAcquire(analysisRunId))

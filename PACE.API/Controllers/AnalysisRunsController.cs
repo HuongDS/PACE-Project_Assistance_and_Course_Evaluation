@@ -27,8 +27,8 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
 
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<ActionResult<AnalyzeResultDto>> CreateAndAnalyze(CreateAnalysisRunRequest request, [FromQuery] bool force = false)
-        => Ok(await analysisService.CreateAndAnalyzeAsync(request, force, CancellationToken.None));
+    public async Task<ActionResult<AnalyzeResultDto>> CreateAndAnalyze(CreateAnalysisRunRequest request)
+        => Ok(await analysisService.CreateAndAnalyzeAsync(request, CancellationToken.None));
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = Roles.Admin)]

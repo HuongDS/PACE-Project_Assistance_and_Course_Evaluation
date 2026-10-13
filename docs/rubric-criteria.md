@@ -54,4 +54,4 @@ Nhóm tiêu chí:
 
 - Các câu phát biểu tiếng Việt được chuyển ngữ và điều chỉnh cho ngữ cảnh code/repo, không phải nguyên văn bảng hỏi gốc → ghi *"adapted from"* khi trích dẫn.
 - Mỗi khía cạnh hiện có 1 câu; nên chạy thử (pilot) và báo cáo Cronbach's alpha cho nhóm 5 tiêu chí FPQ.
-- Muốn thêm hoặc sửa tiêu chí: thêm dòng trong `RubricCriterionConfiguration` (HasData) rồi tạo migration mới.
+- Muốn thêm hoặc sửa tiêu chí: thêm dòng trong `PACE.Infrastructure/Persistence/Configurations/RubricCriterionConfiguration.cs` (HasData) rồi tạo migration mới: `dotnet ef migrations add <Ten> --project PACE.Infrastructure --startup-project PACE.API`.

@@ -1,14 +1,27 @@
 # PACE API & phân tích repo
 
-## Kiến trúc
+## Kiến trúc (Clean Architecture)
 
-| Tầng | Nội dung |
-|---|---|
-| `PACE.DAL` | Giữ nguyên model / `AppDbContext` / migration. Thêm `Repositories/`: `GenericRepository<T>` và repository riêng cho từng bảng kế thừa từ nó (`UserRepository`, `AnalysisRunRepository`, `BusinessRepository`, `BusinessFlowRepository`, `DataFlowEdgeRepository`, `MethodSourceRepository`, `BusinessMethodRepository`, `RubricCriterionRepository`); `UnitOfWork` gom các repository + `SaveChanges` + transaction |
-| `PACE.BLL` | DTO, service CRUD, exception nghiệp vụ, bộ phân tích repo (`Analysis/`) |
-| `PACE.Api` | Controller, `GlobalExceptionHandler`, JWT, Swagger |
+```
+PACE.API ──► PACE.Infrastructure ──► PACE.Application ──► PACE.Domain
+   └──────────────────────────────────► PACE.Application
+```
 
-Mọi truy vấn EF nằm trong repository; service chỉ gọi method của repository qua `IUnitOfWork`, không viết LINQ/EF; mọi lỗi trả về cùng format `ErrorResponse` (`statusCode`, `error`, `validationErrors`).
+| Project | Nội dung | Phụ thuộc |
+|---|---|---|
+| `PACE.Domain` | `Entities/`, `Enums/` | không phụ thuộc gì |
+| `PACE.Application` | `Services/` (CRUD), `Dtos/`, `Mappings/`, `Interfaces/Repositories/` (IGenericRepository, I*Repository, IUnitOfWork), `Common/` (exception, PagedResult, read model, ICurrentUserService, IUserImportReader), `Analysis/` (template, khớp API, dựng luồng, Mermaid + abstraction `IGitCloneService`, `IRepositoryScanner`, `ILanguageParser`) | Domain |
+| `PACE.Infrastructure` | `Persistence/` (AppDbContext, Configurations, Migrations), `Repositories/` (GenericRepository, *Repository, UnitOfWork), `Analysis/` (git clone, quét repo, parser Roslyn + tree-sitter), `Identity/` (JWT), `Excel/` (ClosedXML) | Application |
+| `PACE.API` | Controller, `GlobalExceptionHandler`, `CurrentUserService`, Swagger, `Program.cs` | Application, Infrastructure |
+
+Service chỉ làm việc với interface trong Application; mọi truy vấn EF và thư viện ngoài nằm ở Infrastructure. DI: `AddApplication()` + `AddInfrastructure(configuration)`.
+
+Migration:
+
+```
+dotnet ef migrations add <Ten> --project PACE.Infrastructure --startup-project PACE.API
+dotnet ef database update --project PACE.Infrastructure --startup-project PACE.API
+```
 
 ## Cấu hình (`appsettings.Development.json`)
 

@@ -65,6 +65,96 @@ namespace PACE.DAL.Migrations
                     b.ToTable("businesses", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.DAL.Models.BusinessFlow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("EntryMethodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MermaidGraph")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("EntryMethodId");
+
+                    b.ToTable("business_flows", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.BusinessMethod", b =>
+                {
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MethodSourceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("BusinessId", "MethodSourceId");
+
+                    b.HasIndex("MethodSourceId");
+
+                    b.ToTable("business_methods", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.DataFlowEdge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConditionContext")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DataLabel")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EdgeType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid>("FlowId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FromMethodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("StepOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ToMethodId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromMethodId");
+
+                    b.HasIndex("ToMethodId");
+
+                    b.HasIndex("FlowId", "StepOrder")
+                        .IsUnique();
+
+                    b.ToTable("data_flow_edges", (string)null);
+                });
+
             modelBuilder.Entity("PACE.DAL.Models.GeneratedQuestion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -73,6 +163,13 @@ namespace PACE.DAL.Migrations
 
                     b.Property<Guid>("BusinessId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ContextType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("Raw");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -95,6 +192,58 @@ namespace PACE.DAL.Migrations
                     b.HasIndex("BusinessId");
 
                     b.ToTable("generated_questions", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.MethodSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnalysisRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClassName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("MethodName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("NodeType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Parameters")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalysisRunId", "ClassName", "MethodName");
+
+                    b.ToTable("method_sources", (string)null);
                 });
 
             modelBuilder.Entity("PACE.DAL.Models.RubricCriterion", b =>
@@ -321,6 +470,71 @@ namespace PACE.DAL.Migrations
                     b.Navigation("AnalysisRun");
                 });
 
+            modelBuilder.Entity("PACE.DAL.Models.BusinessFlow", b =>
+                {
+                    b.HasOne("PACE.DAL.Models.Business", "Business")
+                        .WithMany("Flows")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.DAL.Models.MethodSource", "EntryMethod")
+                        .WithMany()
+                        .HasForeignKey("EntryMethodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("EntryMethod");
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.BusinessMethod", b =>
+                {
+                    b.HasOne("PACE.DAL.Models.Business", "Business")
+                        .WithMany("BusinessMethods")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.DAL.Models.MethodSource", "MethodSource")
+                        .WithMany("BusinessMethods")
+                        .HasForeignKey("MethodSourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("MethodSource");
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.DataFlowEdge", b =>
+                {
+                    b.HasOne("PACE.DAL.Models.BusinessFlow", "Flow")
+                        .WithMany("Edges")
+                        .HasForeignKey("FlowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.DAL.Models.MethodSource", "FromMethod")
+                        .WithMany("OutgoingEdges")
+                        .HasForeignKey("FromMethodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.DAL.Models.MethodSource", "ToMethod")
+                        .WithMany("IncomingEdges")
+                        .HasForeignKey("ToMethodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Flow");
+
+                    b.Navigation("FromMethod");
+
+                    b.Navigation("ToMethod");
+                });
+
             modelBuilder.Entity("PACE.DAL.Models.GeneratedQuestion", b =>
                 {
                     b.HasOne("PACE.DAL.Models.Business", "Business")
@@ -330,6 +544,17 @@ namespace PACE.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("Business");
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.MethodSource", b =>
+                {
+                    b.HasOne("PACE.DAL.Models.AnalysisRun", "AnalysisRun")
+                        .WithMany("MethodSources")
+                        .HasForeignKey("AnalysisRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AnalysisRun");
                 });
 
             modelBuilder.Entity("PACE.DAL.Models.RubricScore", b =>
@@ -384,17 +609,37 @@ namespace PACE.DAL.Migrations
                 {
                     b.Navigation("Businesses");
 
+                    b.Navigation("MethodSources");
+
                     b.Navigation("Users");
                 });
 
             modelBuilder.Entity("PACE.DAL.Models.Business", b =>
                 {
+                    b.Navigation("BusinessMethods");
+
+                    b.Navigation("Flows");
+
                     b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.BusinessFlow", b =>
+                {
+                    b.Navigation("Edges");
                 });
 
             modelBuilder.Entity("PACE.DAL.Models.GeneratedQuestion", b =>
                 {
                     b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("PACE.DAL.Models.MethodSource", b =>
+                {
+                    b.Navigation("BusinessMethods");
+
+                    b.Navigation("IncomingEdges");
+
+                    b.Navigation("OutgoingEdges");
                 });
 
             modelBuilder.Entity("PACE.DAL.Models.StudentAnswer", b =>

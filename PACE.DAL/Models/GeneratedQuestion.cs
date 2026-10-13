@@ -7,6 +7,7 @@ public class GeneratedQuestion
     public string QuestionText { get; set; } = null!;
     public string? SuggestedAnswer { get; set; }
     public string? Difficulty { get; set; }
+    public ContextType ContextType { get; set; } = ContextType.Raw;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Business Business { get; set; } = null!;

@@ -12,6 +12,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
     public DbSet<RubricScore> RubricScores => Set<RubricScore>();
+    public DbSet<MethodSource> MethodSources => Set<MethodSource>();
+    public DbSet<BusinessMethod> BusinessMethods => Set<BusinessMethod>();
+    public DbSet<BusinessFlow> BusinessFlows => Set<BusinessFlow>();
+    public DbSet<DataFlowEdge> DataFlowEdges => Set<DataFlowEdge>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

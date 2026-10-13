@@ -12,6 +12,7 @@ public class GeneratedQuestionConfiguration : IEntityTypeConfiguration<Generated
         e.HasKey(x => x.Id);
         e.Property(x => x.QuestionText).IsRequired();
         e.Property(x => x.Difficulty).HasMaxLength(20);
+        e.Property(x => x.ContextType).HasConversion<string>().HasMaxLength(10).HasDefaultValue(ContextType.Raw).HasSentinel((ContextType)(-1));
         e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
 
         e.HasOne(x => x.Business)

@@ -8,4 +8,6 @@ public class Business
 
     public AnalysisRun AnalysisRun { get; set; } = null!;
     public ICollection<GeneratedQuestion> Questions { get; set; } = new List<GeneratedQuestion>();
+    public ICollection<BusinessMethod> BusinessMethods { get; set; } = new List<BusinessMethod>();
+    public ICollection<BusinessFlow> Flows { get; set; } = new List<BusinessFlow>();
 }

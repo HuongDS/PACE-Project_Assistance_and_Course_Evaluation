@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<User> Users => Set<User>();
     public DbSet<GeneratedQuestion> GeneratedQuestions => Set<GeneratedQuestion>();
+    public DbSet<StudentSubmission> StudentSubmissions => Set<StudentSubmission>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
     public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
     public DbSet<RubricScore> RubricScores => Set<RubricScore>();

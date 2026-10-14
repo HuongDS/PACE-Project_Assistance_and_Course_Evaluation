@@ -13,7 +13,14 @@ public class StudentAnswerConfiguration : IEntityTypeConfiguration<StudentAnswer
         e.HasKey(x => x.Id);
         e.Property(x => x.FeedbackFormat).HasMaxLength(20);
         e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
-        e.HasIndex(x => new { x.UserId, x.QuestionId }).IsUnique();
+        e.HasIndex(x => x.UserId);
+        e.HasIndex(x => new { x.SubmissionId, x.QuestionId }).IsUnique()
+            .HasFilter("\"SubmissionId\" IS NOT NULL");
+
+        e.HasOne(x => x.Submission)
+            .WithMany(s => s.Answers)
+            .HasForeignKey(x => x.SubmissionId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         e.HasOne(x => x.User)
             .WithMany(u => u.Answers)

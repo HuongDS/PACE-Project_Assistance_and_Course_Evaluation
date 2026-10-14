@@ -36,6 +36,13 @@ public sealed partial class EntryPointMatcher(IReadOnlyCollection<ParsedMethod> 
             if (sameVerb.Count > 0) candidates = sameVerb;
         }
 
+        if (candidates.Count > 1 && !string.IsNullOrWhiteSpace(api.Path))
+        {
+            var path = NormalizeRoute(api.Path);
+            var samePath = candidates.Where(m => m.Route is not null && NormalizeRoute(m.Route) == path).ToList();
+            if (samePath.Count > 0) candidates = samePath;
+        }
+
         var concrete = candidates.Where(m => !m.IsAbstract).ToList();
         if (concrete.Count > 0) candidates = concrete;
 

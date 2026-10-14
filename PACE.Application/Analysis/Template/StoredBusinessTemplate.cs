@@ -18,7 +18,9 @@ public static class StoredBusinessTemplate
 
         run.BusinessTemplateJson = json;
         run.TemplateSource = source;
-        run.TemplateUpdatedAt = DateTime.UtcNow;
+        // Postgres chỉ lưu tới micro-giây; làm tròn để response sau khi lưu khớp với giá trị đọc lại từ DB.
+        var now = DateTime.UtcNow;
+        run.TemplateUpdatedAt = now.AddTicks(-(now.Ticks % 10));
     }
 
     private static string? Canonical(string json)

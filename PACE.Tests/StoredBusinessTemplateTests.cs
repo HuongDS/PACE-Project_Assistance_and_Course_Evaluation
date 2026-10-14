@@ -48,6 +48,7 @@ public class StoredBusinessTemplateTests
         StoredBusinessTemplate.Save(run, Template(), BusinessTemplateSource.Confirmed);
         var savedAt = run.TemplateUpdatedAt;
         Assert.NotNull(savedAt);
+        Assert.Equal(0, savedAt!.Value.Ticks % 10);
 
         run.BusinessTemplateJson = AsJsonb(run.BusinessTemplateJson!);
         run.TemplateUpdatedAt = savedAt!.Value.AddMinutes(-5);

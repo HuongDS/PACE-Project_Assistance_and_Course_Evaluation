@@ -72,7 +72,7 @@ Dùng khi repo chưa có `template_business.json`. Luồng: **tạo bản nháp 
    - `POST /api/analysis-runs` gửi kèm `"businesses": [...]` → phân tích dùng template này thay cho file trong repo; hoặc
    - `POST /api/templates/export` `{ "businesses": [...] }` → tải file `template_business.json` để commit vào repo.
 
-Cấu hình: `"Gemini": { "ApiKey": "", "Model": "gemini-2.5-flash", "TimeoutSeconds": 120 }`. Chỉ gửi tên/route của endpoint lên Gemini, không gửi mã nguồn.
+Cấu hình: `"Gemini": { "ApiKey": "", "Model": "gemini-3.1-flash-lite", "TimeoutSeconds": 120 }`. Chỉ gửi tên/route của endpoint lên Gemini, không gửi mã nguồn.
 
 ## Phân tích repo (`POST /api/analysis-runs`)
 

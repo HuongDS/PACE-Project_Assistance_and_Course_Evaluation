@@ -14,7 +14,7 @@ public class GeminiOptions
     public const string SectionName = "Gemini";
 
     public string? ApiKey { get; set; }
-    public string Model { get; set; } = "gemini-2.5-flash";
+    public string Model { get; set; } = "gemini-3.1-flash-lite";
     public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta";
     public int TimeoutSeconds { get; set; } = 120;
 }
@@ -80,24 +80,40 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             generationConfig = new { temperature = 0.2, responseMimeType = "application/json", responseSchema = ResponseSchema }
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{_options.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
-        {
-            Content = JsonContent.Create(body)
-        };
-        request.Headers.Add("x-goog-api-key", _options.ApiKey);
-
-        using var response = await _http.SendAsync(request, ct);
-        var raw = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode)
-            throw new ExternalServiceException("Gemini", $"HTTP {(int)response.StatusCode}: {Truncate(raw, 300)}");
-
-        var text = ExtractText(raw);
+        var text = ExtractText(await SendWithRetryAsync(body, ct));
         var groups = JsonSerializer.Deserialize<List<GeminiGroup>>(text, JsonOptions)
                      ?? throw new ExternalServiceException("Gemini", "Phản hồi rỗng.");
         return groups
             .Select(g => new SuggestedBusiness(g.BusinessName ?? string.Empty, g.Description, g.EndpointIds ?? []))
             .ToList();
+    }
+
+    // 429 (hết hạn mức) và 5xx (model quá tải) thường chỉ tạm thời nên thử lại trước khi bỏ cuộc.
+    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
+
+    private async Task<string> SendWithRetryAsync(object body, CancellationToken ct)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post,
+                $"{_options.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
+            {
+                Content = JsonContent.Create(body)
+            };
+            request.Headers.Add("x-goog-api-key", _options.ApiKey);
+
+            using var response = await _http.SendAsync(request, ct);
+            var raw = await response.Content.ReadAsStringAsync(ct);
+            if (response.IsSuccessStatusCode) return raw;
+
+            var status = (int)response.StatusCode;
+            if ((status == 429 || status >= 500) && attempt < RetryDelays.Length)
+            {
+                await Task.Delay(RetryDelays[attempt], ct);
+                continue;
+            }
+            throw new ExternalServiceException("Gemini", $"HTTP {status}: {Truncate(raw, 300)}");
+        }
     }
 
     private static string ExtractText(string raw)

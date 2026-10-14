@@ -5,11 +5,14 @@ using PACE.Application.Analysis.Template;
 using PACE.Application.Common;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Dtos;
+using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Services.Interfaces;
+using PACE.Domain.Enums;
 
 namespace PACE.Application.Analysis;
 
 public sealed class TemplateGenerationService(
+    IUnitOfWork uow,
     IGitCloneService git,
     IRepositoryScanner scanner,
     IEnumerable<ILanguageParser> parsers,
@@ -22,6 +25,13 @@ public sealed class TemplateGenerationService(
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
         var warnings = new List<string>();
 
+        if (!request.Regenerate)
+        {
+            var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
+            if (run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
+                return Result(url, BusinessTemplateSource.Confirmed, string.Empty, BusinessTemplateLoader.Parse(run.BusinessTemplateJson), warnings);
+        }
+
         using var clone = await git.CloneAsync(url, ct);
 
         if (!request.Regenerate)
@@ -32,7 +42,7 @@ public sealed class TemplateGenerationService(
                 try
                 {
                     var templates = BusinessTemplateLoader.Parse(existing);
-                    return Result(url, TemplateSource.Repository, string.Empty, templates, warnings);
+                    return Result(url, BusinessTemplateSource.Repository, string.Empty, templates, warnings);
                 }
                 catch (BadRequestException ex)
                 {
@@ -59,7 +69,7 @@ public sealed class TemplateGenerationService(
         return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses), warnings);
     }
 
-    private async Task<(TemplateSource, List<BusinessTemplate>)> GroupAsync(
+    private async Task<(BusinessTemplateSource, List<BusinessTemplate>)> GroupAsync(
         string url, IReadOnlyList<TemplateEndpoint> endpoints, bool useAi, List<string> warnings, CancellationToken ct)
     {
         if (useAi && !ai.IsConfigured)
@@ -69,7 +79,7 @@ public sealed class TemplateGenerationService(
             try
             {
                 var groups = await ai.GroupAsync(endpoints, ct);
-                return (TemplateSource.Ai, BusinessTemplateGenerator.ApplyGrouping(endpoints, groups, warnings));
+                return (BusinessTemplateSource.Ai, BusinessTemplateGenerator.ApplyGrouping(endpoints, groups, warnings));
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
@@ -78,10 +88,10 @@ public sealed class TemplateGenerationService(
             }
         }
 
-        return (TemplateSource.Controller, BusinessTemplateGenerator.GroupByController(endpoints));
+        return (BusinessTemplateSource.Controller, BusinessTemplateGenerator.GroupByController(endpoints));
     }
 
     private static GeneratedTemplateDto Result(
-        string url, TemplateSource source, string stacks, List<BusinessTemplate> businesses, List<string> warnings)
+        string url, BusinessTemplateSource source, string stacks, List<BusinessTemplate> businesses, List<string> warnings)
         => new(url, source, stacks, businesses.Count, businesses.Sum(b => b.Apis.Count), businesses, warnings);
 }

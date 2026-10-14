@@ -19,7 +19,7 @@ public class TemplatesController(ITemplateGenerationService service) : Controlle
 
     /// <summary>Nhận template đã chỉnh và trả về file template_business.json.</summary>
     [HttpPost("export")]
-    public IActionResult Export(ExportTemplateRequest request)
+    public IActionResult Export(BusinessTemplateRequest request)
     {
         var businesses = BusinessTemplateLoader.Normalize(request.Businesses);
         var bytes = new UTF8Encoding(false).GetBytes(BusinessTemplateGenerator.Serialize(businesses));

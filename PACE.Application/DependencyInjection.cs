@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<IMethodSourceService, MethodSourceService>();
         services.AddScoped<IRubricCriterionService, RubricCriterionService>();
         services.AddScoped<IRepoAnalysisService, RepoAnalysisService>();
+        services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
         return services;
     }
 }

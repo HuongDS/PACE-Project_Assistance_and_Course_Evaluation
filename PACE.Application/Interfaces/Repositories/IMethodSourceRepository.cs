@@ -12,4 +12,5 @@ public interface IMethodSourceRepository : IGenericRepository<MethodSource>
         int page, int pageSize, CancellationToken ct = default);
     Task<MethodSource?> GetWithBusinessesAsync(Guid id, CancellationToken ct = default);
     Task<int> DeleteByRepoAsync(Guid analysisRunId, CancellationToken ct = default);
+    Task<List<MethodCode>> GetCodeByBusinessAsync(Guid businessId, CancellationToken ct = default);
 }

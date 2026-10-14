@@ -1,4 +1,5 @@
 using PACE.Application.Analysis;
+using PACE.Application.Analysis.Template;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Common.Models;
@@ -58,6 +59,30 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
         uow.AnalysisRuns.Remove(run);
         await uow.SaveChangesAsync(ct);
     }
+
+    public async Task<AnalysisRunTemplateDto> GetTemplateAsync(Guid id, CancellationToken ct = default)
+    {
+        var run = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
+        var businesses = StoredBusinessTemplate.Load(run)
+                         ?? throw new NotFoundException("Repo chưa có template nghiệp vụ nào được lưu.");
+        return ToTemplateDto(run, businesses);
+    }
+
+    public async Task<AnalysisRunTemplateDto> SaveTemplateAsync(Guid id, BusinessTemplateRequest request, CancellationToken ct = default)
+    {
+        var businesses = BusinessTemplateLoader.Normalize(request.Businesses);
+        var run = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
+        if (AnalysisRunLock.IsRunning(id))
+            throw new ConflictException("Repo đang được phân tích, vui lòng đợi xong rồi lưu template.");
+
+        StoredBusinessTemplate.Save(run, businesses, BusinessTemplateSource.Confirmed);
+        await uow.SaveChangesAsync(ct);
+        return ToTemplateDto(run, businesses);
+    }
+
+    private static AnalysisRunTemplateDto ToTemplateDto(AnalysisRun run, IReadOnlyList<BusinessTemplate> businesses)
+        => new(run.Id, run.TemplateSource ?? BusinessTemplateSource.Repository, run.TemplateUpdatedAt,
+            businesses.Count, businesses.Sum(b => b.Apis.Count), businesses);
 
     private async Task EnsureUrlAvailableAsync(string normalizedUrl, Guid? exceptId, CancellationToken ct)
     {

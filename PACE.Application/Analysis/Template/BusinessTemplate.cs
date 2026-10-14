@@ -49,6 +49,7 @@ public sealed class ApiTemplate
         return parts.Length > 1 ? parts[0].ToUpperInvariant() : null;
     }
 
+    [JsonIgnore]
     public string DisplayName
     {
         get
@@ -93,12 +94,18 @@ public static class BusinessTemplateLoader
             throw new BadRequestException($"template_business.json sai định dạng JSON: {ex.Message}", ex);
         }
 
-        businesses = businesses?
-            .Where(b => !string.IsNullOrWhiteSpace(b.BusinessName))
+        return Normalize(businesses);
+    }
+
+    /// <summary>Bỏ nghiệp vụ/API thiếu thông tin và gộp nghiệp vụ trùng tên (không phân biệt hoa thường).</summary>
+    public static List<BusinessTemplate> Normalize(IEnumerable<BusinessTemplate?>? source)
+    {
+        var businesses = source?
+            .Where(b => b is not null && !string.IsNullOrWhiteSpace(b.BusinessName))
             .Select(b =>
             {
-                b.BusinessName = b.BusinessName.Trim();
-                b.Apis = b.Apis.Where(a => !string.IsNullOrWhiteSpace(a.Controller) && a.ResolveFunctionName().Length > 0).ToList();
+                b!.BusinessName = b.BusinessName.Trim();
+                b.Apis = (b.Apis ?? []).Where(a => a is not null && !string.IsNullOrWhiteSpace(a.Controller) && a.ResolveFunctionName().Length > 0).ToList();
                 return b;
             })
             .ToList();

@@ -47,18 +47,45 @@ Hiện chỉ đăng nhập bằng email (chưa chốt B3: email / email+OTP / Go
 | Bảng | Admin | Student |
 |---|---|---|
 | users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `POST /api/users/import` (Excel .xlsx: cột Email + cột Repo/Link GitHub, tuỳ chọn cột Tên nhóm) | `GET /api/auth/me` |
-| analysis_runs | `POST /api/analysis-runs?force=false` (gửi link repo → tạo repo nếu chưa có rồi phân tích luôn), `GET /api/analysis-runs`, `GET/PUT/DELETE /api/analysis-runs/{id}` | `GET /api/analysis-runs/me` |
+| analysis_runs | `POST /api/analysis-runs?force=false` (gửi link repo → tạo repo nếu chưa có rồi phân tích luôn), `GET /api/analysis-runs`, `GET/PUT/DELETE /api/analysis-runs/{id}`, `GET/PUT /api/analysis-runs/{id}/template` | `GET /api/analysis-runs/me` |
 | businesses | `GET /api/businesses?analysisRunId=`, `GET/PUT /api/businesses/{id}` (đổi tên), `GET /api/businesses/{id}/flows` | |
 | method_sources | `GET /api/method-sources?analysisRunId=&businessId=&language=&search=`, `GET /api/method-sources/{id}` | |
 | business_flows, data_flow_edges | `GET /api/business-flows/{id}` (Mermaid + danh sách cạnh) | |
 | rubric_criteria | `POST /api/rubric-criteria`, `PUT/DELETE /api/rubric-criteria/{id}` | `GET /api/rubric-criteria` |
+| template nghiệp vụ | `POST /api/templates/generate`, `POST /api/templates/export` | |
 
 Chưa làm (chờ chốt): generated_questions, student_answers, rubric_scores (sinh câu hỏi, nộp bài, feedback, chấm rubric).
+
+## Tạo template nghiệp vụ (`POST /api/templates/generate`)
+
+Dùng khi repo chưa có `template_business.json`. Luồng: **tạo bản nháp → admin chỉnh → chốt**.
+
+1. `POST /api/templates/generate` `{ "repoUrl": "...", "useAi": true, "regenerate": false }`
+   - `regenerate=false` và repo đã có template admin chốt trong DB → trả về template đó, không clone (`source = Confirmed`).
+   - `regenerate=false` và repo có sẵn `template_business.json` → trả về nguyên file đó, `source = Repository`.
+   - Ngược lại: clone, parse, liệt kê mọi endpoint (controller + http_method + function + path), rồi gom thành nghiệp vụ:
+     - `useAi=true` và đã cấu hình `Gemini:ApiKey` → Gemini gom endpoint theo chức năng người dùng, đặt tên/mô tả tiếng Việt (`source = Ai`).
+       Kết quả AI được kiểm tra: id không có trong repo bị bỏ, id trùng chỉ giữ lần đầu, endpoint bị AI bỏ sót được gom theo controller (đều có cảnh báo).
+     - Không dùng AI, chưa cấu hình hoặc Gemini lỗi → mỗi controller là một nghiệp vụ (`source = Controller`).
+   - Trả về `businesses` (đúng schema B), số nghiệp vụ/API và `warnings`. Bản nháp không ghi vào DB.
+2. Admin chỉnh `businesses` trên giao diện (đổi tên, chuyển API giữa nghiệp vụ, xoá API).
+3. Chốt (template được lưu vào `analysis_runs.BusinessTemplateJson`, `TemplateSource = Confirmed`):
+   - `POST /api/analysis-runs` gửi kèm `"businesses": [...]` → phân tích bằng template này và lưu lại; hoặc
+   - `PUT /api/analysis-runs/{id}/template` `{ "businesses": [...] }` → chỉ lưu (repo đã tồn tại), lần phân tích sau sẽ dùng; hoặc
+   - `POST /api/templates/export` `{ "businesses": [...] }` → tải file `template_business.json` để commit vào repo.
+
+Cấu hình: `"Gemini": { "ApiKey": "", "Model": "gemini-3.1-flash-lite", "TimeoutSeconds": 120 }`. Chỉ gửi tên/route của endpoint lên Gemini, không gửi mã nguồn.
+
+### Lưu template (migration `AddAnalysisRunBusinessTemplate`)
+
+Bảng `analysis_runs` thêm 3 cột nullable: `BusinessTemplateJson` (jsonb), `TemplateSource` (`Repository` | `Confirmed`), `TemplateUpdatedAt`.
+Migration chỉ thêm cột, không sửa/xoá dữ liệu cũ; repo cũ có giá trị NULL và vẫn đọc file trong repo như trước.
+`Confirmed` được ưu tiên hơn file trong repo khi phân tích lại; `Repository` thì lần sau đọc lại file mới nhất trong repo.
 
 ## Phân tích repo (`POST /api/analysis-runs`)
 
 1. Clone `--depth 1` (hỗ trợ link `/tree/<branch>/<thư mục>`), git không bao giờ hỏi mật khẩu, có timeout.
-2. Đọc `template_business.json` trong repo (thư mục gốc hoặc thư mục con như `src/`; thiếu file → 400). Hỗ trợ 2 schema:
+2. Lấy template theo thứ tự: `businesses` trong request → template đã chốt trong DB → `template_business.json` trong repo (thư mục gốc hoặc thư mục con như `src/`; thiếu file → 400). Hỗ trợ 2 schema:
    - A: `{ "controller": "BudgetController", "method": "POST CreateBudget" }`
    - B: `{ "controller": "LocationController", "http_method": "GET", "function": "getAllProvinces", "path": "/api/location" }`
    Nghiệp vụ trùng tên (không phân biệt hoa thường) được gộp.
@@ -70,6 +97,6 @@ Chưa làm (chờ chốt): generated_questions, student_answers, rubric_scores (
 5. Khớp API → hàm điểm vào theo class + tên hàm (bỏ hậu tố `Async`, `Controller`, `Impl`), nếu không được thì theo `http_method + path`.
 6. Dựng luồng từ hàm điểm vào: cạnh `Call` ("Truyền: tham số"), `Return` ("Trả ra: kiểu/giá trị"), `ConditionContext` (if/else, switch, ternary, vòng lặp, catch). Bỏ getter/setter tầm thường; giới hạn độ sâu/số bước.
 7. Sinh Mermaid `flowchart TD`.
-8. Ghi DB trong một transaction: xoá dữ liệu phân tích cũ của repo rồi ghi `method_sources`, `businesses`, `business_methods`, `business_flows`, `data_flow_edges`. Kết quả trả về kèm danh sách cảnh báo (API không khớp hàm, nghiệp vụ không có code, luồng bị cắt...).
+8. Ghi DB trong một transaction: xoá dữ liệu phân tích cũ của repo rồi ghi `method_sources`, `businesses`, `business_methods`, `business_flows`, `data_flow_edges`, và lưu template đã dùng vào `analysis_runs` (`GET /api/analysis-runs/{id}/template` để xem). Kết quả trả về kèm danh sách cảnh báo (API không khớp hàm, nghiệp vụ không có code, luồng bị cắt...).
 
 Mỗi repo chỉ chạy một lần phân tích tại một thời điểm. Repo đã có câu hỏi sẽ bị chặn (409) trừ khi gửi `force=true`, vì xoá nghiệp vụ cũ kéo theo câu hỏi/câu trả lời (cascade).

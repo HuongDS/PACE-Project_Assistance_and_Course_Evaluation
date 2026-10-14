@@ -6,6 +6,7 @@ using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Services.Interfaces;
+using PACE.Infrastructure.Ai;
 using PACE.Infrastructure.Analysis;
 using PACE.Infrastructure.Analysis.Parsing;
 using PACE.Infrastructure.Excel;
@@ -31,6 +32,9 @@ public static class DependencyInjection
         services.AddSingleton<ILanguageParser, CSharpRoslynParser>();
         services.AddSingleton<ILanguageParser, JavaTreeSitterParser>();
         services.AddSingleton<ILanguageParser, JsTsTreeSitterParser>();
+
+        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        services.AddSingleton<IBusinessGroupingAi, GeminiBusinessGrouper>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();

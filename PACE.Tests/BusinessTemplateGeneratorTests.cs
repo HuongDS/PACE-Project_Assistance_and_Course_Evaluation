@@ -91,6 +91,25 @@ public class BusinessTemplateGeneratorTests
     }
 
     [Fact]
+    public void Matcher_uses_path_to_pick_between_overloads()
+    {
+        // Spring cho phép overload: /auth/token, /auth/introspect, /auth/refresh đều tên authenticate.
+        List<ParsedMethod> methods = [
+            Method("AuthenticationController", "authenticate", "POST", "/auth/token"),
+            Method("AuthenticationController", "authenticate", "POST", "/auth/introspect", line: 2),
+            Method("AuthenticationController", "authenticate", "POST", "/auth/refresh", line: 3)
+        ];
+        var matcher = new PACE.Application.Analysis.Flow.EntryPointMatcher(methods);
+
+        foreach (var api in BusinessTemplateGenerator.GroupByController(BusinessTemplateGenerator.ExtractEndpoints(methods))[0].Apis)
+        {
+            var match = matcher.Match(api, out var note);
+            Assert.Equal(api.Path, match!.Route);
+            Assert.Null(note);
+        }
+    }
+
+    [Fact]
     public void Normalize_merges_duplicate_names_and_drops_incomplete_apis()
     {
         var result = BusinessTemplateLoader.Normalize([

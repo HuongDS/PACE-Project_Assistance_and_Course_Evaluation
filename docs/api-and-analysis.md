@@ -52,13 +52,32 @@ Hiện chỉ đăng nhập bằng email (chưa chốt B3: email / email+OTP / Go
 | method_sources | `GET /api/method-sources?analysisRunId=&businessId=&language=&search=`, `GET /api/method-sources/{id}` | |
 | business_flows, data_flow_edges | `GET /api/business-flows/{id}` (Mermaid + danh sách cạnh) | |
 | rubric_criteria | `POST /api/rubric-criteria`, `PUT/DELETE /api/rubric-criteria/{id}` | `GET /api/rubric-criteria` |
+| template nghiệp vụ | `POST /api/templates/generate`, `POST /api/templates/export` | |
 
 Chưa làm (chờ chốt): generated_questions, student_answers, rubric_scores (sinh câu hỏi, nộp bài, feedback, chấm rubric).
+
+## Tạo template nghiệp vụ (`POST /api/templates/generate`)
+
+Dùng khi repo chưa có `template_business.json`. Luồng: **tạo bản nháp → admin chỉnh → chốt**.
+
+1. `POST /api/templates/generate` `{ "repoUrl": "...", "useAi": true, "regenerate": false }`
+   - Repo đã có `template_business.json` (và `regenerate=false`) → trả về nguyên file đó, `source = Repository`.
+   - Ngược lại: clone, parse, liệt kê mọi endpoint (controller + http_method + function + path), rồi gom thành nghiệp vụ:
+     - `useAi=true` và đã cấu hình `Gemini:ApiKey` → Gemini gom endpoint theo chức năng người dùng, đặt tên/mô tả tiếng Việt (`source = Ai`).
+       Kết quả AI được kiểm tra: id không có trong repo bị bỏ, id trùng chỉ giữ lần đầu, endpoint bị AI bỏ sót được gom theo controller (đều có cảnh báo).
+     - Không dùng AI, chưa cấu hình hoặc Gemini lỗi → mỗi controller là một nghiệp vụ (`source = Controller`).
+   - Trả về `businesses` (đúng schema B), số nghiệp vụ/API và `warnings`. Không ghi gì vào DB.
+2. Admin chỉnh `businesses` trên giao diện (đổi tên, chuyển API giữa nghiệp vụ, xoá API).
+3. Chốt:
+   - `POST /api/analysis-runs` gửi kèm `"businesses": [...]` → phân tích dùng template này thay cho file trong repo; hoặc
+   - `POST /api/templates/export` `{ "businesses": [...] }` → tải file `template_business.json` để commit vào repo.
+
+Cấu hình: `"Gemini": { "ApiKey": "", "Model": "gemini-2.5-flash", "TimeoutSeconds": 120 }`. Chỉ gửi tên/route của endpoint lên Gemini, không gửi mã nguồn.
 
 ## Phân tích repo (`POST /api/analysis-runs`)
 
 1. Clone `--depth 1` (hỗ trợ link `/tree/<branch>/<thư mục>`), git không bao giờ hỏi mật khẩu, có timeout.
-2. Đọc `template_business.json` trong repo (thư mục gốc hoặc thư mục con như `src/`; thiếu file → 400). Hỗ trợ 2 schema:
+2. Lấy template: dùng `businesses` trong request nếu có, nếu không thì đọc `template_business.json` trong repo (thư mục gốc hoặc thư mục con như `src/`; thiếu file → 400). Hỗ trợ 2 schema:
    - A: `{ "controller": "BudgetController", "method": "POST CreateBudget" }`
    - B: `{ "controller": "LocationController", "http_method": "GET", "function": "getAllProvinces", "path": "/api/location" }`
    Nghiệp vụ trùng tên (không phân biệt hoa thường) được gộp.

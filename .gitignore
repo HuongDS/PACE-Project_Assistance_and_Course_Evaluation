@@ -55,3 +55,11 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Secrets - KHÔNG commit, mỗi người tự tạo từ appsettings.Development.example.json
+**/appsettings.Development.json

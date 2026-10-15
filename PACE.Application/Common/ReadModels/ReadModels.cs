@@ -48,3 +48,24 @@ public record MethodSourceSummary(
     ProgrammingLanguage Language,
     NodeType NodeType,
     string? Parameters);
+
+public record FlowQuestionContext(
+    Guid Id,
+    string Name,
+    Guid EntryMethodId,
+    string? MermaidGraph,
+    IReadOnlyList<FlowEdgeRef> Edges);
+
+public record FlowEdgeRef(int StepOrder, Guid FromMethodId, Guid ToMethodId);
+
+public record MethodCode(Guid Id, string ClassName, string MethodName, string SourceCode);
+
+public record GeneratedQuestionSummary(
+    Guid Id,
+    Guid BusinessId,
+    string QuestionText,
+    string? SuggestedAnswer,
+    string? Difficulty,
+    ContextType ContextType,
+    DateTime CreatedAt,
+    int AnswerCount);

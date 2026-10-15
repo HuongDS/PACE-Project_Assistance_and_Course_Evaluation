@@ -10,4 +10,5 @@ public interface IBusinessFlowRepository : IGenericRepository<BusinessFlow>
     Task<List<BusinessFlowSummary>> GetSummariesByBusinessAsync(Guid businessId, CancellationToken ct = default);
     Task<BusinessFlowSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default);
     Task<string?> GetMermaidGraphAsync(Guid id, CancellationToken ct = default);
+    Task<List<FlowQuestionContext>> GetQuestionContextsByBusinessAsync(Guid businessId, CancellationToken ct = default);
 }

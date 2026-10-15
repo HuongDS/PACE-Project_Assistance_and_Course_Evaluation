@@ -13,6 +13,8 @@ public interface IUnitOfWork
     IBusinessFlowRepository BusinessFlows { get; }
     IDataFlowEdgeRepository DataFlowEdges { get; }
     IRubricCriterionRepository RubricCriteria { get; }
+    IStudentAnswerRepository StudentAnswers { get; }
+    IGeneratedQuestionRepository GeneratedQuestions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

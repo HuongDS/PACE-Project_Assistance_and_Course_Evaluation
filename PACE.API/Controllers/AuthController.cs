@@ -14,6 +14,11 @@ public class AuthController(IAuthService authService) : ControllerBase
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
         => Ok(await authService.LoginAsync(request, ct));
 
+    [HttpPost("google/student")]
+    [AllowAnonymous]
+    public async Task<ActionResult<GoogleStudentLoginResponse>> GoogleStudentLogin(GoogleStudentLoginRequest request, CancellationToken ct)
+        => Ok(await authService.GoogleStudentLoginAsync(request, ct));
+
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<UserDto>> Me(CancellationToken ct)

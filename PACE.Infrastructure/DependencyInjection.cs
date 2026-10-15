@@ -42,6 +42,8 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
+        services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
 

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +23,14 @@ namespace PACE.Application.Services.Implementations
         IUnitOfWork uow,
         ICurrentUserService currentUserService) : IStudentAnswerService
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new JsonStringEnumConverter() },
+            WriteIndented = true
+        };
         public async Task<string> EvaluateStudentAnswerAsync(StudentAnswerReq request)
         {
             if (request == null)
@@ -62,18 +71,15 @@ namespace PACE.Application.Services.Implementations
                     Positives = "Không có.",
                     ConstructiveCriticism = $"Bài làm bị từ chối do vi phạm quy chuẩn an toàn: {violationReason}",
                     NextSteps = "Vui lòng chỉ trả lời đúng trọng tâm chuyên môn và không chèn các câu lệnh điều khiển hệ thống.",
-                    Comment = $"Vi phạm rào chắn an toàn: {violationReason}",
-                    RequiresHumanReview = true,
-                    ReviewReason = violationReason,
-                    GuardrailWarnings = new List<string> { violationReason }
+                    Comment = $"Vi phạm rào chắn an toàn: {violationReason}"
                 };
 
-                string violationJson = JsonSerializer.Serialize(violationResult, new JsonSerializerOptions { WriteIndented = true });
+                string violationJson = JsonSerializer.Serialize(violationResult, JsonOptions);
 
                 // Cập nhật vi phạm vào database
                 await SaveEvaluationToDbAsync(request, violationJson, violationResult);
 
-                return JsonSerializer.Serialize(violationResult, new JsonSerializerOptions { WriteIndented = true });
+                return JsonSerializer.Serialize(violationResult, JsonOptions);
             }
 
             var sanitizedStudentAnswer = AnswerEvaluationHelper.SanitizeText(request.StudentAnswer);
@@ -200,7 +206,7 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             StudentAnswerRes? parsedResult = null;
             try
             {
-                parsedResult = JsonSerializer.Deserialize<StudentAnswerRes>(cleanJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                parsedResult = JsonSerializer.Deserialize<StudentAnswerRes>(cleanJson, JsonOptions);
             }
             catch (JsonException)
             {
@@ -218,7 +224,7 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             // 5. CẬP NHẬT THUỘC TÍNH AiFeedback VÀO DATABASE
             await SaveEvaluationToDbAsync(request, cleanJson, parsedResult);
 
-            return JsonSerializer.Serialize(parsedResult, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(parsedResult, JsonOptions);
         }
 
         private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, string cleanJson, StudentAnswerRes parsedResult)
@@ -228,15 +234,39 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
                 ? request.UserId.Value
                 : (currentUserService.IsAuthenticated && currentUserService.UserId != Guid.Empty
                     ? currentUserService.UserId
-                    : (await uow.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Student))?.Id ?? Guid.Empty);
+                    : (await uow.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Student))?.Id
+                       ?? (await uow.Users.FirstOrDefaultAsync(u => true))?.Id
+                       ?? Guid.Empty);
 
             if (targetUserId == Guid.Empty) return;
 
-            // Tìm bài làm của sinh viên theo (UserId, QuestionId) và chỉ cập nhật AiFeedback
+            // Tìm bài làm của sinh viên theo (UserId, QuestionId)
             var answer = await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
             if (answer != null)
             {
                 answer.AiFeedback = cleanJson;
+                answer.FeedbackFormat = request.FeedbackFormat.ToString();
+                if (string.IsNullOrEmpty(answer.AnswerText))
+                {
+                    answer.AnswerText = request.StudentAnswer;
+                }
+                await uow.SaveChangesAsync();
+                parsedResult.StudentAnswerId = answer.Id;
+            }
+            else
+            {
+                // Nếu chưa có record, tự động tạo mới để lưu kết quả đánh giá của AI
+                answer = new StudentAnswer
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = targetUserId,
+                    QuestionId = request.QuestionId,
+                    AnswerText = request.StudentAnswer,
+                    FeedbackFormat = request.FeedbackFormat.ToString(),
+                    AiFeedback = cleanJson,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await uow.StudentAnswers.AddAsync(answer);
                 await uow.SaveChangesAsync();
                 parsedResult.StudentAnswerId = answer.Id;
             }

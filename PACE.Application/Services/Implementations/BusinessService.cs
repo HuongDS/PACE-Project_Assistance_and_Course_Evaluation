@@ -48,7 +48,7 @@ public class BusinessService(IUnitOfWork uow, IBusinessFlowService flowService) 
 
         var businessSummary = await uow.Businesses.GetSummaryAsync(businessId, ct);
         var businessDto = businessSummary?.ToDto()
-            ?? new BusinessDto(business.Id, business.AnalysisRunId, business.BusinessName, businessMethods.Count, businessSummary.FlowCount);
+            ?? new BusinessDto(business.Id, business.AnalysisRunId, business.BusinessName, businessMethods.Count, 0);
 
         var methodsDto = methods
             .Select(m => new MethodSourceDto(m.ToSummaryDto(), m.SourceCode, [businessId]))

@@ -36,7 +36,8 @@ public static class DependencyInjection
         services.AddSingleton<ILanguageParser, JavaTreeSitterParser>();
         services.AddSingleton<ILanguageParser, JsTsTreeSitterParser>();
 
-        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        // services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        services.Configure<PACE.Infrastructure.AI.GeminiOptions>(configuration.GetSection(PACE.Infrastructure.AI.GeminiOptions.SectionName));
         services.AddSingleton<IBusinessGroupingAi, GeminiBusinessGrouper>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
@@ -49,7 +50,7 @@ public static class DependencyInjection
         services.AddScoped<ILlmService, DeepSeekService>();
 
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
-        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        services.Configure<PACE.Infrastructure.Ai.GeminiOptions>(configuration.GetSection(PACE.Infrastructure.Ai.GeminiOptions.SectionName));
         services.AddSingleton<IQuestionLlmClient, GeminiQuestionLlmClient>();
         return services;
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using PACE.Application.Common.Models;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Infrastructure.Persistence;

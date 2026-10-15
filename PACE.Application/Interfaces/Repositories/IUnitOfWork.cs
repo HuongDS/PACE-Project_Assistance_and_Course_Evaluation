@@ -1,4 +1,4 @@
-﻿using PACE.Application.Common.Models;
+using PACE.Application.Common.Models;
 
 namespace PACE.Application.Interfaces.Repositories;
 

@@ -17,6 +17,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         e.Property(x => x.Email).IsRequired().HasMaxLength(255);
         e.HasIndex(x => x.Email).IsUnique();
 
+        e.Property(x => x.StudentCode).HasMaxLength(20);
+        e.HasIndex(x => x.StudentCode).IsUnique()
+            .HasFilter("\"StudentCode\" IS NOT NULL");
+
         e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
         e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
 

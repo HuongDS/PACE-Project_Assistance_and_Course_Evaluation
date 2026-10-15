@@ -34,4 +34,10 @@ public static class DtoMappings
 
     public static MethodSourceSummaryDto ToSummaryDto(this MethodSource m) => new(
         m.Id, m.AnalysisRunId, m.ClassName, m.MethodName, m.FilePath, m.Language, m.NodeType, m.Parameters);
+
+    public static GeneratedQuestionDto ToDto(this GeneratedQuestionSummary q) => new(
+        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt, q.AnswerCount);
+
+    public static GeneratedQuestionDto ToDto(this GeneratedQuestion q, int answerCount, IReadOnlyList<string>? targetedEntryPoints = null) => new(
+        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt, answerCount, targetedEntryPoints);
 }

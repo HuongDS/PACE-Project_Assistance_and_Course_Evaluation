@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddScoped<IMethodSourceService, MethodSourceService>();
         services.AddScoped<IRubricCriterionService, RubricCriterionService>();
         services.AddScoped<IRepoAnalysisService, RepoAnalysisService>();
+        services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
+        services.AddScoped<IStudentAnswerService, StudentAnswerService>();
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
         return services;
     }

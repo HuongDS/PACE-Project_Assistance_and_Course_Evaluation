@@ -5,12 +5,15 @@ using PACE.Application.Analysis;
 using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Interfaces.Repositories;
+using PACE.Application.QuestionGeneration;
 using PACE.Application.Services.Interfaces;
 using PACE.Infrastructure.Ai;
+using PACE.Infrastructure.AI;
 using PACE.Infrastructure.Analysis;
 using PACE.Infrastructure.Analysis.Parsing;
 using PACE.Infrastructure.Excel;
 using PACE.Infrastructure.Identity;
+using PACE.Infrastructure.Llm;
 using PACE.Infrastructure.Persistence;
 using PACE.Infrastructure.Repositories;
 
@@ -40,6 +43,14 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
+
+        // LLM Service & HttpClient
+        services.AddHttpClient();
+        services.AddScoped<ILlmService, DeepSeekService>();
+
+        services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
+        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
+        services.AddSingleton<IQuestionLlmClient, GeminiQuestionLlmClient>();
         return services;
     }
 }

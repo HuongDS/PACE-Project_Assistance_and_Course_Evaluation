@@ -1,4 +1,4 @@
-using PACE.Domain.Enums;
+﻿using PACE.Domain.Enums;
 
 namespace PACE.Domain.Entities;
 

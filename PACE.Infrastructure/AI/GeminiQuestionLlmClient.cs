@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Google.GenAI;
+using Google.GenAI.Types;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PACE.Application.Common.Exceptions;

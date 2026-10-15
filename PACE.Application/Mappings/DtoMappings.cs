@@ -36,8 +36,8 @@ public static class DtoMappings
         m.Id, m.AnalysisRunId, m.ClassName, m.MethodName, m.FilePath, m.Language, m.NodeType, m.Parameters);
 
     public static GeneratedQuestionDto ToDto(this GeneratedQuestionSummary q) => new(
-        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt, q.AnswerCount);
+        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt);
 
-    public static GeneratedQuestionDto ToDto(this GeneratedQuestion q, int answerCount, IReadOnlyList<string>? targetedEntryPoints = null) => new(
-        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt, answerCount, targetedEntryPoints);
+    public static GeneratedQuestionDto ToDto(this GeneratedQuestion q, IReadOnlyList<string>? targetedEntryPoints = null) => new(
+        q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty, q.ContextType, q.CreatedAt, targetedEntryPoints);
 }

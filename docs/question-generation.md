@@ -15,14 +15,13 @@ Body của `generate`:
   "mode": "Hybrid",
   "numberOfQuestions": 5,
   "difficulty": "Trung bình",
-  "description": null,
-  "replaceExisting": false
+  "description": null
 }
 ```
 
 - `mode`: `Raw` | `Graph` | `Hybrid` (mặc định `Hybrid`).
 - `difficulty`: `Dễ` | `Trung bình` | `Khó` — khớp với hướng dẫn độ khó trong prompt.
-- `replaceExisting = true`: xoá các câu hỏi cũ **chưa có câu trả lời** của nghiệp vụ trước khi lưu câu mới.
+- Mỗi lần gọi chỉ **thêm** câu hỏi mới; câu hỏi cũ của nghiệp vụ được giữ nguyên.
 
 Phản hồi trả về mode đã chọn thực tế (`appliedContext`), `nodeCount` (N_w), lý do định tuyến, token, latency và
 danh sách câu hỏi kèm `targetedEntryPoints` (chỉ trả về, không lưu DB).

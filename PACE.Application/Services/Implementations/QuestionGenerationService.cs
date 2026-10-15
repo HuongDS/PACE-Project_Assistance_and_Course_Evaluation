@@ -91,7 +91,7 @@ public class QuestionGenerationService(
         if (generated.Count == 0)
             throw new ExternalServiceException("Gemini", "Phản hồi hợp lệ nhưng không có câu hỏi nào.");
 
-        // 5. Lưu DB.
+        // 5. Lưu DB (append).
         var entities = generated.Select(q => new GeneratedQuestion
         {
             Id = Guid.NewGuid(),
@@ -103,17 +103,12 @@ public class QuestionGenerationService(
             CreatedAt = DateTime.UtcNow
         }).ToList();
 
-        var deleted = await uow.ExecuteInTransactionAsync(async token =>
-        {
-            var removed = request.ReplaceExisting
-                ? await uow.GeneratedQuestions.DeleteUnansweredByBusinessAsync(business.Id, token)
-                : 0;
-            await uow.GeneratedQuestions.AddRangeAsync(entities, token);
-            return removed;
-        }, ct);
+        // Chỉ thêm mới — câu hỏi cũ của nghiệp vụ được giữ nguyên.
+        await uow.GeneratedQuestions.AddRangeAsync(entities, ct);
+        await uow.SaveChangesAsync(ct);
 
         var questionDtos = entities
-            .Select((e, i) => e.ToDto(answerCount: 0, targetedEntryPoints: generated[i].TargetedEntryPoints ?? []))
+            .Select((e, i) => e.ToDto(targetedEntryPoints: generated[i].TargetedEntryPoints ?? []))
             .ToList();
 
         return new GenerateQuestionsResponse(
@@ -130,7 +125,6 @@ public class QuestionGenerationService(
             result.InputTokens,
             result.OutputTokens,
             result.LatencyMs,
-            deleted,
             questionDtos);
     }
 

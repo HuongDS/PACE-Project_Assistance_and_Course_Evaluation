@@ -18,9 +18,6 @@ public class GenerateQuestionsRequest
     /// <summary>Hướng dẫn bổ sung từ giảng viên (tuỳ chọn).</summary>
     [MaxLength(4000)]
     public string? Description { get; set; }
-
-    /// <summary>true: xoá các câu hỏi cũ CHƯA có câu trả lời của nghiệp vụ này trước khi lưu câu mới.</summary>
-    public bool ReplaceExisting { get; set; }
 }
 
 public record GeneratedQuestionDto(
@@ -31,7 +28,6 @@ public record GeneratedQuestionDto(
     string? Difficulty,
     ContextType ContextType,
     DateTime CreatedAt,
-    int AnswerCount,
     IReadOnlyList<string>? TargetedEntryPoints = null);
 
 public record GenerateQuestionsResponse(
@@ -48,5 +44,4 @@ public record GenerateQuestionsResponse(
     int InputTokens,
     int OutputTokens,
     long LatencyMs,
-    int DeletedCount,
     IReadOnlyList<GeneratedQuestionDto> Questions);

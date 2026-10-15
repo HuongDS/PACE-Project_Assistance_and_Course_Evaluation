@@ -67,5 +67,4 @@ public record GeneratedQuestionSummary(
     string? SuggestedAnswer,
     string? Difficulty,
     ContextType ContextType,
-    DateTime CreatedAt,
-    int AnswerCount);
+    DateTime CreatedAt);

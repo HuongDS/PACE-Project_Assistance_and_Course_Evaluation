@@ -14,11 +14,8 @@ public class GeneratedQuestionRepository(AppDbContext context) : GenericReposito
             .OrderByDescending(q => q.CreatedAt)
             .Select(q => new GeneratedQuestionSummary(
                 q.Id, q.BusinessId, q.QuestionText, q.SuggestedAnswer, q.Difficulty,
-                q.ContextType, q.CreatedAt, q.Answers.Count))
+                q.ContextType, q.CreatedAt))
             .ToListAsync(ct);
-
-    public Task<int> DeleteUnansweredByBusinessAsync(Guid businessId, CancellationToken ct = default)
-        => DbSet.Where(q => q.BusinessId == businessId && !q.Answers.Any()).ExecuteDeleteAsync(ct);
 
     public Task<int> CountAnswersAsync(Guid questionId, CancellationToken ct = default)
         => Context.StudentAnswers.CountAsync(a => a.QuestionId == questionId, ct);

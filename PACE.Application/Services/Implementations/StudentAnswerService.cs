@@ -61,6 +61,8 @@ namespace PACE.Application.Services.Implementations
                 throw new BadRequestException("Câu trả lời của sinh viên không được để trống.");
             }
 
+            var submittedAnswer = await FindSubmittedAnswerAsync(request);
+
             // 1. RÀO CHẮN ĐẦU VÀO & THỰC THI (Input & Execution Guardrails)
             var (isViolated, violationReason) = AnswerEvaluationHelper.ValidateInput(request.StudentAnswer, questionEntity.QuestionText);
             if (isViolated)
@@ -77,7 +79,7 @@ namespace PACE.Application.Services.Implementations
                 string violationJson = JsonSerializer.Serialize(violationResult, JsonOptions);
 
                 // Cập nhật vi phạm vào database
-                await SaveEvaluationToDbAsync(request, violationJson, violationResult);
+                await SaveEvaluationToDbAsync(request, submittedAnswer, violationJson, violationResult);
 
                 return JsonSerializer.Serialize(violationResult, JsonOptions);
             }
@@ -93,7 +95,7 @@ namespace PACE.Application.Services.Implementations
             string userPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat);
 
             // 4. TIẾN HÀNH ĐÁNH GIÁ VÀ CẬP NHẬT XUỐNG DB
-            return await EvaluateSingleIterationAsync(systemPrompt, userPrompt, request);
+            return await EvaluateSingleIterationAsync(systemPrompt, userPrompt, request, submittedAnswer);
         }
 
         private async Task<string> BuildCleanContextAsync(ContextType? contextModel, Guid businessId)
@@ -192,7 +194,8 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
         private async Task<string> EvaluateSingleIterationAsync(
             string systemPrompt,
             string userPrompt,
-            StudentAnswerReq request)
+            StudentAnswerReq request,
+            StudentAnswer submittedAnswer)
         {
             string rawResponse = await llmService.EvaluateWithLlmAsync(systemPrompt, userPrompt);
 
@@ -222,54 +225,34 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             parsedResult.FeedbackType = request.FeedbackFormat;
 
             // 5. CẬP NHẬT THUỘC TÍNH AiFeedback VÀO DATABASE
-            await SaveEvaluationToDbAsync(request, cleanJson, parsedResult);
+            await SaveEvaluationToDbAsync(request, submittedAnswer, cleanJson, parsedResult);
 
             return JsonSerializer.Serialize(parsedResult, JsonOptions);
         }
 
-        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, string cleanJson, StudentAnswerRes parsedResult)
+        private async Task<StudentAnswer> FindSubmittedAnswerAsync(StudentAnswerReq request)
         {
-            // Xác định UserId sinh viên
             Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
                 ? request.UserId.Value
-                : (currentUserService.IsAuthenticated && currentUserService.UserId != Guid.Empty
-                    ? currentUserService.UserId
-                    : (await uow.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Student))?.Id
-                       ?? (await uow.Users.FirstOrDefaultAsync(u => true))?.Id
-                       ?? Guid.Empty);
+                : (currentUserService.IsAuthenticated ? currentUserService.UserId : Guid.Empty);
 
-            if (targetUserId == Guid.Empty) return;
+            if (targetUserId == Guid.Empty)
+                throw new UnauthorizedException("Thiếu UserId sinh viên để xác định câu trả lời đã nộp.");
 
-            // Tìm bài làm của sinh viên theo (UserId, QuestionId)
-            var answer = await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
-            if (answer != null)
+            return await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId)
+                ?? throw new NotFoundException("Không tìm thấy câu trả lời đã nộp của sinh viên cho câu hỏi này.");
+        }
+
+        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, StudentAnswer answer, string cleanJson, StudentAnswerRes parsedResult)
+        {
+            answer.AiFeedback = cleanJson;
+            answer.FeedbackFormat = request.FeedbackFormat.ToString();
+            if (string.IsNullOrEmpty(answer.AnswerText))
             {
-                answer.AiFeedback = cleanJson;
-                answer.FeedbackFormat = request.FeedbackFormat.ToString();
-                if (string.IsNullOrEmpty(answer.AnswerText))
-                {
-                    answer.AnswerText = request.StudentAnswer;
-                }
-                await uow.SaveChangesAsync();
-                parsedResult.StudentAnswerId = answer.Id;
+                answer.AnswerText = request.StudentAnswer;
             }
-            else
-            {
-                // Nếu chưa có record, tự động tạo mới để lưu kết quả đánh giá của AI
-                answer = new StudentAnswer
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    QuestionId = request.QuestionId,
-                    AnswerText = request.StudentAnswer,
-                    FeedbackFormat = request.FeedbackFormat.ToString(),
-                    AiFeedback = cleanJson,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await uow.StudentAnswers.AddAsync(answer);
-                await uow.SaveChangesAsync();
-                parsedResult.StudentAnswerId = answer.Id;
-            }
+            await uow.SaveChangesAsync();
+            parsedResult.StudentAnswerId = answer.Id;
         }
 
         private string BuildJsonFormatRule(FeedbackFormat feedbackFormat)

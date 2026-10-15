@@ -13,5 +13,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" PrivateAssets="all" />
     <ProjectReference Include="../PACE.API/PACE.API.csproj" />
     <ProjectReference Include="../PACE.Application/PACE.Application.csproj" />
+    <ProjectReference Include="../PACE.Infrastructure/PACE.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

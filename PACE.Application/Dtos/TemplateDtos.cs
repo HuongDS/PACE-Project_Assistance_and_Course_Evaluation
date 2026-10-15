@@ -38,3 +38,15 @@ public record AnalysisRunTemplateDto(
     int BusinessCount,
     int ApiCount,
     IReadOnlyList<BusinessTemplate> Businesses);
+
+public enum BatchItemStatus
+{
+    Succeeded,
+    Failed,
+    /// <summary>Link trùng với một dòng phía trên, không xử lý lại.</summary>
+    Skipped
+}
+
+public record BatchTemplateItemDto(int Row, string RepoUrl, BatchItemStatus Status, string? Error, GeneratedTemplateDto? Template);
+
+public record BatchTemplateResultDto(int Total, int Succeeded, int Failed, int Skipped, IReadOnlyList<BatchTemplateItemDto> Items);

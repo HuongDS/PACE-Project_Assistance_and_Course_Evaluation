@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
+        services.AddSingleton<IRepoLinkReader, ClosedXmlRepoLinkReader>();
 
         // LLM Service & HttpClient
         services.AddHttpClient();

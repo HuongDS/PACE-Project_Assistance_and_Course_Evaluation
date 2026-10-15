@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
+        services.AddScoped<IBatchTemplateService, BatchTemplateService>();
         return services;
     }
 }

@@ -1,4 +1,6 @@
 using PACE.Domain.Entities;
+using PACE.Application.Common.Models;
+using PACE.Application.Dtos;
 
 namespace PACE.Application.Interfaces.Repositories;
 
@@ -9,5 +11,6 @@ public interface IStudentSubmissionRepository
     Task<List<Business>> GetBusinessesWithQuestionsAsync(Guid analysisRunId, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default);
     Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default);
+    Task<PagedResult<StudentSubmission>> GetPagedAsync(StudentSubmissionQuery query, CancellationToken ct = default);
     void Add(StudentSubmission submission);
 }

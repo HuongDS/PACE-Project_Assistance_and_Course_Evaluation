@@ -6,4 +6,5 @@ namespace PACE.Application.Interfaces.Repositories;
 
 public interface IBusinessMethodRepository : IGenericRepository<BusinessMethod>
 {
+    Task<List<BusinessMethod>> GetByBusinessMethodsIdWithMethodSourceAsync(Guid id);
 }

@@ -1,4 +1,4 @@
-using PACE.Domain.Enums;
+﻿using PACE.Domain.Enums;
 
 namespace PACE.Domain.Entities;
 
@@ -10,7 +10,6 @@ public class StudentAnswer
     public string? AnswerText { get; set; }
 
     public string? FeedbackFormat { get; set; }
-    public double? AiScore { get; set; }
     public string? AiFeedback { get; set; }
 
     public string? StudentReply { get; set; }

@@ -7,20 +7,14 @@ using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Analysis.Template;
 using PACE.Application.Common.Exceptions;
 
-namespace PACE.Infrastructure.Ai;
-
-public class GeminiOptions
-{
-    public const string SectionName = "Gemini";
-
-    public string? ApiKey { get; set; }
-    public string Model { get; set; } = "gemini-3.1-flash-lite";
-    public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta";
-    public int TimeoutSeconds { get; set; } = 120;
-}
+namespace PACE.Infrastructure.AI;
 
 public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
 {
+    private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta";
+    // Prompt gom nghiệp vụ nhỏ; không cần chờ lâu như timeout 600s dùng cho sinh câu hỏi.
+    private const int MaxTimeoutSeconds = 120;
+
     private const string SystemPrompt = """
         Bạn là chuyên gia phân tích nghiệp vụ cho đồ án phần mềm của sinh viên.
         Đầu vào là danh sách API (endpoint) đã quét từ mã nguồn, mỗi API có id, controller, http_method, function, path.
@@ -59,7 +53,7 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
     public GeminiBusinessGrouper(IOptions<GeminiOptions> options)
     {
         _options = options.Value;
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(Math.Max(10, _options.TimeoutSeconds)) };
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(Math.Clamp(_options.TimeoutSeconds, 10, MaxTimeoutSeconds)) };
     }
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
@@ -96,7 +90,7 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
         for (var attempt = 0; ; attempt++)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post,
-                $"{_options.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
+                $"{BaseUrl}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
             {
                 Content = JsonContent.Create(body)
             };

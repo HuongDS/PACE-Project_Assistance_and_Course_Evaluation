@@ -52,7 +52,7 @@ Hiện chỉ đăng nhập bằng email (chưa chốt B3: email / email+OTP / Go
 | method_sources | `GET /api/method-sources?analysisRunId=&businessId=&language=&search=`, `GET /api/method-sources/{id}` | |
 | business_flows, data_flow_edges | `GET /api/business-flows/{id}` (Mermaid + danh sách cạnh) | |
 | rubric_criteria | `POST /api/rubric-criteria`, `PUT/DELETE /api/rubric-criteria/{id}` | `GET /api/rubric-criteria` |
-| template nghiệp vụ | `POST /api/templates/generate`, `POST /api/templates/export` | |
+| template nghiệp vụ | `POST /api/templates/generate`, `POST /api/templates/export`, `POST /api/templates/generate-from-excel[/download]` | |
 
 Chưa làm (chờ chốt): generated_questions, student_answers, rubric_scores (sinh câu hỏi, nộp bài, feedback, chấm rubric).
 
@@ -73,6 +73,17 @@ Dùng khi repo chưa có `template_business.json`. Luồng: **tạo bản nháp 
    - `POST /api/analysis-runs` gửi kèm `"businesses": [...]` → phân tích bằng template này và lưu lại; hoặc
    - `PUT /api/analysis-runs/{id}/template` `{ "businesses": [...] }` → chỉ lưu (repo đã tồn tại), lần phân tích sau sẽ dùng; hoặc
    - `POST /api/templates/export` `{ "businesses": [...] }` → tải file `template_business.json` để commit vào repo.
+
+### Tạo template cho nhiều repo từ file Excel
+
+`POST /api/templates/generate-from-excel?useAi=true&regenerate=false` (multipart, field `file` = `.xlsx`, Admin).
+
+- Cột link repo được nhận theo tiêu đề chứa `repo`, `github`, `link` hoặc `url`. Nếu file không có tiêu đề mà chỉ gồm danh sách link thì dòng đầu cũng được dùng. Ô dạng hyperlink (hiển thị tên, link thật nằm trong hyperlink) cũng được đọc. Các cột khác (Email, Tên nhóm...) bị bỏ qua nên dùng lại được file import user.
+- Mỗi repo chạy như `POST /api/templates/generate` (cùng thứ tự: template đã chốt trong DB, rồi file trong repo, rồi tạo mới), tối đa 3 repo chạy song song, mỗi repo một scope DB riêng.
+- Tối đa 50 repo mỗi lần; vượt quá trả 400 và không clone gì. Link trùng (không phân biệt hoa thường, bỏ `.git`) chỉ xử lý một lần, các dòng sau có `status = Skipped`.
+- Lỗi ở một repo (link sai, repo private/không tồn tại, không có endpoint...) không làm hỏng các repo khác: repo đó có `status = Failed` và `error`.
+- Kết quả: `{ total, succeeded, failed, skipped, items[{ row, repoUrl, status, error, template }] }`, `items` giữ đúng thứ tự dòng trong Excel; `template` giống response của `generate`. Không ghi gì vào DB.
+- `POST /api/templates/generate-from-excel/download` nhận cùng tham số nhưng trả file `templates.zip`: mỗi repo thành công một thư mục `owner_repo/template_business.json`, kèm `_report.txt` ghi kết quả từng dòng. Muốn sửa rồi chốt từng repo thì dùng response JSON với `POST /api/analysis-runs`.
 
 Cấu hình: `"Gemini": { "ApiKey": "", "Model": "gemini-3.1-flash-lite", "TimeoutSeconds": 120 }`. Chỉ gửi tên/route của endpoint lên Gemini, không gửi mã nguồn.
 

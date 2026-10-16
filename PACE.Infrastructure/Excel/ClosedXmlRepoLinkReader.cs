@@ -7,6 +7,8 @@ namespace PACE.Infrastructure.Excel;
 public sealed class ClosedXmlRepoLinkReader : IRepoLinkReader
 {
     private static readonly string[] HeaderKeywords = ["repo", "github", "link", "url"];
+    private const int MaxHeaderSearchRows = 30;
+    private const int MaxHeaderLength = 30;
 
     public IReadOnlyList<RepoLinkRow> Read(Stream stream)
     {
@@ -25,10 +27,17 @@ public sealed class ClosedXmlRepoLinkReader : IRepoLinkReader
             var sheet = workbook.Worksheets.FirstOrDefault() ?? throw new BadRequestException("File Excel không có sheet nào.");
             var first = sheet.FirstRowUsed() ?? throw new BadRequestException("File Excel trống.");
 
-            var column = first.CellsUsed()
-                .FirstOrDefault(c => IsHeader(c.GetString().Trim()))
-                ?.Address.ColumnNumber;
-            var lastHeaderRow = first.RowNumber();
+            // Form thật thường có dòng tiêu đề lớn và ghi chú phía trên bảng (cũng chứa chữ "github"),
+            // nên tìm dòng tiêu đề trong vài chục dòng đầu và chỉ nhận ô ngắn như "Link GitHub".
+            int? column = null;
+            var lastHeaderRow = 0;
+            foreach (var row in sheet.RowsUsed().Where(r => r.RowNumber() < first.RowNumber() + MaxHeaderSearchRows))
+            {
+                column = row.CellsUsed().FirstOrDefault(c => IsHeader(c.GetString().Trim()))?.Address.ColumnNumber;
+                if (column is null) continue;
+                lastHeaderRow = row.RowNumber();
+                break;
+            }
 
             // Không có dòng tiêu đề: chấp nhận file chỉ gồm danh sách link, dòng đầu đã là dữ liệu.
             if (column is null)
@@ -61,7 +70,7 @@ public sealed class ClosedXmlRepoLinkReader : IRepoLinkReader
 
     // Một link như "https://github.com/..." cũng chứa chữ "github" nhưng là dữ liệu, không phải tiêu đề.
     private static bool IsHeader(string text)
-        => !LooksLikeUrl(text) && HeaderKeywords.Any(k => text.Contains(k, StringComparison.OrdinalIgnoreCase));
+        => text.Length is > 0 and <= MaxHeaderLength && !LooksLikeUrl(text) && HeaderKeywords.Any(k => text.Contains(k, StringComparison.OrdinalIgnoreCase));
 
     private static bool LooksLikeUrl(string text)
         => text.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || text.StartsWith("https://", StringComparison.OrdinalIgnoreCase);

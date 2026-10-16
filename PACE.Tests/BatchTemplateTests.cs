@@ -45,6 +45,25 @@ public class BatchTemplateTests
     }
 
     [Fact]
+    public void Reader_handles_the_class_form_with_title_note_and_members_per_group()
+    {
+        using var file = Workbook(s =>
+        {
+            s.Cell(2, 2).Value = "BẢNG THỐNG KÊ LINK GITHUB CÁC NHÓM SINH VIÊN";
+            s.Cell(3, 2).Value = "Lưu ý: Link github phải được public, và 1 nhóm chỉ cần submit link git 1 lần";
+            var headers = new[] { "STT", "Mã lớp", "Nhóm", "Đề tài / Dự án", "MSSV thành viên", "Email thành viên", "Link GitHub" };
+            for (var i = 0; i < headers.Length; i++) s.Cell(6, 2 + i).Value = headers[i];
+            s.Cell(7, 2).Value = 1; s.Cell(7, 4).Value = 1; s.Cell(7, 8).Value = "https://github.com/a/one";
+            s.Cell(8, 2).Value = 2; s.Cell(8, 4).Value = 1;
+            s.Cell(9, 2).Value = 3; s.Cell(9, 4).Value = 2; s.Cell(9, 8).Value = "https://github.com/a/two";
+        });
+
+        var rows = new ClosedXmlRepoLinkReader().Read(file);
+
+        Assert.Equal([(7, "https://github.com/a/one"), (9, "https://github.com/a/two")], rows.Select(r => (r.Row, r.RepoUrl)));
+    }
+
+    [Fact]
     public void Reader_accepts_a_plain_list_of_links_without_header()
     {
         using var file = Workbook(s =>

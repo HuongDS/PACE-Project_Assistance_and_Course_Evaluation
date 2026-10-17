@@ -10,7 +10,8 @@ public class StudentSubmissionConfiguration : IEntityTypeConfiguration<StudentSu
     {
         e.ToTable("student_submissions");
         e.HasKey(x => x.Id);
-        e.Property(x => x.SubmittedAt).HasDefaultValueSql("now()");
+        e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+        e.Property(x => x.SubmittedAt).IsRequired(false);
 
         e.HasOne(x => x.User)
             .WithMany(u => u.Submissions)

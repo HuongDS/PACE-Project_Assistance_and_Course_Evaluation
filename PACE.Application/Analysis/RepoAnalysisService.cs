@@ -34,6 +34,7 @@ public sealed class RepoAnalysisService(
 
     public async Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, CancellationToken ct = default)
     {
+        var confirmed = request.Businesses is { Count: > 0 } ? BusinessTemplateLoader.Normalize(request.Businesses) : null;
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
         var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
         var created = run is null;
@@ -52,7 +53,7 @@ public sealed class RepoAnalysisService(
 
         try
         {
-            return await AnalyzeAsync(run.Id, ct);
+            return await AnalyzeAsync(run.Id, confirmed, ct);
         }
         catch
         {
@@ -77,7 +78,7 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, CancellationToken ct)
+    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, CancellationToken ct)
     {
         var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
         if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
@@ -92,9 +93,18 @@ public sealed class RepoAnalysisService(
         {
             using var clone = await git.CloneAsync(run.RepoUrl, ct);
 
-            var templateJson = await scanner.ReadBusinessTemplateAsync([clone.WorkingPath, clone.RootPath], ct)
-                               ?? throw new BadRequestException($"Repo không có file {BusinessTemplateLoader.FileName}.");
-            var templates = BusinessTemplateLoader.Parse(templateJson);
+            // Ưu tiên: template gửi kèm request > template admin đã chốt trong DB > file trong repo.
+            var templates = confirmed;
+            var templateSource = BusinessTemplateSource.Confirmed;
+            if (templates is null && run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
+                templates = BusinessTemplateLoader.Parse(run.BusinessTemplateJson);
+            if (templates is null)
+            {
+                var templateJson = await scanner.ReadBusinessTemplateAsync([clone.WorkingPath, clone.RootPath], ct)
+                                   ?? throw new BadRequestException($"Repo không có file {BusinessTemplateLoader.FileName}. Gọi POST /api/templates/generate để tạo, chỉnh rồi gửi kèm businesses.");
+                templates = BusinessTemplateLoader.Parse(templateJson);
+                templateSource = BusinessTemplateSource.Repository;
+            }
 
             var scan = scanner.Scan(clone.WorkingPath, ct);
             warnings.AddRange(scan.Warnings);
@@ -121,6 +131,10 @@ public sealed class RepoAnalysisService(
                 await uow.BusinessMethods.AddRangeAsync(model.BusinessMethods, token);
                 await uow.BusinessFlows.AddRangeAsync(model.Flows, token);
                 await uow.DataFlowEdges.AddRangeAsync(model.Edges, token);
+
+                // Tải lại trong transaction: lần retry của execution strategy chạy sau khi change tracker đã bị xoá.
+                var trackedRun = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, token) ?? throw new NotFoundException("repo", analysisRunId);
+                StoredBusinessTemplate.Save(trackedRun, templates, templateSource);
             }, ct);
 
             logger.LogInformation("Phân tích {RepoUrl}: {Methods} hàm, {Businesses} nghiệp vụ, {Flows} luồng",

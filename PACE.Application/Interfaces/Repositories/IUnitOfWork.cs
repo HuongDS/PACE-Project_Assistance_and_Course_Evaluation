@@ -6,6 +6,7 @@ public interface IUnitOfWork
 {
     IAnalysisRunRepository AnalysisRuns { get; }
     IBusinessRepository Businesses { get; }
+    IStudentSubmissionRepository StudentSubmissions { get; }
     IUserRepository Users { get; }
     IMethodSourceRepository MethodSources { get; }
     IBusinessMethodRepository BusinessMethods { get; }

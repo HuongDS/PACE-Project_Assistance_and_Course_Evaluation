@@ -14,5 +14,7 @@ public class AnalysisRunConfiguration : IEntityTypeConfiguration<AnalysisRun>
         e.Property(x => x.RepoUrl).HasMaxLength(500);
         e.Property(x => x.RepoName).HasMaxLength(255);
         e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+        e.Property(x => x.BusinessTemplateJson).HasColumnType("jsonb");
+        e.Property(x => x.TemplateSource).HasConversion<string>().HasMaxLength(20);
     }
 }

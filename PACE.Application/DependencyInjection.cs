@@ -9,6 +9,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddScoped<IStudentSubmissionService, StudentSubmissionService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAnalysisRunService, AnalysisRunService>();
@@ -19,6 +20,8 @@ public static class DependencyInjection
         services.AddScoped<IRepoAnalysisService, RepoAnalysisService>();
         services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();
+        services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
+        services.AddScoped<IBatchTemplateService, BatchTemplateService>();
         return services;
     }
 }

@@ -35,17 +35,22 @@ public static class DependencyInjection
         services.AddSingleton<ILanguageParser, JavaTreeSitterParser>();
         services.AddSingleton<ILanguageParser, JsTsTreeSitterParser>();
 
+        services.Configure<PACE.Infrastructure.AI.GeminiOptions>(configuration.GetSection(PACE.Infrastructure.AI.GeminiOptions.SectionName));
+        services.AddSingleton<IBusinessGroupingAi, GeminiBusinessGrouper>();
+
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
+        services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
+        services.AddSingleton<IRepoLinkReader, ClosedXmlRepoLinkReader>();
 
         // LLM Service & HttpClient
         services.AddHttpClient();
         services.AddScoped<ILlmService, DeepSeekService>();
 
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
-        services.Configure<GeminiOptions>(configuration.GetSection(GeminiOptions.SectionName));
         services.AddSingleton<IQuestionLlmClient, GeminiQuestionLlmClient>();
         return services;
     }

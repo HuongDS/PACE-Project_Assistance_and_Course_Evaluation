@@ -9,6 +9,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
 {
     private IAnalysisRunRepository? _analysisRuns;
     private IBusinessRepository? _businesses;
+    private IStudentSubmissionRepository? _studentSubmissions;
     private IUserRepository? _users;
     private IMethodSourceRepository? _methodSources;
     private IBusinessMethodRepository? _businessMethods;
@@ -20,6 +21,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
 
     public IAnalysisRunRepository AnalysisRuns => _analysisRuns ??= new AnalysisRunRepository(context);
     public IBusinessRepository Businesses => _businesses ??= new BusinessRepository(context);
+    public IStudentSubmissionRepository StudentSubmissions => _studentSubmissions ??= new StudentSubmissionRepository(context);
     public IUserRepository Users => _users ??= new UserRepository(context);
     public IMethodSourceRepository MethodSources => _methodSources ??= new MethodSourceRepository(context);
     public IBusinessMethodRepository BusinessMethods => _businessMethods ??= new BusinessMethodRepository(context);

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using PACE.Application.Analysis.Template;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Common.Models;
 using PACE.Application.Common;
@@ -29,6 +30,9 @@ public class CreateAnalysisRunRequest
 
     [MaxLength(255)]
     public string? RepoName { get; set; }
+
+    /// <summary>Template đã chốt (từ POST /api/templates/generate); bỏ trống thì đọc template_business.json trong repo.</summary>
+    public List<BusinessTemplate>? Businesses { get; set; }
 }
 
 public class UpdateAnalysisRunRequest

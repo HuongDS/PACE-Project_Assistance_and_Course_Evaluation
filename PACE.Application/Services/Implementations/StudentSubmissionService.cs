@@ -203,11 +203,26 @@ public class StudentSubmissionService(
             return (subEntity, bizList);
         }, ct);
 
-        // 2. Chấm điểm 3 câu hỏi bằng AI song song qua Task.WhenAll (Ngoài Database Transaction)
-        var evalTasks = request.Answers.Select(async a =>
+        // 2. Chấm điểm các câu hỏi bằng AI song song qua Task.WhenAll (Ngoài Database Transaction)
+        var allFormats = Enum.GetValues<FeedbackFormat>();
+        FeedbackFormat[] assignedFormats;
+        if (request.Answers.Count == allFormats.Length)
+        {
+            assignedFormats = allFormats.ToArray();
+            Random.Shared.Shuffle(assignedFormats);
+        }
+        else
+        {
+            assignedFormats = Enumerable.Range(0, request.Answers.Count)
+                .Select(_ => allFormats[Random.Shared.Next(allFormats.Length)])
+                .ToArray();
+        }
+
+        var evalTasks = request.Answers.Select(async (a, index) =>
         {
             var business = businesses.First(b => b.Id == a.BusinessId);
             var question = business.Questions.First(q => q.Id == a.QuestionId);
+            var format = assignedFormats[index];
 
             StudentAnswerRes? parsed = null;
             try
@@ -219,7 +234,7 @@ public class StudentSubmissionService(
                     SubmissionId = submission.Id,
                     UserId = student.Id,
                     StudentAnswer = a.AnswerText.Trim(),
-                    FeedbackFormat = FeedbackFormat.Sandwich,
+                    FeedbackFormat = format,
                     ContextModel = ContextType.Raw
                 };
 

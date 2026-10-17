@@ -1,3 +1,4 @@
+using PACE.Application.Dtos.StudentAnswer;
 using PACE.Application.Services.Interfaces;
 using System.Reflection;
 using PACE.Application.Common.Interfaces;
@@ -26,6 +27,7 @@ public class StudentSubmissionServiceTests
     private bool userExists = true;
     private Guid? claimedId;
     private UserRole claimedRole = UserRole.Student;
+    private readonly List<FeedbackFormat> evaluatedFormats = [];
 
     public StudentSubmissionServiceTests()
     {
@@ -84,7 +86,12 @@ public class StudentSubmissionServiceTests
             "get_Role" => claimedRole,
             _ => throw new NotSupportedException(m.Name)
         });
-        var ansService = Stub<IStudentAnswerService>.Create((m, a) => Task.FromResult("{}"));
+        var ansService = Stub<IStudentAnswerService>.Create((m, a) =>
+        {
+            if (m.Name == "EvaluateStudentAnswerAsync" && a[0] is StudentAnswerReq req)
+                evaluatedFormats.Add(req.FeedbackFormat);
+            return Task.FromResult("{}");
+        });
         service = new StudentSubmissionService(uow, current, ansService);
     }
 
@@ -134,6 +141,10 @@ public class StudentSubmissionServiceTests
         var detail = await service.RetrieveAsync(new() { SubmissionId = result.SubmissionId });
         Assert.Equal(3, detail.Answers.Count);
         Assert.Equal(result.SubmissionId, detail.SubmissionId);
+        Assert.Equal(3, evaluatedFormats.Count);
+        Assert.Contains(FeedbackFormat.Sandwich, evaluatedFormats);
+        Assert.Contains(FeedbackFormat.Rubric, evaluatedFormats);
+        Assert.Contains(FeedbackFormat.Explainable, evaluatedFormats);
     }
     [Fact] public async Task DuplicateSubmissionRejected()
     {

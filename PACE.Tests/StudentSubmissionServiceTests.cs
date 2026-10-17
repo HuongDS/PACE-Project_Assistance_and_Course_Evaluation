@@ -173,7 +173,7 @@ public class StudentSubmissionServiceTests
     [Fact] public async Task InsufficientBusinessesRejected()
     {
         var request = Request(); businesses[0].Questions.Clear();
-        await Assert.ThrowsAsync<UnprocessableException>(() => service.SubmitAsync(request)); Assert.Empty(saved);
+        await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(request)); Assert.Empty(saved);
     }
     [Fact] public async Task AnotherStudentsSubmissionIsHidden()
     {

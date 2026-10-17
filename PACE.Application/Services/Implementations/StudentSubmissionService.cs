@@ -160,13 +160,15 @@ public class StudentSubmissionService(
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
 
             var bizList = await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token);
-            if (bizList.Count < 3)
-                throw new UnprocessableException("Repository chưa có đủ 3 Business có câu hỏi.");
 
             foreach (var answer in request.Answers)
             {
+                var question = bizList.SelectMany(b => b.Questions).FirstOrDefault(q => q.Id == answer.QuestionId);
+                if (question is null)
+                    throw new BadRequestException("Câu hỏi không tồn tại hoặc không thuộc repository của bài làm.");
+
                 var business = bizList.FirstOrDefault(b => b.Id == answer.BusinessId);
-                if (business is null || !business.Questions.Any(q => q.Id == answer.QuestionId))
+                if (business is null || question.BusinessId != business.Id)
                     throw new BadRequestException("Business không thuộc repository hoặc Question không thuộc Business đã chọn.");
             }
 

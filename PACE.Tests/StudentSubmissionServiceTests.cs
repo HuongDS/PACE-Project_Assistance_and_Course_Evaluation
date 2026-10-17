@@ -1,3 +1,4 @@
+using PACE.Application.Services.Interfaces;
 using System.Reflection;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Common.Models;
@@ -48,12 +49,16 @@ public class StudentSubmissionServiceTests
             {
                 case "LockUserAsync": Assert.True(transaction); locked = true; return Task.CompletedTask;
                 case "GetBusinessesWithQuestionsAsync": return Task.FromResult(businesses.Where(b => b.AnalysisRunId == (Guid)a[0]! && b.Questions.Count > 0).ToList());
-                case "ExistsAsync": return Task.FromResult(saved.Any(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]!));
+                case "ExistsAsync": return Task.FromResult(saved.Any(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt != null));
+                case "GetActiveSessionAsync": return Task.FromResult(saved.FirstOrDefault(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt == null));
+                case "GetSubmittedAsync": return Task.FromResult(saved.FirstOrDefault(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt != null));
                 case "GetOwnedAsync": return Task.FromResult(saved.FirstOrDefault(s => s.Id == (Guid)a[0]! && s.UserId == (Guid)a[1]!));
                 case "GetPagedAsync":
                     var query = (StudentSubmissionQuery)a[0]!;
                     var items = saved.Where(x => !query.UserId.HasValue || x.UserId == query.UserId).ToList();
                     return Task.FromResult(new PagedResult<StudentSubmission> { Items = items, TotalCount = items.Count, Page = 1, PageSize = 20 });
+                case "Update":
+                    return null;
                 case "Add":
                     Assert.True(transaction && locked);
                     var submission = (StudentSubmission)a[0]!;
@@ -69,7 +74,7 @@ public class StudentSubmissionServiceTests
         {
             "get_Users" => users,
             "get_StudentSubmissions" => repo,
-            "ExecuteInTransactionAsync" => Execute((Func<CancellationToken, Task<StudentSubmissionCreatedDto>>)a[0]!, (CancellationToken)a[1]!),
+            "ExecuteInTransactionAsync" => Execute((Func<CancellationToken, Task<(StudentSubmission, List<Business>)>>)a[0]!, (CancellationToken)a[1]!),
             _ => throw new NotSupportedException(m.Name)
         });
         var current = Stub<ICurrentUserService>.Create((m, _) => m.Name switch
@@ -79,10 +84,11 @@ public class StudentSubmissionServiceTests
             "get_Role" => claimedRole,
             _ => throw new NotSupportedException(m.Name)
         });
-        service = new StudentSubmissionService(uow, current);
+        var ansService = Stub<IStudentAnswerService>.Create((m, a) => Task.FromResult("{}"));
+        service = new StudentSubmissionService(uow, current, ansService);
     }
 
-    private async Task<StudentSubmissionCreatedDto> Execute(Func<CancellationToken, Task<StudentSubmissionCreatedDto>> action, CancellationToken ct)
+    private async Task<(StudentSubmission, List<Business>)> Execute(Func<CancellationToken, Task<(StudentSubmission, List<Business>)>> action, CancellationToken ct)
     {
         transaction = true;
         try { return await action(ct); }
@@ -120,8 +126,9 @@ public class StudentSubmissionServiceTests
     [Fact] public async Task SubmitSavesThreeAnswersAndRetrieveReturnsOwnedSubmission()
     {
         var result = await service.SubmitAsync(Request());
-        Assert.Equal(3, result.AnswerCount);
-        Assert.Equal(DateTimeKind.Utc, result.SubmittedAt.Kind);
+        Assert.Equal(3, result.EvaluatedAnswers.Count);
+        Assert.NotNull(result.SubmittedAt);
+        Assert.Equal(DateTimeKind.Utc, result.SubmittedAt!.Value.Kind);
         var submission = Assert.Single(saved);
         Assert.All(submission.Answers, a => { Assert.Equal(user.Id, a.UserId); Assert.Equal(result.SubmissionId, a.SubmissionId); Assert.Equal("answer", a.AnswerText); });
         var detail = await service.RetrieveAsync(new() { SubmissionId = result.SubmissionId });

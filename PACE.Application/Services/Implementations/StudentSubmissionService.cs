@@ -1,7 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Common.Models;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Dtos;
+using PACE.Application.Dtos.StudentAnswer;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Services.Interfaces;
 using PACE.Domain.Entities;
@@ -9,8 +17,20 @@ using PACE.Domain.Enums;
 
 namespace PACE.Application.Services.Implementations;
 
-public class StudentSubmissionService(IUnitOfWork uow, ICurrentUserService currentUser) : IStudentSubmissionService
+public class StudentSubmissionService(
+    IUnitOfWork uow,
+    ICurrentUserService currentUser,
+    IStudentAnswerService studentAnswerService) : IStudentSubmissionService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() },
+        WriteIndented = true
+    };
+
     private void RequireRole(UserRole role)
     {
         if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
@@ -39,6 +59,65 @@ public class StudentSubmissionService(IUnitOfWork uow, ICurrentUserService curre
     private static SubmissionRepositoryDto MapRepository(AnalysisRun run)
         => new(run.Id, run.RepoName, run.RepoUrl);
 
+    public async Task<StudentSubmissionJoinedDto> JoinAsync(JoinStudentSubmissionRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.StudentCode) || string.IsNullOrWhiteSpace(request.Email))
+            throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
+
+        var email = request.Email.Trim().ToLower();
+        var studentCode = request.StudentCode.Trim();
+
+        var user = await uow.Users.GetByEmailAsync(email, ct);
+        if (user is null || user.Role != UserRole.Student)
+            throw new NotFoundException("Không tìm thấy sinh viên với email này.");
+
+        if (!string.IsNullOrWhiteSpace(user.StudentCode)
+            && !string.Equals(user.StudentCode.Trim(), studentCode, StringComparison.OrdinalIgnoreCase))
+            throw new BadRequestException("Mã số sinh viên không khớp với email.");
+
+        var userWithRepo = await uow.Users.GetWithRepoAsync(user.Id, ct: ct);
+        var run = RequireRepository(userWithRepo ?? user);
+
+        // Kiểm tra xem sinh viên đã nộp bài hoàn tất trước đó chưa
+        var submitted = await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, ct);
+        if (submitted is not null)
+            throw new ConflictException("Sinh viên đã hoàn thành và nộp bài cho repository này.");
+
+        // Kiểm tra xem sinh viên có phiên làm bài đang dở dang không
+        var active = await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, ct);
+        if (active is not null)
+        {
+            return new StudentSubmissionJoinedDto(
+                active.Id,
+                active.CreatedAt,
+                user.StudentCode ?? studentCode,
+                user.Email,
+                run.RepoName
+            );
+        }
+
+        // Tạo mới phiên làm bài (StudentSubmission với SubmittedAt = null)
+        var submission = new StudentSubmission
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            AnalysisRunId = run.Id,
+            CreatedAt = DateTime.UtcNow,
+            SubmittedAt = null
+        };
+
+        uow.StudentSubmissions.Add(submission);
+        await uow.SaveChangesAsync(ct);
+
+        return new StudentSubmissionJoinedDto(
+            submission.Id,
+            submission.CreatedAt,
+            user.StudentCode ?? studentCode,
+            user.Email,
+            run.RepoName
+        );
+    }
+
     public async Task<StudentSubmissionLookupDto> LookupAsync(CancellationToken ct = default)
     {
         var run = RequireRepository(await FindStudentAsync(ct));
@@ -47,7 +126,7 @@ public class StudentSubmissionService(IUnitOfWork uow, ICurrentUserService curre
             b.Questions.OrderBy(q => q.Id).Select(q => new SubmissionQuestionDto(q.Id, q.QuestionText)).ToList())).ToList());
     }
 
-    public async Task<StudentSubmissionCreatedDto> SubmitAsync(SubmitStudentSubmissionRequest request, CancellationToken ct = default)
+    public async Task<StudentSubmissionResultDto> SubmitAsync(SubmitStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Student);
         if (request.Answers is null || request.Answers.Count != 3
@@ -58,44 +137,120 @@ public class StudentSubmissionService(IUnitOfWork uow, ICurrentUserService curre
             throw new BadRequestException("Phải chọn 3 Business khác nhau.");
 
         var student = await FindStudentAsync(ct);
-        // Keep the ID stable across execution-strategy retries after an uncertain commit.
-        var submissionId = Guid.NewGuid();
         var submittedAt = DateTime.UtcNow;
-        return await uow.ExecuteInTransactionAsync(async token =>
+        Guid submissionId = request.SubmissionId ?? Guid.NewGuid();
+
+        // 1. Lưu bài nộp và 3 câu trả lời vào Database (Transaction nhanh < 200ms)
+        var (submission, businesses) = await uow.ExecuteInTransactionAsync(async token =>
         {
             await uow.StudentSubmissions.LockUserAsync(student.Id, token);
             var user = await FindStudentAsync(token);
             if (user.Id != student.Id)
                 throw new ConflictException("Thông tin sinh viên đã thay đổi. Vui lòng thử lại.");
             var run = RequireRepository(user);
-            var existing = await uow.StudentSubmissions.GetOwnedAsync(submissionId, user.Id, token);
-            if (existing is not null)
-                return new StudentSubmissionCreatedDto(existing.Id, existing.SubmittedAt, existing.Answers.Count);
-            if (await uow.StudentSubmissions.ExistsAsync(user.Id, run.Id, token))
+
+            var existing = request.SubmissionId.HasValue
+                ? await uow.StudentSubmissions.GetOwnedAsync(request.SubmissionId.Value, user.Id, token)
+                : await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, token);
+
+            if (existing is not null && existing.SubmittedAt.HasValue)
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
 
-            var businesses = await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token);
-            if (businesses.Count < 3)
+            if (existing is null && await uow.StudentSubmissions.ExistsAsync(user.Id, run.Id, token))
+                throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
+
+            var bizList = await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token);
+            if (bizList.Count < 3)
                 throw new UnprocessableException("Repository chưa có đủ 3 Business có câu hỏi.");
+
             foreach (var answer in request.Answers)
             {
-                var business = businesses.FirstOrDefault(b => b.Id == answer.BusinessId);
+                var business = bizList.FirstOrDefault(b => b.Id == answer.BusinessId);
                 if (business is null || !business.Questions.Any(q => q.Id == answer.QuestionId))
                     throw new BadRequestException("Business không thuộc repository hoặc Question không thuộc Business đã chọn.");
             }
 
-            var submission = new StudentSubmission
+            var subEntity = existing ?? new StudentSubmission
             {
-                Id = submissionId, UserId = user.Id, AnalysisRunId = run.Id, SubmittedAt = submittedAt,
-                Answers = request.Answers.Select(a => new StudentAnswer
-                {
-                    Id = Guid.NewGuid(), UserId = user.Id, SubmissionId = submissionId,
-                    QuestionId = a.QuestionId, AnswerText = a.AnswerText.Trim(), CreatedAt = submittedAt
-                }).ToList()
+                Id = submissionId,
+                UserId = user.Id,
+                AnalysisRunId = run.Id,
+                CreatedAt = submittedAt
             };
-            uow.StudentSubmissions.Add(submission);
-            return new StudentSubmissionCreatedDto(submission.Id, submission.SubmittedAt, submission.Answers.Count);
+
+            subEntity.SubmittedAt = submittedAt;
+            subEntity.Answers = request.Answers.Select(a => new StudentAnswer
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                SubmissionId = subEntity.Id,
+                QuestionId = a.QuestionId,
+                AnswerText = a.AnswerText.Trim(),
+                CreatedAt = submittedAt
+            }).ToList();
+
+            if (existing is null)
+            {
+                uow.StudentSubmissions.Add(subEntity);
+            }
+            else
+            {
+                uow.StudentSubmissions.Update(subEntity);
+            }
+
+            return (subEntity, bizList);
         }, ct);
+
+        // 2. Chấm điểm 3 câu hỏi bằng AI song song qua Task.WhenAll (Ngoài Database Transaction)
+        var evalTasks = request.Answers.Select(async a =>
+        {
+            var business = businesses.First(b => b.Id == a.BusinessId);
+            var question = business.Questions.First(q => q.Id == a.QuestionId);
+
+            StudentAnswerRes? parsed = null;
+            try
+            {
+                var evalReq = new StudentAnswerReq
+                {
+                    BusinessId = a.BusinessId,
+                    QuestionId = a.QuestionId,
+                    SubmissionId = submission.Id,
+                    UserId = student.Id,
+                    StudentAnswer = a.AnswerText.Trim(),
+                    FeedbackFormat = FeedbackFormat.Sandwich,
+                    ContextModel = ContextType.Raw
+                };
+
+                var jsonResult = await studentAnswerService.EvaluateStudentAnswerAsync(evalReq);
+                parsed = JsonSerializer.Deserialize<StudentAnswerRes>(jsonResult, JsonOptions);
+            }
+            catch
+            {
+                // Fallback nếu có lỗi ngoại lệ từ LLM
+            }
+
+            return new EvaluatedAnswerDto
+            {
+                BusinessId = a.BusinessId,
+                BusinessName = business.BusinessName,
+                QuestionId = a.QuestionId,
+                QuestionText = question.QuestionText,
+                AnswerText = a.AnswerText.Trim(),
+                AiEvaluation = parsed
+            };
+        });
+
+        var evaluatedAnswers = await Task.WhenAll(evalTasks);
+
+        var runInfo = RequireRepository(student);
+        return new StudentSubmissionResultDto
+        {
+            SubmissionId = submission.Id,
+            CreatedAt = submission.CreatedAt,
+            SubmittedAt = submittedAt,
+            Repository = MapRepository(runInfo),
+            EvaluatedAnswers = evaluatedAnswers.ToList()
+        };
     }
 
     public async Task<StudentSubmissionDetailDto> RetrieveAsync(RetrieveStudentSubmissionRequest request, CancellationToken ct = default)
@@ -116,8 +271,8 @@ public class StudentSubmissionService(IUnitOfWork uow, ICurrentUserService curre
     }
 
     private static StudentSubmissionDetailDto MapDetail(StudentSubmission submission)
-        => new(submission.Id, submission.SubmittedAt, MapRepository(submission.AnalysisRun),
+        => new(submission.Id, submission.CreatedAt, submission.SubmittedAt, MapRepository(submission.AnalysisRun),
             submission.Answers.OrderBy(a => a.Question.Business.BusinessName).ThenBy(a => a.QuestionId)
                 .Select(a => new SubmittedAnswerDto(a.Question.BusinessId, a.Question.Business.BusinessName,
-                    a.QuestionId, a.Question.QuestionText, a.AnswerText)).ToList());
+                    a.QuestionId, a.Question.QuestionText, a.AnswerText, a.AiFeedback)).ToList());
 }

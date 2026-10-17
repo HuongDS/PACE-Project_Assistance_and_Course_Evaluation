@@ -21,7 +21,15 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
             .Include(b => b.Questions).OrderBy(b => b.BusinessName).ThenBy(b => b.Id).ToListAsync(ct);
 
     public Task<bool> ExistsAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default)
-        => context.StudentSubmissions.AnyAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId, ct);
+        => context.StudentSubmissions.AnyAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt != null, ct);
+
+    public Task<StudentSubmission?> GetActiveSessionAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default)
+        => context.StudentSubmissions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt == null, ct);
+
+    public Task<StudentSubmission?> GetSubmittedAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default)
+        => context.StudentSubmissions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt != null, ct);
 
     public Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default)
         => context.StudentSubmissions.AsNoTracking().Include(s => s.AnalysisRun)
@@ -42,7 +50,7 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         var page = Math.Max(1, query.Page);
         var pageSize = Math.Clamp(query.PageSize, 1, 200);
         var total = await source.CountAsync(ct);
-        var items = await source.OrderByDescending(s => s.SubmittedAt).ThenBy(s => s.Id)
+        var items = await source.OrderByDescending(s => s.SubmittedAt ?? s.CreatedAt).ThenBy(s => s.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Include(s => s.User).Include(s => s.AnalysisRun)
             .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
@@ -51,4 +59,5 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
     }
 
     public void Add(StudentSubmission submission) => context.StudentSubmissions.Add(submission);
+    public void Update(StudentSubmission submission) => context.StudentSubmissions.Update(submission);
 }

@@ -10,7 +10,10 @@ public interface IStudentSubmissionRepository
     Task LockUserAsync(Guid userId, CancellationToken ct = default);
     Task<List<Business>> GetBusinessesWithQuestionsAsync(Guid analysisRunId, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default);
+    Task<StudentSubmission?> GetActiveSessionAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default);
+    Task<StudentSubmission?> GetSubmittedAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default);
     Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default);
     Task<PagedResult<StudentSubmission>> GetPagedAsync(StudentSubmissionQuery query, CancellationToken ct = default);
     void Add(StudentSubmission submission);
+    void Update(StudentSubmission submission);
 }

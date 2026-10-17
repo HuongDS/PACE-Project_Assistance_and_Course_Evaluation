@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using PACE.Domain.Enums;
 
 namespace PACE.Application.Dtos.StudentAnswer
@@ -7,6 +7,7 @@ namespace PACE.Application.Dtos.StudentAnswer
     {
         public Guid BusinessId { get; set; }
         public Guid QuestionId { get; set; }
+        public Guid? SubmissionId { get; set; }
         public Guid? UserId { get; set; }
         public string Question { get; set; } = string.Empty;
         //public string? ReferenceMaterial { get; set; }

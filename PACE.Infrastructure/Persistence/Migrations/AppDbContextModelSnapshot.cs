@@ -444,10 +444,13 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AnalysisRunId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("SubmittedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

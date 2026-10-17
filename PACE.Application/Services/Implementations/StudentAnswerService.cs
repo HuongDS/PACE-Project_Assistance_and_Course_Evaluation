@@ -62,6 +62,7 @@ namespace PACE.Application.Services.Implementations
             }
 
             var submittedAnswer = await FindSubmittedAnswerAsync(request);
+
             // 1. RÀO CHẮN ĐẦU VÀO & THỰC THI (Input & Execution Guardrails)
             var (isViolated, violationReason) = AnswerEvaluationHelper.ValidateInput(request.StudentAnswer, questionEntity.QuestionText);
             if (isViolated)
@@ -243,50 +244,18 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             return JsonSerializer.Serialize(parsedResult, JsonOptions);
         }
 
-        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, string cleanJson, StudentAnswerRes parsedResult)
+        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, StudentAnswer answer, string cleanJson, StudentAnswerRes parsedResult)
         {
-            // Xác định UserId sinh viên
-            Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
-                ? request.UserId.Value
-                : (currentUserService.IsAuthenticated && currentUserService.UserId != Guid.Empty
-                    ? currentUserService.UserId
-                    : (await uow.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Student))?.Id
-                       ?? (await uow.Users.FirstOrDefaultAsync(u => true))?.Id
-                       ?? Guid.Empty);
-
-            if (targetUserId == Guid.Empty) return;
-
-            // Tìm bài làm của sinh viên theo (UserId, QuestionId)
-            var answer = await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
-            if (answer != null)
+            answer.AiFeedback = cleanJson;
+            answer.FeedbackFormat = request.FeedbackFormat.ToString();
+            if (string.IsNullOrEmpty(answer.AnswerText))
             {
-                answer.AiFeedback = cleanJson;
-                answer.FeedbackFormat = request.FeedbackFormat.ToString();
-                if (string.IsNullOrEmpty(answer.AnswerText))
-                {
-                    answer.AnswerText = request.StudentAnswer;
-                }
-                await uow.SaveChangesAsync();
-                parsedResult.StudentAnswerId = answer.Id;
+                answer.AnswerText = request.StudentAnswer;
             }
-            else
-            {
-                // Nếu chưa có record, tự động tạo mới để lưu kết quả đánh giá của AI
-                answer = new StudentAnswer
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    QuestionId = request.QuestionId,
-                    AnswerText = request.StudentAnswer,
-                    FeedbackFormat = request.FeedbackFormat.ToString(),
-                    AiFeedback = cleanJson,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await uow.StudentAnswers.AddAsync(answer);
-                await uow.SaveChangesAsync();
-                parsedResult.StudentAnswerId = answer.Id;
-            }
+            await uow.SaveChangesAsync();
+            parsedResult.StudentAnswerId = answer.Id;
         }
+
         private async Task<StudentAnswer> FindSubmittedAnswerAsync(StudentAnswerReq request)
         {
             Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
@@ -296,8 +265,15 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             if (targetUserId == Guid.Empty)
                 throw new UnauthorizedException("Thiếu UserId sinh viên để xác định câu trả lời đã nộp.");
 
-            return await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId)
-                ?? throw new NotFoundException("Không tìm thấy câu trả lời đã nộp của sinh viên cho câu hỏi này.");
+            StudentAnswer? answer = null;
+            if (request.SubmissionId.HasValue && request.SubmissionId.Value != Guid.Empty)
+            {
+                answer = await uow.StudentAnswers.GetBySubmissionAndQuestionAsync(request.SubmissionId.Value, request.QuestionId);
+            }
+
+            answer ??= await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
+
+            return answer ?? throw new NotFoundException("Không tìm thấy câu trả lời đã nộp của sinh viên cho câu hỏi này.");
         }
 
         private string BuildJsonFormatRule(FeedbackFormat feedbackFormat)

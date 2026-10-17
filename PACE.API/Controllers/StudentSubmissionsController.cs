@@ -11,6 +11,11 @@ namespace PACE.API.Controllers;
 [Authorize]
 public class StudentSubmissionsController(IStudentSubmissionService service) : ControllerBase
 {
+    [HttpPost("join")]
+    [AllowAnonymous]
+    public async Task<ActionResult<StudentSubmissionJoinedDto>> Join([FromBody] JoinStudentSubmissionRequest request, CancellationToken ct)
+        => Ok(await service.JoinAsync(request, ct));
+
     [Authorize(Roles = Roles.Student)]
     [HttpPost("lookup")]
     public async Task<ActionResult<StudentSubmissionLookupDto>> Lookup(CancellationToken ct)
@@ -18,12 +23,12 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
 
     [Authorize(Roles = Roles.Student)]
     [HttpPost]
-    public async Task<ActionResult<StudentSubmissionCreatedDto>> Submit(SubmitStudentSubmissionRequest request, CancellationToken ct)
+    public async Task<ActionResult<StudentSubmissionResultDto>> Submit([FromBody] SubmitStudentSubmissionRequest request, CancellationToken ct)
         => StatusCode(StatusCodes.Status201Created, await service.SubmitAsync(request, ct));
 
     [Authorize(Roles = Roles.Student)]
     [HttpPost("retrieve")]
-    public async Task<ActionResult<StudentSubmissionDetailDto>> Retrieve(RetrieveStudentSubmissionRequest request, CancellationToken ct)
+    public async Task<ActionResult<StudentSubmissionDetailDto>> Retrieve([FromBody] RetrieveStudentSubmissionRequest request, CancellationToken ct)
         => Ok(await service.RetrieveAsync(request, ct));
 
     [HttpGet]

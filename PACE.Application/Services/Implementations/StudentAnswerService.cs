@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,7 +62,6 @@ namespace PACE.Application.Services.Implementations
             }
 
             var submittedAnswer = await FindSubmittedAnswerAsync(request);
-
             // 1. RÀO CHẮN ĐẦU VÀO & THỰC THI (Input & Execution Guardrails)
             var (isViolated, violationReason) = AnswerEvaluationHelper.ValidateInput(request.StudentAnswer, questionEntity.QuestionText);
             if (isViolated)
@@ -86,13 +85,17 @@ namespace PACE.Application.Services.Implementations
 
             var sanitizedStudentAnswer = AnswerEvaluationHelper.SanitizeText(request.StudentAnswer);
             var sanitizedQuestion = AnswerEvaluationHelper.SanitizeText(questionEntity.QuestionText);
+            var sanitizedSuggestedAnswer = !string.IsNullOrWhiteSpace(questionEntity.SuggestedAnswer)
+    ? AnswerEvaluationHelper.SanitizeText(questionEntity.SuggestedAnswer)
+    : null;
 
             // 2. CƠ CHẾ FAIL-FAST: Kiểm tra và chuẩn bị Context sạch sẽ trước khi gọi LLM
             string context = await BuildCleanContextAsync(request.ContextModel, request.BusinessId);
 
             // 3. THIẾT KẾ PROMPT PHÂN CẤP CHỈ THỊ (Instruction Hierarchy với Delimiter Sandboxing - Không chấm điểm tổng thể)
             string systemPrompt = BuildHierarchicalSystemPrompt();
-            string userPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat);
+
+            string userPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat, sanitizedSuggestedAnswer);
 
             // 4. TIẾN HÀNH ĐÁNH GIÁ VÀ CẬP NHẬT XUỐNG DB
             return await EvaluateSingleIterationAsync(systemPrompt, userPrompt, request, submittedAnswer);
@@ -168,11 +171,19 @@ QUY TẮC PHÂN CẤP CHỈ THỊ (INSTRUCTION HIERARCHY - ĐẶC QUYỀN CAO NH
 4. TẬP TRUNG NHẬN XÉT SƯ PHẠM (KHÔNG CHẤM ĐIỂM TỔNG THỂ):
    - Hệ thống KHÔNG chấm điểm tổng thể cho bài làm của sinh viên mà tập trung hoàn toàn vào việc nhận xét, giải thích logic và hướng dẫn cải thiện.
    - Phân tích kỹ tính đúng đắn về mặt kỹ thuật so với <ground_truth_context>.
-5. RÀO CHẮN ĐỊNH DẠNG: Chỉ trả về duy nhất 1 khối JSON hợp lệ theo cấu trúc được yêu cầu. Không bọc thêm text giải thích ngoài JSON.";
+5. ĐỐI CHIẾU ĐÁP ÁN GỢI Ý (<suggested_answer>):
+   - Thẻ <suggested_answer> (nếu có) là đáp án tiêu chuẩn do Giảng viên/Hệ thống cung cấp, kết hợp cùng <ground_truth_context> để làm chuẩn mực đánh giá.
+   - TÍNH LINH HOẠT SƯ PHẠM: Sinh viên KHÔNG NHẤT THIẾT phải dùng từ ngữ giống hệt <suggested_answer>. Hãy đánh giá xem sinh viên có hiểu đúng bản chất logic, đúng luồng xử lý và đạt được các ý chính nêu trong <suggested_answer> hay không.
+6. RÀO CHẮN ĐỊNH DẠNG: Chỉ trả về duy nhất 1 khối JSON hợp lệ theo cấu trúc được yêu cầu. Không bọc thêm text giải thích ngoài JSON.";
         }
 
-        private string BuildUserPrompt(string context, string question, string studentAnswer, FeedbackFormat feedbackFormat)
+
+        private string BuildUserPrompt(string context, string question, string studentAnswer, FeedbackFormat feedbackFormat, string? suggestedAnswer = null)
         {
+            var suggestedBlock = !string.IsNullOrWhiteSpace(suggestedAnswer)
+                ? $"\n<suggested_answer>\n{suggestedAnswer}\n</suggested_answer>\n"
+                : string.Empty;
+
             return $@"
 <ground_truth_context>
 {context}
@@ -181,6 +192,8 @@ QUY TẮC PHÂN CẤP CHỈ THỊ (INSTRUCTION HIERARCHY - ĐẶC QUYỀN CAO NH
 <exam_question>
 {question}
 </exam_question>
+
+{suggestedBlock}
 
 <student_answer>
 {studentAnswer}
@@ -230,6 +243,50 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
             return JsonSerializer.Serialize(parsedResult, JsonOptions);
         }
 
+        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, string cleanJson, StudentAnswerRes parsedResult)
+        {
+            // Xác định UserId sinh viên
+            Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
+                ? request.UserId.Value
+                : (currentUserService.IsAuthenticated && currentUserService.UserId != Guid.Empty
+                    ? currentUserService.UserId
+                    : (await uow.Users.FirstOrDefaultAsync(u => u.Role == UserRole.Student))?.Id
+                       ?? (await uow.Users.FirstOrDefaultAsync(u => true))?.Id
+                       ?? Guid.Empty);
+
+            if (targetUserId == Guid.Empty) return;
+
+            // Tìm bài làm của sinh viên theo (UserId, QuestionId)
+            var answer = await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
+            if (answer != null)
+            {
+                answer.AiFeedback = cleanJson;
+                answer.FeedbackFormat = request.FeedbackFormat.ToString();
+                if (string.IsNullOrEmpty(answer.AnswerText))
+                {
+                    answer.AnswerText = request.StudentAnswer;
+                }
+                await uow.SaveChangesAsync();
+                parsedResult.StudentAnswerId = answer.Id;
+            }
+            else
+            {
+                // Nếu chưa có record, tự động tạo mới để lưu kết quả đánh giá của AI
+                answer = new StudentAnswer
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = targetUserId,
+                    QuestionId = request.QuestionId,
+                    AnswerText = request.StudentAnswer,
+                    FeedbackFormat = request.FeedbackFormat.ToString(),
+                    AiFeedback = cleanJson,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await uow.StudentAnswers.AddAsync(answer);
+                await uow.SaveChangesAsync();
+                parsedResult.StudentAnswerId = answer.Id;
+            }
+        }
         private async Task<StudentAnswer> FindSubmittedAnswerAsync(StudentAnswerReq request)
         {
             Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
@@ -241,18 +298,6 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
 
             return await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId)
                 ?? throw new NotFoundException("Không tìm thấy câu trả lời đã nộp của sinh viên cho câu hỏi này.");
-        }
-
-        private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, StudentAnswer answer, string cleanJson, StudentAnswerRes parsedResult)
-        {
-            answer.AiFeedback = cleanJson;
-            answer.FeedbackFormat = request.FeedbackFormat.ToString();
-            if (string.IsNullOrEmpty(answer.AnswerText))
-            {
-                answer.AnswerText = request.StudentAnswer;
-            }
-            await uow.SaveChangesAsync();
-            parsedResult.StudentAnswerId = answer.Id;
         }
 
         private string BuildJsonFormatRule(FeedbackFormat feedbackFormat)

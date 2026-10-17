@@ -6,7 +6,7 @@ namespace PACE.Application.Dtos.StudentAnswer
     public class StudentAnswerReq
     {
         public Guid BusinessId { get; set; }
-        public Guid QuestionId { get; set; }
+        public Guid QuestionId { get; set; } // who answer the question
         public Guid? UserId { get; set; }
         public string Question { get; set; } = string.Empty;
         //public string? ReferenceMaterial { get; set; }

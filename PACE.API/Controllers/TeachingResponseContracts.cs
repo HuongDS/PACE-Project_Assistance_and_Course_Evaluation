@@ -1,0 +1,22 @@
+namespace PACE.API.Controllers;
+// Explicit OpenAPI response contracts for the teaching APIs. Anonymous EF projections implement these wire shapes.
+public record CourseStudentView(Guid Id, string Email);
+public record CourseProjectView(Guid Id, string? Name, bool? IsApproved, string? Notes, DateTime? DecidedAt, IReadOnlyList<CourseStudentView> Students);
+public record CourseView(Guid Id, string Code, string Name, string Semester, Guid LecturerId, string LecturerName, int TotalGroups, IReadOnlyList<object> Milestones, IReadOnlyList<CourseProjectView> Projects);
+public record ResourceCreated(Guid Id);
+public record SessionSummaryView(Guid Id, string Title, string Status, Guid ProjectId, DateTime ScheduledStart, DateTime ScheduledEnd);
+public record SessionStartView(Guid Id, string Status, DateTime? ActualStartTime);
+public record SessionCriterionView(Guid Id, string Title, string Description, decimal MaxScore, decimal Weight, IReadOnlyList<object> Levels);
+public record SessionRubricView(Guid Id, Guid CourseId, string Title, IReadOnlyList<SessionCriterionView> Criteria, decimal TotalScore);
+public record ParticipantUserView(Guid Id, string Email, string FullName, string Role, DateTime CreatedAt);
+public record SessionParticipantView(ParticipantUserView User, string Role, bool IsAudioActive, bool IsVideoActive, bool IsSpeaking, string ConnectionQuality);
+public record SessionView(Guid Id, string Title, string CourseCode, string? GroupName, string Status, DateTime ScheduledStart, DateTime ScheduledEnd, DateTime? ActualStartTime, DateTime? ActualEndTime, SessionRubricView Rubric, IReadOnlyList<SessionParticipantView> Participants, Dictionary<Guid, List<ScoreInput>> StudentEvaluations);
+public record GitCommitView(string Sha, string AuthorEmail, string AuthorName, string Message, string Timestamp, int Additions, int Deletions, int ChangedFilesCount);
+public record EvidenceView(Guid ProjectId, string RepositoryUrl, IReadOnlyList<GitCommitView> Commits, IReadOnlyList<object> Contributions, DateTime AnalyzedAt, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp, string CurrentCommitSha);
+public record CommitDiffView(string Filename, string Status, int Additions, int Deletions, string Patch);
+public record AstNodeView(string Id, string Label, string Type);
+public record AstEdgeView(string Source, string Target, string Relation);
+public record AstView(IReadOnlyList<AstNodeView> Nodes, IReadOnlyList<AstEdgeView> Edges, int? CyclomaticComplexity, string GraphKind, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp);
+public record AuditEventView(Guid Id, DateTime Timestamp, string EventType, string ActorName, string Details);
+public record FinalScoreView(Guid StudentId, string StudentName, decimal? Score, string? GradeLetter, IReadOnlyList<ScoreInput>? Evaluations, DateTime? EvaluatedAt, Guid? EvaluatorId);
+public record AssessmentReportView(Guid Id, Guid SessionId, string CourseCode, string? GroupName, int? TotalDurationSeconds, IReadOnlyList<FinalScoreView> FinalScores, IReadOnlyList<AuditEventView> Timeline, DateTime GeneratedAt, IReadOnlyList<SessionCriterion> Rubric, string? RepositoryUrl);

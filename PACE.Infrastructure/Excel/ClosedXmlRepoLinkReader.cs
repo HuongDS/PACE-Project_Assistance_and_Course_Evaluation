@@ -12,6 +12,7 @@ public sealed class ClosedXmlRepoLinkReader : IRepoLinkReader
 
     public IReadOnlyList<RepoLinkRow> Read(Stream stream)
     {
+        ExcelUploadGuard.Validate(stream);
         XLWorkbook workbook;
         try
         {

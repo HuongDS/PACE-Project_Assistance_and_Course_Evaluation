@@ -40,6 +40,7 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddSingleton<IAdminCredentialValidator, AdminCredentialValidator>();
         services.Configure<GoogleAuthOptions>(configuration.GetSection(GoogleAuthOptions.SectionName));
         services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 

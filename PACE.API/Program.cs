@@ -12,6 +12,7 @@ using PACE.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddScoped<PACE.API.Controllers.TeachingAccess>();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -22,6 +23,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var authEnabled = builder.Configuration.GetValue("Auth:Enabled", true);
+if (!authEnabled && !builder.Environment.IsDevelopment()) throw new InvalidOperationException("Authentication cannot be disabled outside Development.");
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 if (authEnabled)
 {
@@ -41,6 +43,19 @@ if (authEnabled)
                 ClockSkew = TimeSpan.FromMinutes(1),
                 RoleClaimType = ClaimTypes.Role,
                 NameClaimType = ClaimTypes.Email
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = async context =>
+                {
+                    var principal = context.Principal!;
+                    if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) { context.Fail("Invalid identity."); return; }
+                    var db = context.HttpContext.RequestServices.GetRequiredService<PACE.Infrastructure.Persistence.AppDbContext>();
+                    var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.SingleOrDefaultAsync(db.Users, u => u.Id == userId, context.HttpContext.RequestAborted);
+                    var run = principal.FindFirstValue(PACE.Application.Common.CustomClaimTypes.AnalysisRunId);
+                    if (user is null || user.Role.ToString() != principal.FindFirstValue(ClaimTypes.Role) || user.AnalysisRunId?.ToString() != run)
+                        context.Fail("Account permissions changed; sign in again.");
+                }
             };
         });
 }
@@ -81,6 +96,7 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PACE API", Version = "v1" });
@@ -109,7 +125,7 @@ else app.Logger.LogWarning("Auth:Enabled = false: mọi endpoint đang mở, kh�
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -119,6 +135,7 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health").AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
 

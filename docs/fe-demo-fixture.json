@@ -1,0 +1,28 @@
+{
+  "email": "lequanghieu2504@gmail.com",
+  "studentCode": "DEMOBF454F8C",
+  "userId": "bf454f8c-61e2-59e6-98a7-aa00472693a1",
+  "analysisRunId": "c97b5901-4938-5ea0-9d24-d39c9f54718e",
+  "historyAnalysisRunId": "dcc915f4-1741-55b2-91b1-d4d3ec93d1c3",
+  "historySubmissionId": "e4019fea-4ccd-532c-bddf-126b47a634a4",
+  "submitRequest": {
+    "answers": [
+      {
+        "businessId": "3a0b67e3-66bc-53dc-87b6-a0104ef2280c",
+        "questionId": "7716222a-d51f-574c-a003-f2a82d9e706c",
+        "answerText": "Hàm từ chối quantity <= 0 và price < 0 bằng ArgumentException, sau đó gọi CalculateTotal để tính quantity * price."
+      },
+      {
+        "businessId": "2edf5eee-bc1b-516e-ba92-2846c058d2f0",
+        "questionId": "a5115980-f04e-5ae2-8763-fa985733e653",
+        "answerText": "Nếu requested <= 0 hoặc requested > stock thì ném ArgumentException; chỉ khi hợp lệ mới trả về stock - requested."
+      },
+      {
+        "businessId": "e18d97e1-ed0f-52f4-83de-64f81c848ad4",
+        "questionId": "ee10b27e-5411-5234-8bd5-70bfec036b3f",
+        "answerText": "percent phải nằm trong [0,100] và total >= 0. percent = 100 hợp lệ và trả về 0; ngoài miền hợp lệ sẽ ném ArgumentException."
+      }
+    ]
+  },
+  "note": "Synthetic demo fixtures; repository URLs are labels, not cloneable repositories. Google login must use the email above."
+}

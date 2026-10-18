@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -20,7 +21,7 @@ namespace PACE.Application.Services.Implementations;
 public class StudentSubmissionService(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
-    IStudentAnswerService studentAnswerService) : IStudentSubmissionService
+    IStudentAnswerService studentAnswerService, ILogger<StudentSubmissionService>? logger = null) : IStudentSubmissionService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -59,15 +60,25 @@ public class StudentSubmissionService(
     private static SubmissionRepositoryDto MapRepository(AnalysisRun run)
         => new(run.Id, run.RepoName, run.RepoUrl);
 
-    public async Task<StudentSubmissionJoinedDto> JoinAsync(JoinStudentSubmissionRequest request, CancellationToken ct = default)
+    public Task<StudentSubmissionJoinedDto> JoinAsync(JoinStudentSubmissionRequest request, CancellationToken ct = default)
+        => uow.ExecuteInTransactionAsync(async token => {
+            RequireRole(UserRole.Student);
+            await uow.StudentSubmissions.LockUserAsync(currentUser.UserId, token);
+            return await JoinCoreAsync(request, token);
+        }, ct);
+
+    private async Task<StudentSubmissionJoinedDto> JoinCoreAsync(JoinStudentSubmissionRequest request, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.StudentCode) || string.IsNullOrWhiteSpace(request.Email))
             throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
 
-        var email = request.Email.Trim().ToLower();
+        var authenticated = await FindStudentAsync(ct);
+        if (!string.Equals(authenticated.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new ForbiddenException();
+        var email = authenticated.Email.Trim().ToLowerInvariant();
         var studentCode = request.StudentCode.Trim();
 
-        var user = await uow.Users.GetByEmailAsync(email, ct);
+        var user = await uow.Users.GetWithRepoAsync(authenticated.Id, asNoTracking: false, ct: ct);
         if (user is null || user.Role != UserRole.Student)
             throw new NotFoundException("Không tìm thấy sinh viên với email này.");
 
@@ -95,6 +106,8 @@ public class StudentSubmissionService(
                 run.RepoName
             );
         }
+
+        if (string.IsNullOrWhiteSpace(user.StudentCode)) user.StudentCode = studentCode;
 
         // Tạo mới phiên làm bài (StudentSubmission với SubmittedAt = null)
         var submission = new StudentSubmission
@@ -153,6 +166,10 @@ public class StudentSubmissionService(
                 ? await uow.StudentSubmissions.GetOwnedAsync(request.SubmissionId.Value, user.Id, token)
                 : await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, token);
 
+            if (request.SubmissionId.HasValue && existing is null)
+                throw new NotFoundException("Submission not found for the authenticated student.");
+            if (existing is not null && existing.AnalysisRunId != run.Id)
+                throw new ConflictException("Submission belongs to a different repository assignment.");
             if (existing is not null && existing.SubmittedAt.HasValue)
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
 
@@ -218,7 +235,14 @@ public class StudentSubmissionService(
                 .ToArray();
         }
 
-        var evalTasks = request.Answers.Select(async (a, index) =>
+        var evaluatedAnswers = new List<EvaluatedAnswerDto>();
+        for (var index = 0; index < request.Answers.Count; index++)
+        {
+            var a = request.Answers[index];
+            evaluatedAnswers.Add(await EvaluateAsync(a, index));
+        }
+
+        async Task<EvaluatedAnswerDto> EvaluateAsync(StudentAnswerRequest a, int index)
         {
             var business = businesses.First(b => b.Id == a.BusinessId);
             var question = business.Questions.First(q => q.Id == a.QuestionId);
@@ -243,6 +267,7 @@ public class StudentSubmissionService(
             }
             catch
             {
+                logger?.LogWarning("AI evaluation unavailable for submission {SubmissionId}, question {QuestionId}; saved answers retained", submission.Id, a.QuestionId);
                 // Fallback nếu có lỗi ngoại lệ từ LLM
             }
 
@@ -255,9 +280,7 @@ public class StudentSubmissionService(
                 AnswerText = a.AnswerText.Trim(),
                 AiEvaluation = parsed
             };
-        });
-
-        var evaluatedAnswers = await Task.WhenAll(evalTasks);
+        }
 
         var runInfo = RequireRepository(student);
         return new StudentSubmissionResultDto
@@ -287,9 +310,57 @@ public class StudentSubmissionService(
         return submissions.Map(s => new AdminStudentSubmissionDto(s.UserId, s.User.StudentCode, s.User.Email, MapDetail(s)));
     }
 
+    public async Task<StudentSubmissionDetailDto> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        if (!currentUser.IsAuthenticated || currentUser.UserId == Guid.Empty)
+            throw new UnauthorizedException("Bạn chưa đăng nhập.");
+        if (id == Guid.Empty) throw new BadRequestException("SubmissionId không hợp lệ.");
+        StudentSubmission? submission;
+        if (currentUser.Role == UserRole.Admin)
+            submission = await uow.StudentSubmissions.GetByIdAsync(id, ct);
+        else
+        {
+            RequireRole(UserRole.Student);
+            submission = await uow.StudentSubmissions.GetOwnedAsync(id, currentUser.UserId, ct);
+        }
+        return MapDetail(submission ?? throw new NotFoundException("Không tìm thấy bài nộp."));
+    }
+
+    public async Task<PagedResult<StudentSubmissionDetailDto>> GetMineAsync(StudentSubmissionQuery query, CancellationToken ct = default)
+    {
+        RequireRole(UserRole.Student);
+        // Always scope in the service, even if a caller supplies another UserId.
+        var ownedQuery = new StudentSubmissionQuery
+        {
+            UserId = currentUser.UserId,
+            AnalysisRunId = query.AnalysisRunId,
+            IsSubmitted = query.IsSubmitted,
+            Search = query.Search,
+            Page = query.Page,
+            PageSize = query.PageSize
+        };
+        return (await uow.StudentSubmissions.GetPagedAsync(ownedQuery, ct)).Map(MapDetail);
+    }
+
     private static StudentSubmissionDetailDto MapDetail(StudentSubmission submission)
         => new(submission.Id, submission.CreatedAt, submission.SubmittedAt, MapRepository(submission.AnalysisRun),
             submission.Answers.OrderBy(a => a.Question.Business.BusinessName).ThenBy(a => a.QuestionId)
                 .Select(a => new SubmittedAnswerDto(a.Question.BusinessId, a.Question.Business.BusinessName,
-                    a.QuestionId, a.Question.QuestionText, a.AnswerText, a.AiFeedback)).ToList());
+                    a.QuestionId, a.Question.QuestionText, a.AnswerText, a.AiFeedback)
+                {
+                    StudentAnswerId = a.Id,
+                    SuggestedAnswer = a.Question.SuggestedAnswer,
+                    Difficulty = a.Question.Difficulty,
+                    ContextType = a.Question.ContextType,
+                    QuestionCreatedAt = a.Question.CreatedAt,
+                    AnswerCreatedAt = a.CreatedAt,
+                    FeedbackFormat = a.FeedbackFormat,
+                    StudentReply = a.StudentReply,
+                    RubricScores = a.RubricScores.OrderBy(r => r.Criterion.DisplayOrder).ThenBy(r => r.CriterionId)
+                        .Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId, r.Criterion.Code,
+                            r.Criterion.Name, r.Criterion.Statement, r.Score)).ToList()
+                }).ToList())
+        {
+            Student = new(submission.UserId, submission.User.StudentCode, submission.User.Email)
+        };
 }

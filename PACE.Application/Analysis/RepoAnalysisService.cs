@@ -34,6 +34,7 @@ public sealed class RepoAnalysisService(
 
     public async Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, CancellationToken ct = default)
     {
+        if (RepoUrlHelper.FindProblem(request.RepoUrl) is { } problem) throw new BadRequestException(problem);
         var confirmed = request.Businesses is { Count: > 0 } ? BusinessTemplateLoader.Normalize(request.Businesses) : null;
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
         var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);

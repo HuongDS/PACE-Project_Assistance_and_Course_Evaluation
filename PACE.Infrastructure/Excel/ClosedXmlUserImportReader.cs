@@ -8,6 +8,7 @@ public sealed class ClosedXmlUserImportReader : IUserImportReader
 {
     public IReadOnlyList<UserImportRow> Read(Stream stream)
     {
+        ExcelUploadGuard.Validate(stream);
         XLWorkbook workbook;
         try
         {

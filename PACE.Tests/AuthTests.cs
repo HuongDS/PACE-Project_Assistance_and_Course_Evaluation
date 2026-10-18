@@ -44,7 +44,7 @@ public class AuthTests
             tokens++;
             return new JwtTokenService(Options.Create(options)).CreateToken((User)a[0]!);
         });
-        return new AuthService(uow, jwt, Stub<ICurrentUserService>.Create((_, _) => throw new NotSupportedException()), google);
+        return new AuthService(uow, jwt, Stub<ICurrentUserService>.Create((_, _) => throw new NotSupportedException()), google, Stub<IAdminCredentialValidator>.Create((_, a) => (string)a[0]! == "correct-test-password"));
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class AuthTests
     public async Task LegacyLoginStillAllowsAdmin()
     {
         student.Role = UserRole.Admin;
-        var response = await Service(student).LoginAsync(new() { Email = student.Email });
+        var response = await Service(student).LoginAsync(new() { Email = student.Email, Password = "correct-test-password" });
         Assert.Equal(UserRole.Admin, response.User.Role);
         Assert.Equal(1, tokens);
     }
@@ -137,4 +137,26 @@ public class AuthTests
         var validator = new GoogleIdTokenValidator(Options.Create(new GoogleAuthOptions { ClientId = "pace.apps.googleusercontent.com" }));
         await Assert.ThrowsAsync<UnauthorizedException>(() => validator.ValidateEmailAsync(token));
     }
+    [Fact]
+    public async Task AdminWrongPasswordNeverIssuesJwt()
+    {
+        student.Role = UserRole.Admin;
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(student).LoginAsync(new() { Email = student.Email, Password = "incorrect" }));
+        Assert.Equal(0, tokens);
+    }
+    [Fact]
+    public async Task RegisteredLecturerCanUseGoogleStaffLogin()
+    {
+        student.Role = UserRole.Lecturer;
+        var response = await Service(student).GoogleStaffLoginAsync(new() { IdToken = "google-id-token" });
+        Assert.Equal(UserRole.Lecturer, response.User.Role);
+        Assert.Equal(1, tokens);
+    }
+    [Fact]
+    public async Task StudentCannotUseGoogleStaffLogin()
+    {
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(student).GoogleStaffLoginAsync(new() { IdToken = "google-id-token" }));
+        Assert.Equal(0, tokens);
+    }
+
 }

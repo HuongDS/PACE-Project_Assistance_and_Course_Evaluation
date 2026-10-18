@@ -61,7 +61,9 @@ namespace PACE.Application.Services.Implementations
                 throw new BadRequestException("Câu trả lời của sinh viên không được để trống.");
             }
 
+            if (questionEntity.BusinessId != request.BusinessId) throw new BadRequestException("Question does not belong to the requested business.");
             var submittedAnswer = await FindSubmittedAnswerAsync(request);
+            if (!string.IsNullOrWhiteSpace(submittedAnswer.AiFeedback)) return submittedAnswer.AiFeedback;
 
             // 1. RÀO CHẮN ĐẦU VÀO & THỰC THI (Input & Execution Guardrails)
             var (isViolated, violationReason) = AnswerEvaluationHelper.ValidateInput(request.StudentAnswer, questionEntity.QuestionText);
@@ -258,12 +260,10 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
 
         private async Task<StudentAnswer> FindSubmittedAnswerAsync(StudentAnswerReq request)
         {
-            Guid targetUserId = request.UserId.HasValue && request.UserId.Value != Guid.Empty
-                ? request.UserId.Value
-                : (currentUserService.IsAuthenticated ? currentUserService.UserId : Guid.Empty);
-
-            if (targetUserId == Guid.Empty)
-                throw new UnauthorizedException("Thiếu UserId sinh viên để xác định câu trả lời đã nộp.");
+            if (!currentUserService.IsAuthenticated || currentUserService.UserId == Guid.Empty)
+                throw new UnauthorizedException("Authentication required.");
+            var targetUserId = currentUserService.UserId;
+            if (request.UserId.HasValue && request.UserId != targetUserId) throw new ForbiddenException();
 
             StudentAnswer? answer = null;
             if (request.SubmissionId.HasValue && request.SubmissionId.Value != Guid.Empty)
@@ -273,6 +273,7 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
 
             answer ??= await uow.StudentAnswers.GetByStudentAndQuestionAsync(targetUserId, request.QuestionId);
 
+            if (answer is not null && answer.UserId != targetUserId) throw new ForbiddenException();
             return answer ?? throw new NotFoundException("Không tìm thấy câu trả lời đã nộp của sinh viên cho câu hỏi này.");
         }
 

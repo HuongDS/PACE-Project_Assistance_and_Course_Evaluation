@@ -54,6 +54,7 @@ public class StudentSubmissionServiceTests
                 case "ExistsAsync": return Task.FromResult(saved.Any(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt != null));
                 case "GetActiveSessionAsync": return Task.FromResult(saved.FirstOrDefault(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt == null));
                 case "GetSubmittedAsync": return Task.FromResult(saved.FirstOrDefault(s => s.UserId == (Guid)a[0]! && s.AnalysisRunId == (Guid)a[1]! && s.SubmittedAt != null));
+                case "GetByIdAsync": return Task.FromResult(saved.FirstOrDefault(s => s.Id == (Guid)a[0]!));
                 case "GetOwnedAsync": return Task.FromResult(saved.FirstOrDefault(s => s.Id == (Guid)a[0]! && s.UserId == (Guid)a[1]!));
                 case "GetPagedAsync":
                     var query = (StudentSubmissionQuery)a[0]!;
@@ -237,6 +238,56 @@ public class StudentSubmissionServiceTests
         Assert.Equal(submitted.SubmissionId, item.Submission.SubmissionId);
         Assert.Equal(3, item.Submission.Answers.Count);
         Assert.Empty((await service.GetAllAsync(new() { UserId = Guid.NewGuid() })).Items);
+    }
+
+    [Fact] public async Task StudentHistoryCannotBeRedirectedToAnotherUser()
+    {
+        var submitted = await service.SubmitAsync(Request());
+        var result = await service.GetMineAsync(new() { UserId = Guid.NewGuid() });
+        Assert.Equal(submitted.SubmissionId, Assert.Single(result.Items).SubmissionId);
+        claimedId = Guid.NewGuid();
+        Assert.Empty((await service.GetMineAsync(new() { UserId = user.Id })).Items);
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(submitted.SubmissionId));
+    }
+
+    [Fact] public async Task AdminCanReadFullSubmissionById()
+    {
+        var submitted = await service.SubmitAsync(Request());
+        var answer = saved.Single().Answers.First();
+        answer.AiFeedback = "{\"comment\":\"Good\"}";
+        answer.FeedbackFormat = "Explainable";
+        answer.StudentReply = "Thanks";
+        answer.Question.SuggestedAnswer = "Reference answer";
+        answer.Question.Difficulty = "Hard";
+        answer.RubricScores.Add(new RubricScore
+        {
+            Id = Guid.NewGuid(), CriterionId = Guid.NewGuid(), Score = 4,
+            Criterion = new RubricCriterion { Code = "C1", Name = "Logic", Statement = "Explain logic" }
+        });
+        claimedRole = UserRole.Admin;
+        claimedId = Guid.NewGuid();
+        var detail = await service.GetByIdAsync(submitted.SubmissionId);
+        Assert.Equal(user.Email, detail.Student.Email);
+        var mapped = detail.Answers.Single(a => a.StudentAnswerId == answer.Id);
+        Assert.Equal(answer.AiFeedback, mapped.AiFeedback);
+        Assert.Equal("Reference answer", mapped.SuggestedAnswer);
+        Assert.Equal("Hard", mapped.Difficulty);
+        Assert.Equal("Explainable", mapped.FeedbackFormat);
+        Assert.Equal("Thanks", mapped.StudentReply);
+        Assert.Equal(4, Assert.Single(mapped.RubricScores).Score);
+    }
+
+    [Fact] public async Task SubmissionReadsRequireAuthenticationAndSupportedRole()
+    {
+        authenticated = false;
+        await Assert.ThrowsAsync<UnauthorizedException>(() => service.GetByIdAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => service.GetMineAsync(new()));
+        authenticated = true;
+        claimedRole = UserRole.Lecturer;
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.GetByIdAsync(Guid.NewGuid()));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.GetMineAsync(new()));
+        claimedRole = UserRole.Admin;
+        await Assert.ThrowsAsync<NotFoundException>(() => service.GetByIdAsync(Guid.NewGuid()));
     }
 
     [Theory]

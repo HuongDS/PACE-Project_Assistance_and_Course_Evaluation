@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using PACE.Application.Dtos.StudentAnswer;
+using PACE.Domain.Enums;
 
 namespace PACE.Application.Dtos;
 
@@ -22,13 +23,13 @@ public class StudentAnswerRequest
 {
     public Guid BusinessId { get; set; }
     public Guid QuestionId { get; set; }
-    [Required]
+    [Required, MaxLength(20000)]
     public string AnswerText { get; set; } = "";
 }
 
 public class JoinStudentSubmissionRequest
 {
-    [Required]
+    [Required, MaxLength(20)]
     public string StudentCode { get; set; } = string.Empty;
 
     [Required, EmailAddress]
@@ -48,8 +49,25 @@ public record SubmissionQuestionDto(Guid QuestionId, string QuestionText);
 public record SubmissionBusinessDto(Guid BusinessId, string BusinessName, IReadOnlyList<SubmissionQuestionDto> Questions);
 public record StudentSubmissionLookupDto(SubmissionRepositoryDto Repository, IReadOnlyList<SubmissionBusinessDto> Businesses);
 public record StudentSubmissionCreatedDto(Guid SubmissionId, DateTime? SubmittedAt, int AnswerCount);
-public record SubmittedAnswerDto(Guid BusinessId, string BusinessName, Guid QuestionId, string QuestionText, string? AnswerText, string? AiFeedback = null);
-public record StudentSubmissionDetailDto(Guid SubmissionId, DateTime CreatedAt, DateTime? SubmittedAt, SubmissionRepositoryDto Repository, IReadOnlyList<SubmittedAnswerDto> Answers);
+public record SubmittedAnswerDto(Guid BusinessId, string BusinessName, Guid QuestionId, string QuestionText, string? AnswerText, string? AiFeedback = null)
+{
+    public Guid StudentAnswerId { get; init; }
+    public string? SuggestedAnswer { get; init; }
+    public string? Difficulty { get; init; }
+    public ContextType ContextType { get; init; }
+    public DateTime QuestionCreatedAt { get; init; }
+    public DateTime AnswerCreatedAt { get; init; }
+    public string? FeedbackFormat { get; init; }
+    public string? StudentReply { get; init; }
+    public IReadOnlyList<SubmissionRubricScoreDto> RubricScores { get; init; } = [];
+}
+
+public record SubmissionRubricScoreDto(Guid Id, Guid CriterionId, string Code, string Name, string Statement, int Score);
+public record StudentSubmissionDetailDto(Guid SubmissionId, DateTime CreatedAt, DateTime? SubmittedAt, SubmissionRepositoryDto Repository, IReadOnlyList<SubmittedAnswerDto> Answers)
+{
+    public SubmissionStudentDto Student { get; init; } = null!;
+}
+public record SubmissionStudentDto(Guid UserId, string? StudentCode, string Email);
 
 public class EvaluatedAnswerDto
 {
@@ -74,6 +92,7 @@ public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery
 {
     public Guid? UserId { get; set; }
     public Guid? AnalysisRunId { get; set; }
+    public bool? IsSubmitted { get; set; }
 }
 
 public record AdminStudentSubmissionDto(Guid UserId, string? StudentId, string Email, StudentSubmissionDetailDto Submission);

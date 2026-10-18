@@ -31,6 +31,16 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
     public async Task<ActionResult<StudentSubmissionDetailDto>> Retrieve([FromBody] RetrieveStudentSubmissionRequest request, CancellationToken ct)
         => Ok(await service.RetrieveAsync(request, ct));
 
+    [HttpGet("me")]
+    [Authorize(Roles = Roles.Student)]
+    public async Task<ActionResult<PagedResult<StudentSubmissionDetailDto>>> GetMine([FromQuery] StudentSubmissionQuery query, CancellationToken ct)
+        => Ok(await service.GetMineAsync(query, ct));
+
+    [HttpGet("{id:guid}")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Student)]
+    public async Task<ActionResult<StudentSubmissionDetailDto>> GetById(Guid id, CancellationToken ct)
+        => Ok(await service.GetByIdAsync(id, ct));
+
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PagedResult<AdminStudentSubmissionDto>>> GetAll([FromQuery] StudentSubmissionQuery query, CancellationToken ct)

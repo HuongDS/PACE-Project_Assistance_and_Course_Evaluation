@@ -13,5 +13,6 @@ public interface IAuthService
 {
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<GoogleStudentLoginResponse> GoogleStudentLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);
+    Task<LoginResponse> GoogleStaffLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);
     Task<UserDto> GetMeAsync(CancellationToken ct = default);
 }

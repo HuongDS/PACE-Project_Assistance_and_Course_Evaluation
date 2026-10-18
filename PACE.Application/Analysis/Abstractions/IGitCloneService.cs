@@ -4,6 +4,7 @@ public interface IClonedRepository : IDisposable
 {
     string RootPath { get; }
     string WorkingPath { get; }
+    string? CommitSha => null;
 }
 
 public interface IGitCloneService

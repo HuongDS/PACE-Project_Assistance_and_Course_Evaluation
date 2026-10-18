@@ -31,14 +31,22 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         => context.StudentSubmissions.AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt != null, ct);
 
-    public Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default)
-        => context.StudentSubmissions.AsNoTracking().Include(s => s.AnalysisRun)
+    private IQueryable<StudentSubmission> Details()
+        => context.StudentSubmissions.AsNoTracking().AsSplitQuery()
+            .Include(s => s.User).Include(s => s.AnalysisRun)
             .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, ct);
+            .Include(s => s.Answers).ThenInclude(a => a.RubricScores).ThenInclude(r => r.Criterion);
+
+    public Task<StudentSubmission?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => Details().FirstOrDefaultAsync(s => s.Id == id, ct);
+
+    public Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default)
+        => Details().FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId, ct);
 
     public async Task<PagedResult<StudentSubmission>> GetPagedAsync(StudentSubmissionQuery query, CancellationToken ct = default)
     {
-        var source = context.StudentSubmissions.AsNoTracking().AsQueryable();
+        var source = Details();
+        if (query.IsSubmitted.HasValue) source = source.Where(s => (s.SubmittedAt != null) == query.IsSubmitted.Value);
         if (query.UserId.HasValue) source = source.Where(s => s.UserId == query.UserId.Value);
         if (query.AnalysisRunId.HasValue) source = source.Where(s => s.AnalysisRunId == query.AnalysisRunId.Value);
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -52,12 +60,16 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         var total = await source.CountAsync(ct);
         var items = await source.OrderByDescending(s => s.SubmittedAt ?? s.CreatedAt).ThenBy(s => s.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Include(s => s.User).Include(s => s.AnalysisRun)
-            .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
             .ToListAsync(ct);
         return new PagedResult<StudentSubmission> { Items = items, Page = page, PageSize = pageSize, TotalCount = total };
     }
 
     public void Add(StudentSubmission submission) => context.StudentSubmissions.Add(submission);
-    public void Update(StudentSubmission submission) => context.StudentSubmissions.Update(submission);
+    public void Update(StudentSubmission submission)
+    {
+        // Attach only submission scalar values. Details includes detached user/repository graphs
+        // which must not be marked modified or attached over authenticated tracked identities.
+        context.Entry(submission).State = EntityState.Modified;
+        context.StudentAnswers.AddRange(submission.Answers);
+    }
 }

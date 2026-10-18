@@ -96,6 +96,7 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PACE API", Version = "v1" });
@@ -124,7 +125,7 @@ else app.Logger.LogWarning("Auth:Enabled = false: mọi endpoint đang mở, kh�
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
@@ -134,6 +135,7 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health").AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
 

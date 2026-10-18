@@ -29,9 +29,9 @@ public sealed class BatchTemplateService(
         for (var i = 0; i < rows.Count; i++)
         {
             var row = rows[i];
-            if (!RepoUrlHelper.IsSupportedUrl(row.RepoUrl))
+            if (RepoUrlHelper.FindProblem(row.RepoUrl) is { } problem)
             {
-                items[i] = new BatchTemplateItemDto(row.Row, row.RepoUrl, BatchItemStatus.Failed, "Link repo không hợp lệ.", null);
+                items[i] = new BatchTemplateItemDto(row.Row, row.RepoUrl, BatchItemStatus.Failed, problem, null);
                 continue;
             }
 

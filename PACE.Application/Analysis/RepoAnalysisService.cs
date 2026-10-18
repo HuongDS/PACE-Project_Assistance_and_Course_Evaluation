@@ -135,6 +135,8 @@ public sealed class RepoAnalysisService(
                 // Tải lại trong transaction: lần retry của execution strategy chạy sau khi change tracker đã bị xoá.
                 var trackedRun = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, token) ?? throw new NotFoundException("repo", analysisRunId);
                 StoredBusinessTemplate.Save(trackedRun, templates, templateSource);
+                trackedRun.AnalyzedCommitSha = clone.CommitSha;
+                trackedRun.AnalyzedAt = DateTime.UtcNow;
             }, ct);
 
             logger.LogInformation("Phân tích {RepoUrl}: {Methods} hàm, {Businesses} nghiệp vụ, {Flows} luồng",

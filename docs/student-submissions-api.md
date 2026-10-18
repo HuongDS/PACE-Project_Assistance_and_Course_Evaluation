@@ -101,3 +101,41 @@ Tests use repository/UnitOfWork stubs, never a database or API host. PostgreSQL
 transaction/row-lock behavior has not been integration-tested. Schema migration
 from the previous task must already be applied by an authorized operator before
 using these endpoints; this task does not apply migrations or alter DB settings.
+
+## Read full submission history and details
+
+All routes below require JWT authentication. No schema migration is needed.
+
+| Role | Method and path | Purpose |
+| --- | --- | --- |
+| Admin | `GET /api/student-submissions` | All submissions, paginated |
+| Student | `GET /api/student-submissions/me` | Own history, paginated |
+| Admin, Student | `GET /api/student-submissions/{id}` | Full detail; Student can only read an owned submission |
+| Student | `POST /api/student-submissions/retrieve` | Existing own-detail endpoint, with the same expanded detail payload |
+
+List filters: `UserId` (Admin), `AnalysisRunId`, `IsSubmitted`, `Search` (email or student code), `Page` (default 1), `PageSize` (default 20, capped at 200).
+Filters can be combined. Omit `IsSubmitted` to include both active sessions and submitted work. Student history always scopes UserId to the authenticated student, ignoring a supplied UserId. History remains available when the student's assigned repository changes.
+
+Examples:
+
+```http
+GET /api/student-submissions?UserId=<student-guid>&Page=1&PageSize=20
+GET /api/student-submissions?AnalysisRunId=<repo-guid>&IsSubmitted=true
+GET /api/student-submissions?Search=student@example.com
+GET /api/student-submissions/me?IsSubmitted=true
+GET /api/student-submissions/<submission-guid>
+```
+
+Admin list items retain their existing `userId`, `studentId`, `email`, `submission` wrapper. Student list items are submission details directly. Both lists use `items`, `page`, `pageSize`, `totalCount`, and the existing paging metadata.
+
+Each submission detail includes:
+
+- `submissionId`, `createdAt`, `submittedAt` (null for an active session).
+- `student`: `userId`, `studentCode`, `email`.
+- `repository`: `analysisRunId`, `repoName`, `repoUrl`.
+- `answers`: `studentAnswerId`, `businessId`, `businessName`, `questionId`, `questionText`, `suggestedAnswer`, `difficulty`, `contextType`, `questionCreatedAt`, `answerText`, `answerCreatedAt`, `aiFeedback`, `feedbackFormat`, `studentReply`, `rubricScores`.
+- Each rubric score includes `id`, `criterionId`, `code`, `name`, `statement`, `score`.
+
+`aiFeedback` preserves the stored string (usually JSON); no LLM is called while reading. Missing feedback remains null. Rubric scores are returned only when stored in the rubric score table; feedback-only rubric content remains in `aiFeedback`. Question and criterion metadata reflect the current stored records, not historical snapshots.
+
+A Student requesting another student's submission gets 404, the same as a missing submission. Unsupported roles get 403; unauthenticated requests get 401. Suggested answers are included in owned submission details as requested; lookup still returns question text only.

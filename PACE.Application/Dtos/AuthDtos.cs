@@ -4,6 +4,9 @@ namespace PACE.Application.Dtos;
 
 public class LoginRequest
 {
+    [Required, MaxLength(1024)]
+    public string Password { get; set; } = "";
+
     [Required, EmailAddress, MaxLength(255)]
     public string Email { get; set; } = null!;
 }

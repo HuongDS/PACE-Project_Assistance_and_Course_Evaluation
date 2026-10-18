@@ -133,7 +133,8 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
 
     private async Task<Guid?> ValidateRoleAndRunAsync(UserRole role, Guid? runId, CancellationToken ct)
     {
-        if (role == UserRole.Admin) return null;
+        if (!Enum.IsDefined(role)) throw new BadRequestException("Invalid role.");
+        if (role is UserRole.Admin or UserRole.Lecturer) return null;
         if (runId is null) throw new BadRequestException("Sinh viên bắt buộc thuộc một repo (AnalysisRunId).");
         if (!await uow.AnalysisRuns.AnyAsync(r => r.Id == runId, ct)) throw new NotFoundException("repo", runId);
         return runId;

@@ -14,10 +14,18 @@ public class AuthController(IAuthService authService) : ControllerBase
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request, CancellationToken ct)
         => Ok(await authService.LoginAsync(request, ct));
 
+    [HttpPost("student/quick")]
+    [AllowAnonymous]
+    public async Task<ActionResult<GoogleStudentLoginResponse>> StudentQuickLogin(StudentQuickLoginRequest request, CancellationToken ct)
+        => Ok(await authService.StudentQuickLoginAsync(request, ct));
+
+    // TEMPORARY: uncomment this endpoint to restore student Google sign-in.
+    /*
     [HttpPost("google/student")]
     [AllowAnonymous]
     public async Task<ActionResult<GoogleStudentLoginResponse>> GoogleStudentLogin(GoogleStudentLoginRequest request, CancellationToken ct)
         => Ok(await authService.GoogleStudentLoginAsync(request, ct));
+    */
 
     [HttpPost("google/staff")]
     [AllowAnonymous]

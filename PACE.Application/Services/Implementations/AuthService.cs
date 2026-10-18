@@ -11,6 +11,23 @@ namespace PACE.Application.Services.Implementations;
 
 public class AuthService(IUnitOfWork uow, IJwtTokenService jwt, ICurrentUserService currentUser, IGoogleIdTokenValidator google, IAdminCredentialValidator? adminCredentials = null) : IAuthService
 {
+    // TEMPORARY: restore Google student sign-in when the quick form flow is retired.
+    public async Task<GoogleStudentLoginResponse> StudentQuickLoginAsync(StudentQuickLoginRequest request, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.StudentCode))
+            throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
+
+        var user = await uow.Users.GetByEmailAsync(request.Email.Trim(), ct);
+        if (user is null || user.Role != PACE.Domain.Enums.UserRole.Student
+            || string.IsNullOrWhiteSpace(user.StudentCode)
+            || !string.Equals(user.StudentCode.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedException("Email hoặc mã số sinh viên không khớp.");
+
+        var (token, expiresAt) = jwt.CreateToken(user);
+        return new GoogleStudentLoginResponse(token, expiresAt,
+            new StudentLoginInfo(user.Id, user.StudentCode, user.Email));
+    }
+
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await uow.Users.GetByEmailAsync(request.Email, ct)

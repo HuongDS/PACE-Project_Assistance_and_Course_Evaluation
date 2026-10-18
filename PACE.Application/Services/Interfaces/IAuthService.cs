@@ -11,6 +11,7 @@ public interface IJwtTokenService
 
 public interface IAuthService
 {
+    Task<GoogleStudentLoginResponse> StudentQuickLoginAsync(StudentQuickLoginRequest request, CancellationToken ct = default);
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<GoogleStudentLoginResponse> GoogleStudentLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);
     Task<LoginResponse> GoogleStaffLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);

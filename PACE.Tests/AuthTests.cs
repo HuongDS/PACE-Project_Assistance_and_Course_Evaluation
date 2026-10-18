@@ -48,6 +48,42 @@ public class AuthTests
     }
 
     [Fact]
+    public async Task QuickEntryMatchesStudentWithoutGoogle()
+    {
+        var result = await Service(student, invalid: true).StudentQuickLoginAsync(new()
+        {
+            Email = " student@gmail.com ", StudentCode = " se123456 "
+        });
+        Assert.Equal(student.Id, result.Student.UserId);
+        Assert.Equal(1, tokens);
+    }
+
+    [Theory]
+    [InlineData("wrong")]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task QuickEntryRejectsIncorrectStudentCode(string code)
+    {
+        var error = await Record.ExceptionAsync(() => Service(student).StudentQuickLoginAsync(new()
+        {
+            Email = student.Email, StudentCode = code
+        }));
+        if (string.IsNullOrWhiteSpace(code)) Assert.IsType<BadRequestException>(error);
+        else Assert.IsType<UnauthorizedException>(error);
+        Assert.Equal(0, tokens);
+    }
+
+    [Fact]
+    public async Task QuickEntryRejectsStaffAndUnknownUsers()
+    {
+        var request = new StudentQuickLoginRequest { Email = student.Email, StudentCode = student.StudentCode! };
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(null).StudentQuickLoginAsync(request));
+        student.Role = UserRole.Admin;
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(student).StudentQuickLoginAsync(request));
+        Assert.Equal(0, tokens);
+    }
+
+    [Fact]
     public async Task StudentLoginIssuesJwtThatResolvesUuidAndRole()
     {
         var result = await Service(student).GoogleStudentLoginAsync(new() { IdToken = "google-id-token" });

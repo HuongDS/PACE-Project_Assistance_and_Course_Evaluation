@@ -35,7 +35,7 @@ Configuration secrets are uploaded as Container Apps secrets using a temporary m
 
 The script prints the backend and health URLs. `GET /health` should return HTTP 200. This is a process health check, not a database or AI availability check. Swagger is available in Development or when `Swagger:Enabled` is true. The deployment script sets `Swagger__Enabled=true` for this demo API. Open `/swagger` for the interactive API documentation.
 
-Verify `POST /api/auth/student/quick` with an existing student's email and studentCode, and `POST /api/auth/login` with the configured admin email and password. These operations verify database connectivity as well. Production uses the explicit environment variables supplied by the deployment, not Development settings. Admin seeding runs at startup; it adds missing configured emails and does not change the role of an existing account.
+Verify `POST /api/auth/student/quick` with an existing student's studentCode and a required email input (lookup uses MSSV only), and `POST /api/auth/login` with the configured admin email and password. These operations verify database connectivity as well. Production uses the explicit environment variables supplied by the deployment, not Development settings. Admin seeding runs at startup; it adds missing configured emails and does not change the role of an existing account.
 
 Frontend integration later: set its server-side `BACKEND_API_URL` to `https://<backend-fqdn>/api`. For direct cross-origin browser requests, set the exact frontend origin in `Cors:AllowedOrigins` before deployment. The current Next.js server proxy does not require browser CORS between the frontend and backend.
 

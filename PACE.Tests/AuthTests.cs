@@ -23,17 +23,45 @@ public class AuthTests
     private readonly JwtOptions options = new() { Key = "test-signing-key-at-least-32-characters", Issuer = "PACE", Audience = "PACE.Client", ExpiresMinutes = 30 };
     private int lookups;
     private int tokens;
+    private int saves;
 
-    private AuthService Service(User? found, bool invalid = false)
+    private AuthService Service(User? found, bool invalid = false, bool emailTaken = false, bool saveFails = false)
     {
         var users = Stub<IUserRepository>.Create((m, a) =>
         {
+            if (m.Name == "EmailExistsAsync")
+            {
+                Assert.Equal(student.Id, a[1]);
+                return Task.FromResult(emailTaken);
+            }
+            if (m.Name == "GetWithRepoAsync")
+            {
+                Assert.Equal(student.Id, a[0]);
+                Assert.Equal(false, a[1]);
+                return Task.FromResult(found);
+            }
+            if (m.Name == "GetByStudentCodeAsync")
+            {
+                var code = (string)a[0]!;
+                Assert.Equal(code.Trim().ToUpperInvariant(), code);
+                lookups++;
+                return Task.FromResult(string.Equals(student.StudentCode?.Trim(), code, StringComparison.OrdinalIgnoreCase) ? found : null);
+            }
             Assert.Equal("GetByEmailAsync", m.Name);
             Assert.Equal(student.Email, a[0]);
             lookups++;
             return Task.FromResult(found);
         });
-        var uow = Stub<IUnitOfWork>.Create((m, _) => m.Name == "get_Users" ? users : throw new Exception("Unexpected database write"));
+        var uow = Stub<IUnitOfWork>.Create((m, _) =>
+        {
+            if (m.Name == "get_Users") return users;
+            if (m.Name == "SaveChangesAsync")
+            {
+                saves++;
+                return saveFails ? Task.FromException<int>(new InvalidOperationException("Database unavailable")) : Task.FromResult(1);
+            }
+            throw new Exception("Unexpected database operation");
+        });
         var google = Stub<IGoogleIdTokenValidator>.Create((_, a) =>
         {
             Assert.Equal("google-id-token", a[0]);
@@ -56,6 +84,72 @@ public class AuthTests
         });
         Assert.Equal(student.Id, result.Student.UserId);
         Assert.Equal(1, tokens);
+    }
+
+    [Theory]
+    [InlineData("import-placeholder@example.invalid")]
+    [InlineData("")]
+    public async Task QuickEntryUsesStudentCodeWhenStoredEmailDoesNotMatch(string storedEmail)
+    {
+        student.Email = storedEmail;
+        var result = await Service(student, invalid: true).StudentQuickLoginAsync(new()
+        {
+            Email = " Collected@Gmail.com ", StudentCode = " se123456 "
+        });
+        Assert.Equal(student.Id, result.Student.UserId);
+        Assert.Equal(1, lookups);
+        Assert.Equal(1, tokens);
+        Assert.Equal("collected@gmail.com", student.Email);
+        Assert.Equal("collected@gmail.com", result.Student.Email);
+        Assert.Equal(1, saves);
+    }
+
+    [Fact]
+    public async Task QuickEntryDoesNotOverwriteAnotherAccountsEmail()
+    {
+        var originalEmail = student.Email;
+        await Assert.ThrowsAsync<ConflictException>(() => Service(student, emailTaken: true).StudentQuickLoginAsync(new()
+        {
+            Email = "taken@gmail.com", StudentCode = student.StudentCode!
+        }));
+        Assert.Equal(originalEmail, student.Email);
+        Assert.Equal(0, saves);
+        Assert.Equal(0, tokens);
+    }
+
+    [Fact]
+    public async Task RepeatedQuickEntryWithSameEmailDoesNotWriteAgain()
+    {
+        var service = Service(student);
+        var request = new StudentQuickLoginRequest { Email = "collected@gmail.com", StudentCode = student.StudentCode! };
+        await service.StudentQuickLoginAsync(request);
+        await service.StudentQuickLoginAsync(request);
+        Assert.Equal(1, saves);
+        Assert.Equal(2, tokens);
+    }
+
+    [Fact]
+    public async Task QuickEntryDoesNotIssueTokenWhenCollectingEmailFails()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Service(student, saveFails: true).StudentQuickLoginAsync(new()
+        {
+            Email = "collected@gmail.com", StudentCode = student.StudentCode!
+        }));
+        Assert.Equal(1, saves);
+        Assert.Equal(0, tokens);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task QuickEntryStillRequiresEmailInput(string email)
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => Service(student).StudentQuickLoginAsync(new()
+        {
+            Email = email, StudentCode = student.StudentCode!
+        }));
+        Assert.Equal(0, lookups);
+        Assert.Equal(0, tokens);
     }
 
     [Theory]

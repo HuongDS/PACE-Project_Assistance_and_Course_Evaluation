@@ -9,6 +9,19 @@ namespace PACE.Infrastructure.Repositories;
 
 public class UserRepository(AppDbContext context) : GenericRepository<User>(context), IUserRepository
 {
+    public async Task<User?> GetByStudentCodeAsync(string studentCode, CancellationToken ct = default)
+    {
+        var normalized = studentCode.Trim().ToUpperInvariant();
+        if (normalized.Length == 0) return null;
+        var matches = await DbSet.AsNoTracking()
+            .Include(u => u.AnalysisRun)
+            .Where(u => u.StudentCode != null && u.StudentCode.Trim().ToUpper() == normalized)
+            .Take(2)
+            .ToListAsync(ct);
+        // Case/whitespace variants must not select an arbitrary student's account.
+        return matches.Count == 1 ? matches[0] : null;
+    }
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken ct = default)
     {
         var normalized = email.Trim().ToLower();

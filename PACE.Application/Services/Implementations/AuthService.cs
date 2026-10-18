@@ -17,11 +17,27 @@ public class AuthService(IUnitOfWork uow, IJwtTokenService jwt, ICurrentUserServ
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.StudentCode))
             throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
 
-        var user = await uow.Users.GetByEmailAsync(request.Email.Trim(), ct);
+        var user = await uow.Users.GetByStudentCodeAsync(request.StudentCode.Trim().ToUpperInvariant(), ct);
         if (user is null || user.Role != PACE.Domain.Enums.UserRole.Student
             || string.IsNullOrWhiteSpace(user.StudentCode)
             || !string.Equals(user.StudentCode.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new UnauthorizedException("Email hoặc mã số sinh viên không khớp.");
+            throw new UnauthorizedException("Mã số sinh viên chưa được cấp quyền truy cập.");
+
+        // Collect the supplied address only after identifying the student by MSSV.
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (!string.Equals(user.Email, email, StringComparison.Ordinal))
+        {
+            if (await uow.Users.EmailExistsAsync(email, user.Id, ct))
+                throw new ConflictException("Email đã được sử dụng cho tài khoản khác.");
+
+            user = await uow.Users.GetWithRepoAsync(user.Id, asNoTracking: false, ct: ct);
+            if (user is null || user.Role != PACE.Domain.Enums.UserRole.Student
+                || !string.Equals(user.StudentCode?.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedException("Mã số sinh viên chưa được cấp quyền truy cập.");
+
+            user.Email = email;
+            await uow.SaveChangesAsync(ct);
+        }
 
         var (token, expiresAt) = jwt.CreateToken(user);
         return new GoogleStudentLoginResponse(token, expiresAt,

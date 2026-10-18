@@ -174,6 +174,26 @@ public class BatchTemplateTests
     }
 
     [Fact]
+    public async Task Batch_reports_a_missing_repo_name_without_cloning_and_without_calling_the_service()
+    {
+        var (service, scopes, calls) = Batch(request => Task.FromResult(Template(request.RepoUrl)),
+            new RepoLinkRow(2, "https://github.com/a/ok"),
+            new RepoLinkRow(3, "https://github.com/WPD301-Sports-Center-Management-System"),
+            new RepoLinkRow(4, "https://github.com/WPD301-Sports-Center-Management-System/"));
+
+        var result = await service.GenerateAsync(Stream.Null, useAi: false, regenerate: false);
+
+        Assert.Equal([BatchItemStatus.Succeeded, BatchItemStatus.Failed, BatchItemStatus.Failed], result.Items.Select(i => i.Status));
+        Assert.All(result.Items.Skip(1), i =>
+        {
+            Assert.Contains("thiếu tên repo", i.Error);
+            Assert.DoesNotContain("clone", i.Error, StringComparison.OrdinalIgnoreCase);
+        });
+        Assert.Equal(1, scopes.ScopesCreated);
+        Assert.Single(calls);
+    }
+
+    [Fact]
     public async Task Batch_rejects_empty_and_oversized_files_before_cloning_anything()
     {
         var (empty, _, _) = Batch(r => Task.FromResult(Template(r.RepoUrl)));

@@ -23,6 +23,22 @@ public class AuthService(IUnitOfWork uow, IJwtTokenService jwt, ICurrentUserServ
             || !string.Equals(user.StudentCode.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
             throw new UnauthorizedException("Mã số sinh viên chưa được cấp quyền truy cập.");
 
+        // Collect the supplied address only after identifying the student by MSSV.
+        var email = request.Email.Trim().ToLowerInvariant();
+        if (!string.Equals(user.Email, email, StringComparison.Ordinal))
+        {
+            if (await uow.Users.EmailExistsAsync(email, user.Id, ct))
+                throw new ConflictException("Email đã được sử dụng cho tài khoản khác.");
+
+            user = await uow.Users.GetWithRepoAsync(user.Id, asNoTracking: false, ct: ct);
+            if (user is null || user.Role != PACE.Domain.Enums.UserRole.Student
+                || !string.Equals(user.StudentCode?.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedException("Mã số sinh viên chưa được cấp quyền truy cập.");
+
+            user.Email = email;
+            await uow.SaveChangesAsync(ct);
+        }
+
         var (token, expiresAt) = jwt.CreateToken(user);
         return new GoogleStudentLoginResponse(token, expiresAt,
             new StudentLoginInfo(user.Id, user.StudentCode, user.Email));

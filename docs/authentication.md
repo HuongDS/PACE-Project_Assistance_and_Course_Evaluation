@@ -13,7 +13,7 @@ Content-Type: application/json
 { "email": "student@gmail.com", "studentCode": "SE123456" }
 ```
 
-This returns the same token and student response as Google student login. The MSSV alone identifies an existing Student account (case-insensitive, surrounding spaces ignored). Email is still a required form field, but is not compared against the imported account email. Unknown or ambiguous MSSV values are rejected. This temporary flow does not verify mailbox ownership. Keep `Auth:Enabled` true.
+This returns the same token and student response as Google student login. The MSSV alone identifies an existing Student account (case-insensitive, surrounding spaces ignored). Email is still a required form field, but is not compared against the imported account email. Unknown or ambiguous MSSV values are rejected. After lookup, the entered email is trimmed, lowercased and saved to that student account before issuing the JWT. The response and JWT use the updated email. Re-entering the same address does not write again. If the address belongs to another account, the request returns HTTP 409 without changing that account or issuing a token; the existing unique-email constraint is preserved. This temporary flow does not verify mailbox ownership. Keep `Auth:Enabled` true.
 
 Use the returned `accessToken` as a Bearer token to call `POST /api/student-submissions/join` with the entered email and studentCode. Join verifies the MSSV against the authenticated student, rather than comparing email addresses. Then call `POST /api/student-submissions/lookup` to load questions and the existing submission APIs to save the form. No frontend exists in this repository, so the consuming frontend must apply this routing change.
 

@@ -71,6 +71,7 @@ public record SubmissionStudentDto(Guid UserId, string? StudentCode, string Emai
 
 public class EvaluatedAnswerDto
 {
+    public Guid StudentAnswerId { get; set; }
     public Guid BusinessId { get; set; }
     public string BusinessName { get; set; } = string.Empty;
     public Guid QuestionId { get; set; }

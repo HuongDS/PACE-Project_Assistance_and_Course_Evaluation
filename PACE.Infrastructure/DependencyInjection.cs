@@ -46,6 +46,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
         services.AddSingleton<IRepoLinkReader, ClosedXmlRepoLinkReader>();
+        services.AddSingleton<ISurveyExcelService, ClosedXmlSurveyExcelService>();
 
         // LLM Service & HttpClient
         services.AddHttpClient();

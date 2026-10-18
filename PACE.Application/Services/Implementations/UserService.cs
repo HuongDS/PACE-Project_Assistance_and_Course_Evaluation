@@ -83,9 +83,9 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
                 skipped.Add(new ImportRowError(row.Row, row.Email, row.RepoUrl, "Email không hợp lệ."));
                 continue;
             }
-            if (string.IsNullOrWhiteSpace(row.RepoUrl) || !RepoUrlHelper.IsSupportedUrl(row.RepoUrl))
+            if (RepoUrlHelper.FindProblem(row.RepoUrl) is { } repoProblem)
             {
-                skipped.Add(new ImportRowError(row.Row, row.Email, row.RepoUrl, "Link repo không hợp lệ."));
+                skipped.Add(new ImportRowError(row.Row, row.Email, row.RepoUrl, repoProblem));
                 continue;
             }
 

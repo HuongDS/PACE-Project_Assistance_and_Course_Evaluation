@@ -33,4 +33,31 @@ public static partial class RepoUrlHelper
     public static bool IsSupportedUrl(string url)
         => Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
            && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+
+    private static readonly HashSet<string> HostedRepoHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "github.com", "gitlab.com", "bitbucket.org"
+    };
+
+    /// <summary>
+    /// Kiểm tra link repo và trả về lý do cụ thể nếu không dùng được, hoặc null nếu hợp lệ.
+    /// Link trỏ vào trang người dùng/tổ chức (https://github.com/ten-to-chuc) thường là sinh viên quên phần tên repo,
+    /// nên báo riêng thay vì để lỗi xuất hiện muộn ở bước clone.
+    /// </summary>
+    public static string? FindProblem(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !IsSupportedUrl(url)) return "Link repo không hợp lệ.";
+
+        var uri = new Uri(url.Trim());
+        var host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? uri.Host[4..] : uri.Host;
+        if (!HostedRepoHosts.Contains(host)) return null;
+
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length switch
+        {
+            0 => $"Link thiếu tên người dùng/tổ chức và tên repo (dạng https://{host}/<người dùng>/<repo>).",
+            1 => $"Link thiếu tên repo: \"{segments[0]}\" chỉ là tên người dùng hoặc tổ chức (dạng https://{host}/{segments[0]}/<repo>).",
+            _ => null
+        };
+    }
 }

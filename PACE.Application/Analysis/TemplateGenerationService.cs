@@ -21,7 +21,7 @@ public sealed class TemplateGenerationService(
 {
     public async Task<GeneratedTemplateDto> GenerateAsync(GenerateTemplateRequest request, CancellationToken ct = default)
     {
-        if (!RepoUrlHelper.IsSupportedUrl(request.RepoUrl)) throw new BadRequestException("Link repo không hợp lệ.");
+        if (RepoUrlHelper.FindProblem(request.RepoUrl) is { } problem) throw new BadRequestException(problem);
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
         var warnings = new List<string>();
 

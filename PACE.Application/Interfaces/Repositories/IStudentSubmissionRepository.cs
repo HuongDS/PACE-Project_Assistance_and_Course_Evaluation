@@ -16,5 +16,5 @@ public interface IStudentSubmissionRepository
     Task<StudentSubmission?> GetOwnedAsync(Guid id, Guid userId, CancellationToken ct = default);
     Task<PagedResult<StudentSubmission>> GetPagedAsync(StudentSubmissionQuery query, CancellationToken ct = default);
     void Add(StudentSubmission submission);
-    void Update(StudentSubmission submission);
+    Task UpdateAsync(StudentSubmission submission, CancellationToken ct = default);
 }

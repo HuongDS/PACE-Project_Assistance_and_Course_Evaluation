@@ -6,6 +6,15 @@ MSSV and email are no longer accepted as identity fields. The service also check
 that the user still exists and has the Student role in the database.
 Responses contain question text, never SuggestedAnswer or internal scoring data.
 
+## POST /api/student-submissions/join
+
+The authenticated student submits `{ "email": "student@gmail.com", "studentCode": "SE123456" }`.
+MSSV must match the token's student account. Returns `{ submissionId, createdAt,
+studentCode, email, repoName, submittedAt }`. A new or active draft has a null
+`submittedAt`; a completed submission returns its existing ID and submission date
+instead of HTTP 409. The frontend retrieves that submission and opens the saved
+questions, answers and feedback in the results view, without posting answers again.
+
 ## POST /api/student-submissions/lookup
 
 No request body is required. The current student's UUID determines the assigned
@@ -28,7 +37,7 @@ fewer than three Businesses; submit rejects it with 422.
 }
 ```
 
-201: `{ submissionId, submittedAt, answerCount }`. Exactly three nonblank answers
+201: `{ submissionId, createdAt, submittedAt, repository, evaluatedAnswers }`. Exactly three nonblank answers
 from three distinct Businesses, with questions belonging to those Businesses and
 the student's current AnalysisRun. Answer text is trimmed. Dates are UTC.
 
@@ -37,7 +46,13 @@ and repository re-read, duplicate check, and one SaveChanges for submission and
 three answers. Concurrent requests through this flow serialize per user across
 API instances. Submission ID stays stable during execution-strategy retries.
 No schema/unique constraint was added: other future submission writers must follow
-the same lock/check protocol. Existing rows for the same user/run also block submit.
+the same lock/check protocol. A repeat request for a completed submission returns
+its saved questions, answers and AI feedback; it does not overwrite submitted work
+or call AI again. When completing a draft that already has answer rows, the
+repository reconciles them by question and preserves existing IDs instead of
+inserting duplicate `(SubmissionId, QuestionId)` rows. Unique constraints remain
+in place. Saved draft answers for questions not included in the final submission
+are removed within the same transaction.
 
 ## POST /api/student-submissions/retrieve
 
@@ -46,7 +61,7 @@ the same lock/check protocol. Existing rows for the same user/run also block sub
 ```
 
 200: `{ submissionId, submittedAt, repository, answers:
-[{ businessId, businessName, questionId, questionText, answerText }] }`.
+[{ businessId, businessName, questionId, questionText, answerText, aiFeedback }] }`.
 Ownership is filtered in the database query. A different student's submission and
 an unknown submission both return 404. Uses the submission's original AnalysisRun,
 so reassignment of the student's current repo does not hide their old submission.

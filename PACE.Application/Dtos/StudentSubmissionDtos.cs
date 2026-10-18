@@ -42,7 +42,10 @@ public record StudentSubmissionJoinedDto(
     string StudentCode,
     string Email,
     string? RepoName
-);
+)
+{
+    public DateTime? SubmittedAt { get; init; }
+}
 
 public record SubmissionRepositoryDto(Guid AnalysisRunId, string? RepoName, string? RepoUrl);
 public record SubmissionQuestionDto(Guid QuestionId, string QuestionText);

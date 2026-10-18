@@ -60,8 +60,11 @@ public class StudentSubmissionServiceTests
                     var query = (StudentSubmissionQuery)a[0]!;
                     var items = saved.Where(x => !query.UserId.HasValue || x.UserId == query.UserId).ToList();
                     return Task.FromResult(new PagedResult<StudentSubmission> { Items = items, TotalCount = items.Count, Page = 1, PageSize = 20 });
-                case "Update":
-                    return null;
+                case "UpdateAsync":
+                    var updated = (StudentSubmission)a[0]!;
+                    foreach (var answer in updated.Answers)
+                        answer.Question = businesses.SelectMany(b => b.Questions).Single(q => q.Id == answer.QuestionId);
+                    return Task.CompletedTask;
                 case "Add":
                     Assert.True(transaction && locked);
                     var submission = (StudentSubmission)a[0]!;
@@ -79,7 +82,7 @@ public class StudentSubmissionServiceTests
             "get_StudentSubmissions" => repo,
             "SaveChangesAsync" => Task.FromResult(1),
             "ExecuteInTransactionAsync" when a[0] is Func<CancellationToken, Task<StudentSubmissionJoinedDto>> join => ExecuteJoin(join, (CancellationToken)a[1]!),
-            "ExecuteInTransactionAsync" => Execute((Func<CancellationToken, Task<(StudentSubmission, List<Business>)>>)a[0]!, (CancellationToken)a[1]!),
+            "ExecuteInTransactionAsync" => Execute((Func<CancellationToken, Task<(StudentSubmission, List<Business>, bool)>>)a[0]!, (CancellationToken)a[1]!),
             _ => throw new NotSupportedException(m.Name)
         });
         var current = Stub<ICurrentUserService>.Create((m, _) => m.Name switch
@@ -98,7 +101,7 @@ public class StudentSubmissionServiceTests
         service = new StudentSubmissionService(uow, current, ansService);
     }
 
-    private async Task<(StudentSubmission, List<Business>)> Execute(Func<CancellationToken, Task<(StudentSubmission, List<Business>)>> action, CancellationToken ct)
+    private async Task<(StudentSubmission, List<Business>, bool)> Execute(Func<CancellationToken, Task<(StudentSubmission, List<Business>, bool)>> action, CancellationToken ct)
     {
         transaction = true;
         try { return await action(ct); }
@@ -192,11 +195,59 @@ public class StudentSubmissionServiceTests
         Assert.Contains(FeedbackFormat.Rubric, evaluatedFormats);
         Assert.Contains(FeedbackFormat.Explainable, evaluatedFormats);
     }
-    [Fact] public async Task DuplicateSubmissionRejected()
+    [Fact] public async Task RepeatedSubmitReturnsSavedAnswersWithoutReevaluation()
     {
-        await service.SubmitAsync(Request());
-        await Assert.ThrowsAsync<ConflictException>(() => service.SubmitAsync(Request()));
+        var original = await service.SubmitAsync(Request());
+        var request = Request();
+        request.SubmissionId = original.SubmissionId;
+        request.Answers[0].AnswerText = "Changed answer must not replace submitted work";
+        var replay = await service.SubmitAsync(request);
+        Assert.Equal(original.SubmissionId, replay.SubmissionId);
+        Assert.All(replay.EvaluatedAnswers, a => Assert.Equal("answer", a.AnswerText));
+        Assert.Equal(3, evaluatedFormats.Count);
+        var implicitReplay = await service.SubmitAsync(Request());
+        Assert.Equal(original.SubmissionId, implicitReplay.SubmissionId);
+        Assert.Equal(3, evaluatedFormats.Count);
         Assert.Single(saved);
+    }
+
+    [Fact] public async Task JoinCompletedSubmissionReturnsItForViewing()
+    {
+        var result = await service.SubmitAsync(Request());
+        var joined = await service.JoinAsync(new() { Email = user.Email, StudentCode = user.StudentCode! });
+        Assert.Equal(result.SubmissionId, joined.SubmissionId);
+        Assert.Equal(result.SubmittedAt, joined.SubmittedAt);
+        var detail = await service.RetrieveAsync(new() { SubmissionId = joined.SubmissionId });
+        Assert.Equal(3, detail.Answers.Count);
+        Assert.Equal(3, evaluatedFormats.Count);
+        Assert.Single(saved);
+    }
+
+    [Fact] public async Task SubmitExistingDraftReusesAnswerIds()
+    {
+        var joined = await service.JoinAsync(new() { Email = user.Email, StudentCode = user.StudentCode! });
+        var draft = Assert.Single(saved);
+        draft.Answers = Request().Answers.Select(a => new StudentAnswer
+        {
+            Id = Guid.NewGuid(), UserId = user.Id, SubmissionId = draft.Id, QuestionId = a.QuestionId,
+            AnswerText = "draft", CreatedAt = DateTime.UtcNow
+        }).ToList();
+        var ids = draft.Answers.ToDictionary(a => a.QuestionId, a => a.Id);
+        var request = Request(); request.SubmissionId = joined.SubmissionId;
+        await service.SubmitAsync(request);
+        Assert.All(draft.Answers, a => Assert.Equal(ids[a.QuestionId], a.Id));
+        Assert.Equal(3, draft.Answers.Count);
+    }
+
+    [Fact] public async Task ReopenPreservesStoredFeedbackIncludingPlainText()
+    {
+        var result = await service.SubmitAsync(Request());
+        var stored = Assert.Single(saved);
+        var answer = stored.Answers.First();
+        answer.AiFeedback = "Saved legacy feedback";
+        var replay = await service.SubmitAsync(new() { SubmissionId = result.SubmissionId, Answers = Request().Answers });
+        Assert.Equal("Saved legacy feedback", replay.EvaluatedAnswers.Single(a => a.QuestionId == answer.QuestionId).AiEvaluation!.Comment);
+        Assert.Equal(3, evaluatedFormats.Count);
     }
     [Theory] [InlineData(0)] [InlineData(2)] [InlineData(4)]
     public async Task WrongAnswerCountRejected(int count)

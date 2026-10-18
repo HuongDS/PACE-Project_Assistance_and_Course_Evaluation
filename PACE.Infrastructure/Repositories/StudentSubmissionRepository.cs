@@ -24,11 +24,11 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         => context.StudentSubmissions.AnyAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt != null, ct);
 
     public Task<StudentSubmission?> GetActiveSessionAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default)
-        => context.StudentSubmissions.AsNoTracking()
+        => context.StudentSubmissions.AsNoTracking().Include(s => s.Answers)
             .FirstOrDefaultAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt == null, ct);
 
     public Task<StudentSubmission?> GetSubmittedAsync(Guid userId, Guid analysisRunId, CancellationToken ct = default)
-        => context.StudentSubmissions.AsNoTracking()
+        => Details().OrderByDescending(s => s.SubmittedAt).ThenBy(s => s.Id)
             .FirstOrDefaultAsync(s => s.UserId == userId && s.AnalysisRunId == analysisRunId && s.SubmittedAt != null, ct);
 
     private IQueryable<StudentSubmission> Details()
@@ -65,11 +65,25 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
     }
 
     public void Add(StudentSubmission submission) => context.StudentSubmissions.Add(submission);
-    public void Update(StudentSubmission submission)
+    public async Task UpdateAsync(StudentSubmission submission, CancellationToken ct = default)
     {
-        // Attach only submission scalar values. Details includes detached user/repository graphs
-        // which must not be marked modified or attached over authenticated tracked identities.
-        context.Entry(submission).State = EntityState.Modified;
-        context.StudentAnswers.AddRange(submission.Answers);
+        // Reconcile saved draft rows by question instead of adding duplicate answers.
+        var incoming = submission.Answers.ToArray();
+        var persisted = await context.StudentSubmissions.FindAsync([submission.Id], ct)
+            ?? throw new InvalidOperationException("Submission no longer exists.");
+        context.Entry(persisted).CurrentValues.SetValues(submission);
+        var answers = await context.StudentAnswers.Where(a => a.SubmissionId == submission.Id).ToListAsync(ct);
+        foreach (var answer in incoming)
+        {
+            var existing = answers.SingleOrDefault(a => a.QuestionId == answer.QuestionId);
+            if (existing is null) context.StudentAnswers.Add(answer);
+            else
+            {
+                answer.Id = existing.Id;
+                context.Entry(existing).CurrentValues.SetValues(answer);
+            }
+        }
+        var questionIds = incoming.Select(a => a.QuestionId).ToHashSet();
+        context.StudentAnswers.RemoveRange(answers.Where(a => !questionIds.Contains(a.QuestionId)));
     }
 }

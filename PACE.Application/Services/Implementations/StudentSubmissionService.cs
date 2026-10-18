@@ -90,7 +90,8 @@ public class StudentSubmissionService(
         // Kiểm tra xem sinh viên đã nộp bài hoàn tất trước đó chưa
         var submitted = await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, ct);
         if (submitted is not null)
-            throw new ConflictException("Sinh viên đã hoàn thành và nộp bài cho repository này.");
+            return new StudentSubmissionJoinedDto(submitted.Id, submitted.CreatedAt,
+                user.StudentCode!, email, run.RepoName) { SubmittedAt = submitted.SubmittedAt };
 
         // Kiểm tra xem sinh viên có phiên làm bài đang dở dang không
         var active = await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, ct);
@@ -150,7 +151,7 @@ public class StudentSubmissionService(
         Guid submissionId = request.SubmissionId ?? Guid.NewGuid();
 
         // 1. Lưu bài nộp và 3 câu trả lời vào Database (Transaction nhanh < 200ms)
-        var (submission, businesses) = await uow.ExecuteInTransactionAsync(async token =>
+        var (submission, businesses, alreadySubmitted) = await uow.ExecuteInTransactionAsync(async token =>
         {
             await uow.StudentSubmissions.LockUserAsync(student.Id, token);
             var user = await FindStudentAsync(token);
@@ -160,14 +161,15 @@ public class StudentSubmissionService(
 
             var existing = request.SubmissionId.HasValue
                 ? await uow.StudentSubmissions.GetOwnedAsync(request.SubmissionId.Value, user.Id, token)
-                : await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, token);
+                : await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, token)
+                    ?? await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, token);
 
             if (request.SubmissionId.HasValue && existing is null)
                 throw new NotFoundException("Submission not found for the authenticated student.");
             if (existing is not null && existing.AnalysisRunId != run.Id)
                 throw new ConflictException("Submission belongs to a different repository assignment.");
             if (existing is not null && existing.SubmittedAt.HasValue)
-                throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
+                return (existing, new List<Business>(), true);
 
             if (existing is null && await uow.StudentSubmissions.ExistsAsync(user.Id, run.Id, token))
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
@@ -194,14 +196,20 @@ public class StudentSubmissionService(
             };
 
             subEntity.SubmittedAt = submittedAt;
-            subEntity.Answers = request.Answers.Select(a => new StudentAnswer
+            var savedAnswers = existing?.Answers.ToDictionary(a => a.QuestionId) ?? new Dictionary<Guid, StudentAnswer>();
+            subEntity.Answers = request.Answers.Select(a =>
             {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                SubmissionId = subEntity.Id,
-                QuestionId = a.QuestionId,
-                AnswerText = a.AnswerText.Trim(),
-                CreatedAt = submittedAt
+                savedAnswers.TryGetValue(a.QuestionId, out var previous);
+                var text = a.AnswerText.Trim();
+                var unchanged = previous?.AnswerText == text;
+                return new StudentAnswer
+                {
+                    Id = previous?.Id ?? Guid.NewGuid(),
+                    UserId = user.Id, SubmissionId = subEntity.Id, QuestionId = a.QuestionId,
+                    AnswerText = text, CreatedAt = previous?.CreatedAt ?? submittedAt,
+                    AiFeedback = unchanged ? previous?.AiFeedback : null,
+                    FeedbackFormat = unchanged ? previous?.FeedbackFormat : null
+                };
             }).ToList();
 
             if (existing is null)
@@ -210,11 +218,13 @@ public class StudentSubmissionService(
             }
             else
             {
-                uow.StudentSubmissions.Update(subEntity);
+                await uow.StudentSubmissions.UpdateAsync(subEntity, token);
             }
 
-            return (subEntity, bizList);
+            return (subEntity, bizList, false);
         }, ct);
+
+        if (alreadySubmitted) return MapSavedResult(submission);
 
         // 2. Chấm điểm các câu hỏi bằng AI song song qua Task.WhenAll (Ngoài Database Transaction)
         var allFormats = Enum.GetValues<FeedbackFormat>();
@@ -336,6 +346,27 @@ public class StudentSubmissionService(
             PageSize = query.PageSize
         };
         return (await uow.StudentSubmissions.GetPagedAsync(ownedQuery, ct)).Map(MapDetail);
+    }
+
+    private static StudentSubmissionResultDto MapSavedResult(StudentSubmission submission)
+        => new()
+        {
+            SubmissionId = submission.Id, CreatedAt = submission.CreatedAt, SubmittedAt = submission.SubmittedAt,
+            Repository = MapRepository(submission.AnalysisRun),
+            EvaluatedAnswers = submission.Answers.OrderBy(a => a.Question.Business.BusinessName).ThenBy(a => a.QuestionId)
+                .Select(a => new EvaluatedAnswerDto
+                {
+                    BusinessId = a.Question.BusinessId, BusinessName = a.Question.Business.BusinessName,
+                    QuestionId = a.QuestionId, QuestionText = a.Question.QuestionText, AnswerText = a.AnswerText ?? "",
+                    AiEvaluation = ParseSavedFeedback(a.AiFeedback)
+                }).ToList()
+        };
+
+    private static StudentAnswerRes? ParseSavedFeedback(string? feedback)
+    {
+        if (string.IsNullOrWhiteSpace(feedback)) return null;
+        try { return JsonSerializer.Deserialize<StudentAnswerRes>(feedback, JsonOptions); }
+        catch (JsonException) { return new StudentAnswerRes { Comment = feedback }; }
     }
 
     private static StudentSubmissionDetailDto MapDetail(StudentSubmission submission)

@@ -125,7 +125,7 @@ else app.Logger.LogWarning("Auth:Enabled = false: mọi endpoint đang mở, kh�
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();

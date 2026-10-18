@@ -77,6 +77,7 @@ def main():
         {'name': 'ASPNETCORE_ENVIRONMENT', 'value': 'Production'},
         {'name': 'ASPNETCORE_HTTP_PORTS', 'value': '8080'},
         {'name': 'Auth__Enabled', 'value': 'true'},
+        {'name': 'Swagger__Enabled', 'value': 'true'},
         {'name': 'Analysis__CloneRoot', 'value': '/tmp/pace_repos'},
     ]
     for name, secret in {

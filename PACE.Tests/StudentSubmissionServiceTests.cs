@@ -77,6 +77,8 @@ public class StudentSubmissionServiceTests
         {
             "get_Users" => users,
             "get_StudentSubmissions" => repo,
+            "SaveChangesAsync" => Task.FromResult(1),
+            "ExecuteInTransactionAsync" when a[0] is Func<CancellationToken, Task<StudentSubmissionJoinedDto>> join => ExecuteJoin(join, (CancellationToken)a[1]!),
             "ExecuteInTransactionAsync" => Execute((Func<CancellationToken, Task<(StudentSubmission, List<Business>)>>)a[0]!, (CancellationToken)a[1]!),
             _ => throw new NotSupportedException(m.Name)
         });
@@ -102,6 +104,49 @@ public class StudentSubmissionServiceTests
         try { return await action(ct); }
         finally { transaction = false; }
     }
+    private async Task<StudentSubmissionJoinedDto> ExecuteJoin(Func<CancellationToken, Task<StudentSubmissionJoinedDto>> action, CancellationToken ct)
+    {
+        transaction = true;
+        try { return await action(ct); }
+        finally { transaction = false; }
+    }
+
+    [Fact]
+    public async Task JoinWithDifferentEmailUsesAuthenticatedStudentCodeAndResumesSameSession()
+    {
+        var request = new JoinStudentSubmissionRequest { Email = " collected@gmail.com ", StudentCode = " 001abc " };
+        var result = await service.JoinAsync(request);
+        Assert.Equal("collected@gmail.com", result.Email);
+        Assert.Equal(user.StudentCode, result.StudentCode);
+        Assert.Equal(user.Id, Assert.Single(saved).UserId);
+        var resumed = await service.JoinAsync(request);
+        Assert.Equal(result.SubmissionId, resumed.SubmissionId);
+        Assert.Equal("collected@gmail.com", resumed.Email);
+        Assert.Single(saved);
+    }
+
+    [Theory]
+    [InlineData("OTHER-STUDENT")]
+    [InlineData("")]
+    public async Task JoinRejectsDifferentOrMissingStudentCodeEvenWithMatchingEmail(string code)
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => service.JoinAsync(new()
+        {
+            Email = user.Email, StudentCode = code
+        }));
+        Assert.Empty(saved);
+    }
+
+    [Fact]
+    public async Task JoinStillRequiresEmail()
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => service.JoinAsync(new()
+        {
+            Email = " ", StudentCode = user.StudentCode!
+        }));
+        Assert.Empty(saved);
+    }
+
     private SubmitStudentSubmissionRequest Request() => new()
     {
         Answers = businesses.Select(b => new StudentAnswerRequest { BusinessId = b.Id, QuestionId = b.Questions.First().Id, AnswerText = " answer " }).ToList()

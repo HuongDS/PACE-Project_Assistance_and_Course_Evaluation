@@ -28,6 +28,13 @@ public class AuthTests
     {
         var users = Stub<IUserRepository>.Create((m, a) =>
         {
+            if (m.Name == "GetByStudentCodeAsync")
+            {
+                var code = (string)a[0]!;
+                Assert.Equal(code.Trim().ToUpperInvariant(), code);
+                lookups++;
+                return Task.FromResult(string.Equals(student.StudentCode?.Trim(), code, StringComparison.OrdinalIgnoreCase) ? found : null);
+            }
             Assert.Equal("GetByEmailAsync", m.Name);
             Assert.Equal(student.Email, a[0]);
             lookups++;
@@ -56,6 +63,34 @@ public class AuthTests
         });
         Assert.Equal(student.Id, result.Student.UserId);
         Assert.Equal(1, tokens);
+    }
+
+    [Theory]
+    [InlineData("import-placeholder@example.invalid")]
+    [InlineData("")]
+    public async Task QuickEntryUsesStudentCodeWhenStoredEmailDoesNotMatch(string storedEmail)
+    {
+        student.Email = storedEmail;
+        var result = await Service(student, invalid: true).StudentQuickLoginAsync(new()
+        {
+            Email = "collected@gmail.com", StudentCode = " se123456 "
+        });
+        Assert.Equal(student.Id, result.Student.UserId);
+        Assert.Equal(1, lookups);
+        Assert.Equal(1, tokens);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task QuickEntryStillRequiresEmailInput(string email)
+    {
+        await Assert.ThrowsAsync<BadRequestException>(() => Service(student).StudentQuickLoginAsync(new()
+        {
+            Email = email, StudentCode = student.StudentCode!
+        }));
+        Assert.Equal(0, lookups);
+        Assert.Equal(0, tokens);
     }
 
     [Theory]

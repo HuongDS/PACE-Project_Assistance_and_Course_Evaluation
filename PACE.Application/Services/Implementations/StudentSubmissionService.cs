@@ -73,18 +73,16 @@ public class StudentSubmissionService(
             throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
 
         var authenticated = await FindStudentAsync(ct);
-        if (!string.Equals(authenticated.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new ForbiddenException();
-        var email = authenticated.Email.Trim().ToLowerInvariant();
+        var email = request.Email.Trim().ToLowerInvariant();
         var studentCode = request.StudentCode.Trim();
 
         var user = await uow.Users.GetWithRepoAsync(authenticated.Id, asNoTracking: false, ct: ct);
         if (user is null || user.Role != UserRole.Student)
-            throw new NotFoundException("Không tìm thấy sinh viên với email này.");
+            throw new NotFoundException("Không tìm thấy sinh viên.");
 
-        if (!string.IsNullOrWhiteSpace(user.StudentCode)
-            && !string.Equals(user.StudentCode.Trim(), studentCode, StringComparison.OrdinalIgnoreCase))
-            throw new BadRequestException("Mã số sinh viên không khớp với email.");
+        if (string.IsNullOrWhiteSpace(user.StudentCode)
+            || !string.Equals(user.StudentCode.Trim(), studentCode, StringComparison.OrdinalIgnoreCase))
+            throw new BadRequestException("Mã số sinh viên không khớp với phiên đăng nhập.");
 
         var userWithRepo = await uow.Users.GetWithRepoAsync(user.Id, ct: ct);
         var run = RequireRepository(userWithRepo ?? user);
@@ -102,12 +100,10 @@ public class StudentSubmissionService(
                 active.Id,
                 active.CreatedAt,
                 user.StudentCode ?? studentCode,
-                user.Email,
+                email,
                 run.RepoName
             );
         }
-
-        if (string.IsNullOrWhiteSpace(user.StudentCode)) user.StudentCode = studentCode;
 
         // Tạo mới phiên làm bài (StudentSubmission với SubmittedAt = null)
         var submission = new StudentSubmission
@@ -126,7 +122,7 @@ public class StudentSubmissionService(
             submission.Id,
             submission.CreatedAt,
             user.StudentCode ?? studentCode,
-            user.Email,
+            email,
             run.RepoName
         );
     }

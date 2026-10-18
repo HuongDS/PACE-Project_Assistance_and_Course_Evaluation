@@ -17,11 +17,11 @@ public class AuthService(IUnitOfWork uow, IJwtTokenService jwt, ICurrentUserServ
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.StudentCode))
             throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
 
-        var user = await uow.Users.GetByEmailAsync(request.Email.Trim(), ct);
+        var user = await uow.Users.GetByStudentCodeAsync(request.StudentCode.Trim().ToUpperInvariant(), ct);
         if (user is null || user.Role != PACE.Domain.Enums.UserRole.Student
             || string.IsNullOrWhiteSpace(user.StudentCode)
             || !string.Equals(user.StudentCode.Trim(), request.StudentCode.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new UnauthorizedException("Email hoặc mã số sinh viên không khớp.");
+            throw new UnauthorizedException("Mã số sinh viên chưa được cấp quyền truy cập.");
 
         var (token, expiresAt) = jwt.CreateToken(user);
         return new GoogleStudentLoginResponse(token, expiresAt,

@@ -36,6 +36,18 @@ public class JoinStudentSubmissionRequest
     public string Email { get; set; } = string.Empty;
 }
 
+public class QuickCreateStudentSubmissionRequest
+{
+    [Required, MaxLength(20)]
+    public string StudentCode { get; set; } = string.Empty;
+
+    [EmailAddress]
+    public string? Email { get; set; }
+
+    [Required]
+    public Guid AnalysisRunId { get; set; }
+}
+
 public record StudentSubmissionJoinedDto(
     Guid SubmissionId,
     DateTime CreatedAt,
@@ -99,6 +111,9 @@ public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery
     public Guid? UserId { get; set; }
     public Guid? AnalysisRunId { get; set; }
     public bool? IsSubmitted { get; set; }
+    public DateOnly? Date { get; set; }
+    public DateTime? FromDate { get; set; }
+    public DateTime? ToDate { get; set; }
 }
 
 public record AdminStudentSubmissionDto(Guid UserId, string? StudentId, string Email, StudentSubmissionDetailDto Submission);

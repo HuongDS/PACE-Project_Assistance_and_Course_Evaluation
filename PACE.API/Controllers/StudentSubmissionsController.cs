@@ -45,4 +45,9 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PagedResult<AdminStudentSubmissionDto>>> GetAll([FromQuery] StudentSubmissionQuery query, CancellationToken ct)
         => Ok(await service.GetAllAsync(query, ct));
+
+    [HttpPost("admin/quick-create")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<AdminStudentSubmissionDto>> QuickCreate([FromBody] QuickCreateStudentSubmissionRequest request, CancellationToken ct)
+        => Ok(await service.QuickCreateAsync(request, ct));
 }

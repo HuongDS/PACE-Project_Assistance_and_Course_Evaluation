@@ -12,4 +12,5 @@ public interface IStudentSubmissionService
     Task<StudentSubmissionDetailDto> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<PagedResult<StudentSubmissionDetailDto>> GetMineAsync(StudentSubmissionQuery query, CancellationToken ct = default);
     Task<PagedResult<AdminStudentSubmissionDto>> GetAllAsync(StudentSubmissionQuery query, CancellationToken ct = default);
+    Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default);
 }

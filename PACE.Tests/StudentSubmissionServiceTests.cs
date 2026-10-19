@@ -60,7 +60,9 @@ public class StudentSubmissionServiceTests
                 case "GetOwnedAsync": return Task.FromResult(saved.FirstOrDefault(s => s.Id == (Guid)a[0]! && s.UserId == (Guid)a[1]!));
                 case "GetPagedAsync":
                     var query = (StudentSubmissionQuery)a[0]!;
-                    var items = saved.Where(x => !query.UserId.HasValue || x.UserId == query.UserId).ToList();
+                    var items = saved.Where(x => !query.UserId.HasValue || x.UserId == query.UserId)
+                        .Where(x => !query.IsSubmitted.HasValue || (x.SubmittedAt != null) == query.IsSubmitted.Value)
+                        .ToList();
                     return Task.FromResult(new PagedResult<StudentSubmission> { Items = items, TotalCount = items.Count, Page = 1, PageSize = 20 });
                 case "UpdateAsync":
                     var updated = (StudentSubmission)a[0]!;
@@ -416,6 +418,7 @@ public class StudentSubmissionServiceTests
     [InlineData("Submit", "Student")]
     [InlineData("Retrieve", "Student")]
     [InlineData("GetAll", "Admin")]
+    [InlineData("QuickCreate", "Admin")]
     public void ControllerRequiresCorrectRole(string method, string role)
     {
         var controller = typeof(StudentSubmissionsController);
@@ -444,6 +447,28 @@ public class StudentSubmissionServiceTests
     }
     [Fact] public async Task EmptySubmissionIdRejected()
         => await Assert.ThrowsAsync<BadRequestException>(() => service.RetrieveAsync(new()));
+
+    [Fact]
+    public async Task AdminCanQueryInProgressSubmissions()
+    {
+        claimedRole = UserRole.Admin;
+        var inProgress = new StudentSubmission
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            AnalysisRunId = user.AnalysisRunId!.Value,
+            CreatedAt = DateTime.UtcNow,
+            SubmittedAt = null,
+            User = user,
+            AnalysisRun = user.AnalysisRun!
+        };
+        saved.Add(inProgress);
+
+        var result = await service.GetAllAsync(new StudentSubmissionQuery { IsSubmitted = false });
+        Assert.Single(result.Items);
+        Assert.Null(result.Items[0].Submission.SubmittedAt);
+        Assert.Equal(user.Email, result.Items[0].Email);
+    }
 }
 
 public class Stub<T> : DispatchProxy where T : class

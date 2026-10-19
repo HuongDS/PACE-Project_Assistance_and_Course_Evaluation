@@ -232,11 +232,8 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
                 // Fallback nếu LLM sinh JSON sai nhẹ
             }
 
-            parsedResult ??= new StudentAnswerRes
-            {
-                FeedbackType = request.FeedbackFormat,
-                Comment = cleanJson
-            };
+            if (parsedResult?.HasContent != true)
+                throw new ExternalServiceException("DeepSeek", "Dịch vụ trả về feedback rỗng hoặc không đúng cấu trúc.");
 
             parsedResult.FeedbackType = request.FeedbackFormat;
 
@@ -248,7 +245,8 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
 
         private async Task SaveEvaluationToDbAsync(StudentAnswerReq request, StudentAnswer answer, string cleanJson, StudentAnswerRes parsedResult)
         {
-            answer.AiFeedback = cleanJson;
+            parsedResult.StudentAnswerId = answer.Id;
+            answer.AiFeedback = JsonSerializer.Serialize(parsedResult, JsonOptions);
             answer.FeedbackFormat = request.FeedbackFormat.ToString();
             if (string.IsNullOrEmpty(answer.AnswerText))
             {

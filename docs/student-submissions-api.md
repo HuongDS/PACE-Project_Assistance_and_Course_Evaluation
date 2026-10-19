@@ -154,3 +154,17 @@ Each submission detail includes:
 `aiFeedback` preserves the stored string (usually JSON); no LLM is called while reading. Missing feedback remains null. Rubric scores are returned only when stored in the rubric score table; feedback-only rubric content remains in `aiFeedback`. Question and criterion metadata reflect the current stored records, not historical snapshots.
 
 A Student requesting another student's submission gets 404, the same as a missing submission. Unsupported roles get 403; unauthenticated requests get 401. Suggested answers are included in owned submission details as requested; lookup still returns question text only.
+
+## AI feedback availability
+
+Each `evaluatedAnswers` item includes `evaluationStatus` (`Completed` or `Unavailable`)
+and an optional `evaluationError`. An empty JSON object or a format label without
+feedback content is unavailable, not successful. Answers remain saved if the
+provider fails. Saved submissions without feedback remain readable and reopening
+never automatically bills another evaluation.
+
+DeepSeek credentials are configured through `DeepSeekConfig:ApiKey` (Azure
+`DeepSeekConfig__ApiKey`). Authentication/payment failures are surfaced immediately
+without retrying and without returning provider response bodies or credentials.
+Only transient rate-limit/server/network failures are retried with bounded attempts.
+Configure model, timeout and retry settings under `DeepSeekConfig` in appsettings.

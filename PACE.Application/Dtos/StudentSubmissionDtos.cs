@@ -81,6 +81,8 @@ public class EvaluatedAnswerDto
     public string QuestionText { get; set; } = string.Empty;
     public string AnswerText { get; set; } = string.Empty;
     public StudentAnswerRes? AiEvaluation { get; set; }
+    public string EvaluationStatus => AiEvaluation?.HasContent == true ? "Completed" : "Unavailable";
+    public string? EvaluationError { get; set; }
 }
 
 public class StudentSubmissionResultDto

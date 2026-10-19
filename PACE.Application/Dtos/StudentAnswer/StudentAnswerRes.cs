@@ -7,6 +7,11 @@ namespace PACE.Application.Dtos.StudentAnswer
 {
     public class StudentAnswerRes
     {
+        [JsonIgnore]
+        public bool HasContent => new[] { Positives, ConstructiveCriticism, NextSteps, CodeEvidence, LogicExplanation, Comment }
+            .Any(value => !string.IsNullOrWhiteSpace(value))
+            || Criteria?.Any(c => !string.IsNullOrWhiteSpace(c.Name) || !string.IsNullOrWhiteSpace(c.Comment)) == true;
+
         [JsonPropertyName("student_answer_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid? StudentAnswerId { get; set; }

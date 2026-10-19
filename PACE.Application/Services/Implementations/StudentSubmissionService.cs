@@ -277,8 +277,15 @@ public class StudentSubmissionService(
                 // Fallback nếu có lỗi ngoại lệ từ LLM
             }
 
+            var answerEntity = submission.Answers.FirstOrDefault(ans => ans.QuestionId == a.QuestionId);
+            if (parsed is not null && answerEntity is not null)
+            {
+                parsed.StudentAnswerId = answerEntity.Id;
+            }
+
             return new EvaluatedAnswerDto
             {
+                StudentAnswerId = answerEntity?.Id ?? Guid.Empty,
                 BusinessId = a.BusinessId,
                 BusinessName = business.BusinessName,
                 QuestionId = a.QuestionId,

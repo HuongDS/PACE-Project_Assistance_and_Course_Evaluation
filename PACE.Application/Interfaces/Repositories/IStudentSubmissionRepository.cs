@@ -6,6 +6,9 @@ namespace PACE.Application.Interfaces.Repositories;
 
 public interface IStudentSubmissionRepository
 {
+    Task LockStudentCodeAsync(string code, CancellationToken ct = default);
+    Task<List<StudentAnswer>> GetSurveyAnswersAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ReadyRepositoryDto>> GetReadyRepositoriesAsync(CancellationToken ct = default);
     // Must be called inside a transaction; serializes submissions for this user.
     Task LockUserAsync(Guid userId, CancellationToken ct = default);
     Task<List<Business>> GetBusinessesWithQuestionsAsync(Guid analysisRunId, CancellationToken ct = default);

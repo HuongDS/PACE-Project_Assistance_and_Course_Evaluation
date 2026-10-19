@@ -118,3 +118,5 @@ public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery
 }
 
 public record AdminStudentSubmissionDto(Guid UserId, string? StudentId, string Email, StudentSubmissionDetailDto Submission);
+
+public record ReadyRepositoryDto(Guid Id, string? RepoName, string RepoUrl, int QuestionCount);

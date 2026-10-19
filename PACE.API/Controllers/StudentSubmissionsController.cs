@@ -46,6 +46,11 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
     public async Task<ActionResult<PagedResult<AdminStudentSubmissionDto>>> GetAll([FromQuery] StudentSubmissionQuery query, CancellationToken ct)
         => Ok(await service.GetAllAsync(query, ct));
 
+    [HttpGet("admin/ready-repositories")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<IReadOnlyList<ReadyRepositoryDto>>> ReadyRepositories(CancellationToken ct)
+        => Ok(await service.GetReadyRepositoriesAsync(ct));
+
     [HttpPost("admin/quick-create")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<AdminStudentSubmissionDto>> QuickCreate([FromBody] QuickCreateStudentSubmissionRequest request, CancellationToken ct)

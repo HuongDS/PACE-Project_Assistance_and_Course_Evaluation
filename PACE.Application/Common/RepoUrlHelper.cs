@@ -4,7 +4,7 @@ namespace PACE.Application.Common;
 
 public static partial class RepoUrlHelper
 {
-    [GeneratedRegex(@"^https?://(github\.com|gitlab\.com|bitbucket\.org)/([^/]+)/([^/#?]+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^https?://(?:www\.)?(github\.com|gitlab\.com|bitbucket\.org)/([^/]+)/([^/#?]+)", RegexOptions.IgnoreCase)]
     private static partial Regex HostedRepoRegex();
 
     public static string Normalize(string url)
@@ -15,16 +15,33 @@ public static partial class RepoUrlHelper
         {
             var repo = match.Groups[3].Value;
             if (repo.EndsWith(".git", StringComparison.OrdinalIgnoreCase)) repo = repo[..^4];
-            return $"https://{match.Groups[1].Value.ToLowerInvariant()}/{match.Groups[2].Value}/{repo}";
+            var baseUrl = $"https://{match.Groups[1].Value.ToLowerInvariant()}/{match.Groups[2].Value}/{repo}";
+            var suffix = trimmed[match.Length..].Split('?', '#')[0].Trim('/');
+            // Keep the complete ref/path. A branch may itself contain slashes.
+            return suffix.Length == 0 ? baseUrl : baseUrl + "/" + string.Join('/', Uri.UnescapeDataString(suffix).Split('/').Select(Uri.EscapeDataString));
         }
 
         return trimmed.EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? trimmed[..^4] : trimmed;
     }
 
+    // Hosting and repository names use the existing case-insensitive identity policy;
+    // branch/path names retain their case, as Git refs are case-sensitive.
+    public static string SourceKey(string url)
+    {
+        var normalized = Normalize(url);
+        var match = HostedRepoRegex().Match(normalized);
+        return match.Success ? normalized[..match.Length].ToLowerInvariant() + normalized[match.Length..] : normalized;
+    }
+
     public static string DeriveName(string url)
     {
         var match = HostedRepoRegex().Match(Normalize(url));
-        if (match.Success) return $"{match.Groups[2].Value}/{match.Groups[3].Value}";
+        if (match.Success)
+        {
+            var normalized = Normalize(url);
+            var suffix = normalized[match.Length..];
+            return $"{match.Groups[2].Value}/{match.Groups[3].Value}" + (suffix.Length > 0 ? $" [{Uri.UnescapeDataString(suffix.Trim('/'))}]" : "");
+        }
 
         var parts = Normalize(url).Split('/', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length > 0 ? parts[^1] : url;
@@ -57,7 +74,16 @@ public static partial class RepoUrlHelper
         {
             0 => $"Link thiếu tên người dùng/tổ chức và tên repo (dạng https://{host}/<người dùng>/<repo>).",
             1 => $"Link thiếu tên repo: \"{segments[0]}\" chỉ là tên người dùng hoặc tổ chức (dạng https://{host}/{segments[0]}/<repo>).",
-            _ => null
+            _ => ValidateHostedSuffix(segments)
         };
+    }
+    private static string? ValidateHostedSuffix(string[] segments)
+    {
+        if (segments.Length == 2) return null;
+        var start = segments[2] is "tree" or "src" ? 3
+            : segments.Length >= 4 && segments[2] == "-" && segments[3] == "tree" ? 4 : -1;
+        if (start < 0) return "Hãy nhập link gốc repository hoặc link /tree/<branch> (không dùng link file/issues).";
+        if (segments.Length <= start) return "Link branch thiếu tên nhánh.";
+        return null;
     }
 }

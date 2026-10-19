@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PACE.Application.Common.Models;
+using PACE.Application.Common;
 using PACE.Application.Common.ReadModels;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Domain.Entities;
@@ -25,16 +26,21 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
     public Task<AnalysisRunSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default)
         => ToSummary(DbSet.AsNoTracking().Where(r => r.Id == id)).FirstOrDefaultAsync(ct);
 
-    public Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default)
+    public async Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default)
     {
-        var normalized = repoUrl.Trim().ToLower();
-        return DbSet.FirstOrDefaultAsync(r => r.RepoUrl != null && r.RepoUrl.ToLower() == normalized, ct);
+        var normalized = RepoUrlHelper.Normalize(repoUrl).ToLowerInvariant();
+        var key = RepoUrlHelper.SourceKey(repoUrl);
+        var candidates = await DbSet.Where(r => r.RepoUrl != null && r.RepoUrl.ToLower() == normalized).ToListAsync(ct);
+        return candidates.FirstOrDefault(r => RepoUrlHelper.SourceKey(r.RepoUrl!) == key);
     }
 
-    public Task<bool> RepoUrlExistsAsync(string repoUrl, Guid? exceptId = null, CancellationToken ct = default)
+    public async Task<bool> RepoUrlExistsAsync(string repoUrl, Guid? exceptId = null, CancellationToken ct = default)
     {
-        var normalized = repoUrl.Trim().ToLower();
-        return DbSet.AnyAsync(r => r.RepoUrl != null && r.RepoUrl.ToLower() == normalized && r.Id != exceptId, ct);
+        var normalized = RepoUrlHelper.Normalize(repoUrl).ToLowerInvariant();
+        var key = RepoUrlHelper.SourceKey(repoUrl);
+        var candidates = await DbSet.AsNoTracking().Where(r => r.RepoUrl != null && r.RepoUrl.ToLower() == normalized && r.Id != exceptId)
+            .Select(r => r.RepoUrl!).ToListAsync(ct);
+        return candidates.Any(url => RepoUrlHelper.SourceKey(url) == key);
     }
 
     public Task<List<AnalysisRun>> GetAllWithRepoUrlAsync(CancellationToken ct = default)

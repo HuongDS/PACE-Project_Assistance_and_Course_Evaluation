@@ -55,6 +55,31 @@ public class RepoUrlHelperTests
     public void Anything_that_is_not_an_http_link_is_invalid(string? url)
         => Assert.Equal("Link repo không hợp lệ.", RepoUrlHelper.FindProblem(url));
 
+    [Theory]
+    [InlineData("https://github.com/owner/repo.git/tree/Feat/FixUnhappyCase/", "https://github.com/owner/repo/tree/Feat/FixUnhappyCase")]
+    [InlineData("https://www.github.com/owner/repo/tree/dev?tab=readme", "https://github.com/owner/repo/tree/dev")]
+    [InlineData("https://gitlab.com/team/repo/-/tree/feature/api/backend", "https://gitlab.com/team/repo/-/tree/feature/api/backend")]
+    [InlineData("https://bitbucket.org/team/repo/src/dev", "https://bitbucket.org/team/repo/src/dev")]
+    [InlineData("https://github.com/owner/repo/tree/Feat%2FFixUnhappyCase", "https://github.com/owner/repo/tree/Feat/FixUnhappyCase")]
+    public void NormalizationKeepsBranchAndFolder(string input, string expected)
+        => Assert.Equal(expected, RepoUrlHelper.Normalize(input));
+
+    [Fact] public void SourceIdentityPreservesBranchCaseAndSeparatesDefaultBranch()
+    {
+        var main = RepoUrlHelper.SourceKey("https://github.com/Owner/Repo");
+        var branch = RepoUrlHelper.SourceKey("https://github.com/OWNER/REPO/tree/Feat/Fix");
+        Assert.NotEqual(main, branch);
+        Assert.NotEqual(branch, RepoUrlHelper.SourceKey("https://github.com/Owner/Repo/tree/feat/fix"));
+        Assert.Equal(branch, RepoUrlHelper.SourceKey("https://github.com/owner/repo.git/tree/Feat%2FFix"));
+        Assert.Contains("Feat/Fix", RepoUrlHelper.DeriveName("https://github.com/owner/repo/tree/Feat/Fix"));
+    }
+    [Theory]
+    [InlineData("https://github.com/owner/repo/tree")]
+    [InlineData("https://github.com/owner/repo/blob/main/File.cs")]
+    [InlineData("https://github.com/owner/repo/issues")]
+    public void InvalidSourceLinksAreNotSilentlyReducedToDefaultBranch(string input)
+        => Assert.NotNull(RepoUrlHelper.FindProblem(input));
+
     [Fact]
     public async Task Single_template_request_is_rejected_before_cloning_anything()
     {

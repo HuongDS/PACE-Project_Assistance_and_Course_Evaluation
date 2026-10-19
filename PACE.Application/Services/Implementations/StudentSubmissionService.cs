@@ -255,6 +255,7 @@ public class StudentSubmissionService(
             var format = assignedFormats[index];
 
             StudentAnswerRes? parsed = null;
+            string? evaluationError = null;
             try
             {
                 var evalReq = new StudentAnswerReq
@@ -270,11 +271,15 @@ public class StudentSubmissionService(
 
                 var jsonResult = await studentAnswerService.EvaluateStudentAnswerAsync(evalReq);
                 parsed = JsonSerializer.Deserialize<StudentAnswerRes>(jsonResult, JsonOptions);
+                if (parsed?.HasContent != true)
+                    throw new ExternalServiceException("AI", "Dịch vụ trả về feedback rỗng hoặc không đúng cấu trúc.");
             }
-            catch
+            catch (Exception ex)
             {
-                logger?.LogWarning("AI evaluation unavailable for submission {SubmissionId}, question {QuestionId}; saved answers retained", submission.Id, a.QuestionId);
-                // Fallback nếu có lỗi ngoại lệ từ LLM
+                parsed = null;
+                evaluationError = ex is ExternalServiceException ? ex.Message : "Chưa tạo được feedback AI. Câu trả lời đã được lưu.";
+                logger?.LogWarning("AI evaluation unavailable for submission {SubmissionId}, question {QuestionId}: {ErrorType}, {Reason}",
+                    submission.Id, a.QuestionId, ex.GetType().Name, evaluationError);
             }
 
             var answerEntity = submission.Answers.FirstOrDefault(ans => ans.QuestionId == a.QuestionId);
@@ -291,7 +296,8 @@ public class StudentSubmissionService(
                 QuestionId = a.QuestionId,
                 QuestionText = question.QuestionText,
                 AnswerText = a.AnswerText.Trim(),
-                AiEvaluation = parsed
+                AiEvaluation = parsed,
+                EvaluationError = evaluationError
             };
         }
 
@@ -372,7 +378,11 @@ public class StudentSubmissionService(
     private static StudentAnswerRes? ParseSavedFeedback(string? feedback)
     {
         if (string.IsNullOrWhiteSpace(feedback)) return null;
-        try { return JsonSerializer.Deserialize<StudentAnswerRes>(feedback, JsonOptions); }
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<StudentAnswerRes>(feedback, JsonOptions);
+            return parsed?.HasContent == true ? parsed : null;
+        }
         catch (JsonException) { return new StudentAnswerRes { Comment = feedback }; }
     }
 

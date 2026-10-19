@@ -1,6 +1,8 @@
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Dtos.StudentAnswer;
+using PACE.Application.Dtos;
+using PACE.Domain.Enums;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Services.Implementations;
 using PACE.Application.Services.Interfaces;
@@ -18,7 +20,7 @@ public class StudentAnswerServiceTests
     private int saves;
     private Guid lookedUpUserId;
 
-    private StudentAnswerService Service(StudentAnswer? answer, bool authenticated = false, Guid? currentId = null)
+    private StudentAnswerService Service(StudentAnswer? answer, bool authenticated = false, Guid? currentId = null, string? llmResponse = null)
     {
         var questions = Stub<IGeneratedQuestionRepository>.Create((m, _) => m.Name == "GetByIdAsync"
             ? Task.FromResult<GeneratedQuestion?>(new GeneratedQuestion { Id = questionId, BusinessId = businessId, QuestionText = "Explain this method" })
@@ -45,8 +47,11 @@ public class StudentAnswerServiceTests
             _ => throw new Exception("Unexpected identity operation")
         });
         return new StudentAnswerService(
-            Stub<ILlmService>.Create((_, _) => throw new Exception("LLM must not run")),
-            Stub<IBusinessService>.Create((_, _) => throw new Exception("Context must not load")),
+            Stub<ILlmService>.Create((_, _) => llmResponse is null ? throw new Exception("LLM must not run") : Task.FromResult(llmResponse)),
+            Stub<IBusinessService>.Create((_, _) => llmResponse is null ? throw new Exception("Context must not load") : Task.FromResult<CodeFlowDto?>(new()
+            {
+                Methods = [new MethodSourceDto(new MethodSourceSummaryDto(Guid.NewGuid(), Guid.NewGuid(), "Example", "Validate", "Example.cs", ProgrammingLanguage.CSharp, NodeType.Activity, null), "return true;", [])]
+            })),
             Stub<IBusinessFlowService>.Create((_, _) => throw new Exception("Context must not load")), uow, current);
     }
 
@@ -117,6 +122,25 @@ public class StudentAnswerServiceTests
         var answer = new StudentAnswer { Id = Guid.NewGuid(), UserId = studentId, AiFeedback = "{\"comment\":\"saved\"}" };
         Assert.Equal(answer.AiFeedback, await Service(answer, true, studentId).EvaluateStudentAnswerAsync(Request()));
         Assert.Equal(0, saves);
+    }
+
+    [Theory]
+    [InlineData("{}")] [InlineData("null")] [InlineData("invalid JSON")] [InlineData("{\"feedback_type\":\"Sandwich\"}")]
+    public async Task EmptyOrInvalidProviderFeedbackIsNotPersistedAsSuccess(string response)
+    {
+        var answer = new StudentAnswer { Id = Guid.NewGuid(), UserId = studentId, QuestionId = questionId, AnswerText = "saved answer" };
+        await Assert.ThrowsAsync<ExternalServiceException>(() => Service(answer, true, studentId, response).EvaluateStudentAnswerAsync(Request()));
+        Assert.Equal(0, saves);
+        Assert.Null(answer.AiFeedback);
+    }
+    [Fact]
+    public async Task ValidProviderFeedbackIsPersistedInTheReturnedCanonicalShape()
+    {
+        var answer = new StudentAnswer { Id = Guid.NewGuid(), UserId = studentId, QuestionId = questionId, AnswerText = "saved answer" };
+        var json = await Service(answer, true, studentId, "{\"comment\":\"Provider feedback\"}").EvaluateStudentAnswerAsync(Request());
+        Assert.Equal(1, saves);
+        Assert.Equal(json, answer.AiFeedback);
+        Assert.Contains(answer.Id.ToString(), json);
     }
 
 }

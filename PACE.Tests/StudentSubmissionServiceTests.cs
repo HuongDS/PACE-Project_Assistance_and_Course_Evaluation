@@ -28,6 +28,8 @@ public class StudentSubmissionServiceTests
     private Guid? claimedId;
     private UserRole claimedRole = UserRole.Student;
     private readonly List<FeedbackFormat> evaluatedFormats = [];
+    private string evaluationJson = "{\"comment\":\"Test feedback\"}";
+    private Exception? evaluationFailure;
 
     public StudentSubmissionServiceTests()
     {
@@ -96,7 +98,7 @@ public class StudentSubmissionServiceTests
         {
             if (m.Name == "EvaluateStudentAnswerAsync" && a[0] is StudentAnswerReq req)
                 evaluatedFormats.Add(req.FeedbackFormat);
-            return Task.FromResult("{}");
+            return evaluationFailure is null ? Task.FromResult(evaluationJson) : Task.FromException<string>(evaluationFailure);
         });
         service = new StudentSubmissionService(uow, current, ansService);
     }
@@ -154,6 +156,29 @@ public class StudentSubmissionServiceTests
     {
         Answers = businesses.Select(b => new StudentAnswerRequest { BusinessId = b.Id, QuestionId = b.Questions.First().Id, AnswerText = " answer " }).ToList()
     };
+
+    [Theory]
+    [InlineData("{}")] [InlineData("null")] [InlineData("{\"feedback_type\":\"Sandwich\"}")]
+    public async Task EmptyEvaluationIsUnavailableAndDoesNotLoseAnswers(string response)
+    {
+        evaluationJson = response;
+        var result = await service.SubmitAsync(Request());
+        Assert.All(result.EvaluatedAnswers, answer =>
+        {
+            Assert.Null(answer.AiEvaluation);
+            Assert.Equal("Unavailable", answer.EvaluationStatus);
+            Assert.False(string.IsNullOrWhiteSpace(answer.EvaluationError));
+        });
+        Assert.Equal(3, Assert.Single(saved).Answers.Count);
+    }
+    [Fact] public async Task ProviderFailureReturnsSafeReasonWithSavedSubmission()
+    {
+        evaluationFailure = new ExternalServiceException("DeepSeek", "API key bị từ chối (HTTP 401).");
+        var result = await service.SubmitAsync(Request());
+        Assert.NotNull(result.SubmittedAt);
+        Assert.All(result.EvaluatedAnswers, answer => Assert.Contains("401", answer.EvaluationError));
+        Assert.Equal(3, Assert.Single(saved).Answers.Count);
+    }
 
     [Fact] public async Task LookupReturnsOnlyBusinessesWithQuestionsAndNoSuggestedAnswers()
     {

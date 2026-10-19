@@ -49,6 +49,33 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         if (query.IsSubmitted.HasValue) source = source.Where(s => (s.SubmittedAt != null) == query.IsSubmitted.Value);
         if (query.UserId.HasValue) source = source.Where(s => s.UserId == query.UserId.Value);
         if (query.AnalysisRunId.HasValue) source = source.Where(s => s.AnalysisRunId == query.AnalysisRunId.Value);
+
+        if (query.FromDate.HasValue && query.ToDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.FromDate.Value, DateTimeKind.Utc);
+            var to = DateTime.SpecifyKind(query.ToDate.Value, DateTimeKind.Utc);
+            source = source.Where(s =>
+                (s.CreatedAt >= from && s.CreatedAt <= to) ||
+                (s.SubmittedAt != null && s.SubmittedAt.Value >= from && s.SubmittedAt.Value <= to));
+        }
+        else if (query.FromDate.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.FromDate.Value, DateTimeKind.Utc);
+            source = source.Where(s => s.CreatedAt >= from || (s.SubmittedAt != null && s.SubmittedAt.Value >= from));
+        }
+        else if (query.ToDate.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.ToDate.Value, DateTimeKind.Utc);
+            source = source.Where(s => s.CreatedAt <= to || (s.SubmittedAt != null && s.SubmittedAt.Value <= to));
+        }
+        else if (query.Date.HasValue)
+        {
+            var startUtc = query.Date.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var endUtc = query.Date.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            source = source.Where(s =>
+                (s.CreatedAt >= startUtc && s.CreatedAt < endUtc) ||
+                (s.SubmittedAt != null && s.SubmittedAt.Value >= startUtc && s.SubmittedAt.Value < endUtc));
+        }
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim().ToLower();

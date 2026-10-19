@@ -87,13 +87,7 @@ public class StudentSubmissionService(
         var userWithRepo = await uow.Users.GetWithRepoAsync(user.Id, ct: ct);
         var run = RequireRepository(userWithRepo ?? user);
 
-        // Kiểm tra xem sinh viên đã nộp bài hoàn tất trước đó chưa
-        var submitted = await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, ct);
-        if (submitted is not null)
-            return new StudentSubmissionJoinedDto(submitted.Id, submitted.CreatedAt,
-                user.StudentCode!, email, run.RepoName) { SubmittedAt = submitted.SubmittedAt };
-
-        // Kiểm tra xem sinh viên có phiên làm bài đang dở dang không
+        // 1. Kiểm tra xem sinh viên có phiên làm bài đang dở dang không (ưu tiên phiên đang làm)
         var active = await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, ct);
         if (active is not null)
         {
@@ -105,6 +99,12 @@ public class StudentSubmissionService(
                 run.RepoName
             );
         }
+
+        // 2. Nếu không có phiên đang làm, kiểm tra xem sinh viên đã nộp bài hoàn tất trước đó chưa
+        var submitted = await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, ct);
+        if (submitted is not null)
+            return new StudentSubmissionJoinedDto(submitted.Id, submitted.CreatedAt,
+                user.StudentCode!, email, run.RepoName) { SubmittedAt = submitted.SubmittedAt };
 
         // Tạo mới phiên làm bài (StudentSubmission với SubmittedAt = null)
         var submission = new StudentSubmission
@@ -327,6 +327,86 @@ public class StudentSubmissionService(
         RequireRole(UserRole.Admin);
         var submissions = await uow.StudentSubmissions.GetPagedAsync(query, ct);
         return submissions.Map(s => new AdminStudentSubmissionDto(s.UserId, s.User.StudentCode, s.User.Email, MapDetail(s)));
+    }
+
+    public async Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
+    {
+        RequireRole(UserRole.Admin);
+
+        if (string.IsNullOrWhiteSpace(request.StudentCode))
+            throw new BadRequestException("Mã số sinh viên không được để trống.");
+        if (request.AnalysisRunId == Guid.Empty)
+            throw new BadRequestException("Vui lòng chọn repository hợp lệ.");
+
+        var run = await uow.AnalysisRuns.GetByIdAsync(request.AnalysisRunId, ct)
+                  ?? throw new NotFoundException("Repository không tồn tại.");
+
+        var studentCode = request.StudentCode.Trim().ToUpperInvariant();
+        var email = !string.IsNullOrWhiteSpace(request.Email)
+            ? request.Email.Trim().ToLowerInvariant()
+            : $"{studentCode.ToLowerInvariant()}@fpt.edu.vn";
+
+        var user = await uow.Users.GetByStudentCodeAsync(studentCode, ct);
+        if (user is not null)
+        {
+            user = await uow.Users.GetWithRepoAsync(user.Id, asNoTracking: false, ct: ct) ?? user;
+            user.Role = UserRole.Student;
+            user.AnalysisRunId = run.Id;
+            user.AnalysisRun = run;
+
+            if (!string.IsNullOrWhiteSpace(request.Email) && !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await uow.Users.EmailExistsAsync(email, user.Id, ct))
+                    throw new ConflictException("Email đã được sử dụng bởi tài khoản khác.");
+                user.Email = email;
+            }
+            uow.Users.Update(user);
+        }
+        else
+        {
+            if (await uow.Users.EmailExistsAsync(email, null, ct))
+                throw new ConflictException($"Email {email} đã được sử dụng bởi tài khoản khác. Vui lòng cung cấp email riêng cho sinh viên này.");
+
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                StudentCode = studentCode,
+                Email = email,
+                Role = UserRole.Student,
+                AnalysisRunId = run.Id,
+                AnalysisRun = run,
+                CreatedAt = DateTime.UtcNow
+            };
+            await uow.Users.AddAsync(user, ct);
+        }
+
+        // Tạo hoặc lấy phiên bài làm đang dở dang cho sinh viên
+        var active = await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, ct);
+        StudentSubmission submission;
+        if (active is not null)
+        {
+            submission = active;
+        }
+        else
+        {
+            submission = new StudentSubmission
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                AnalysisRunId = run.Id,
+                CreatedAt = DateTime.UtcNow,
+                SubmittedAt = null
+            };
+            uow.StudentSubmissions.Add(submission);
+        }
+
+        await uow.SaveChangesAsync(ct);
+
+        var full = await uow.StudentSubmissions.GetByIdAsync(submission.Id, ct) ?? submission;
+        full.User = user;
+        full.AnalysisRun = run;
+
+        return new AdminStudentSubmissionDto(user.Id, user.StudentCode, user.Email, MapDetail(full));
     }
 
     public async Task<StudentSubmissionDetailDto> GetByIdAsync(Guid id, CancellationToken ct = default)

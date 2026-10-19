@@ -2,16 +2,18 @@
 
 This deploys the .NET API, with Git installed for repository analysis. The frontend is unchanged. The existing PostgreSQL database is reused; the script does not reset data or apply migrations.
 
-## Current deployment (2026-10-19)
+## Current deployment (2026-10-20)
 
 - Subscription: Azure for Students
 - Resource group: `pace-demo-rg`
-- Region: `eastasia` (allowed by the subscription's region policy)
-- Container App: `pace-api`; environment: `pace-environment`
-- Backend: https://pace-api.yellowpond-7676bde9.eastasia.azurecontainerapps.io
-- API base URL: https://pace-api.yellowpond-7676bde9.eastasia.azurecontainerapps.io/api
-- Health: https://pace-api.yellowpond-7676bde9.eastasia.azurecontainerapps.io/health
+- Region: `japaneast` (Japan East; allowed by the Student subscription policy)
+- Container App: `pace-api-jp`; environment: `pace-environment-jp`
+- Backend: https://pace-api-jp.bluerock-e6f4ebd4.japaneast.azurecontainerapps.io
+- API base URL: https://pace-api-jp.bluerock-e6f4ebd4.japaneast.azurecontainerapps.io/api
+- Health: https://pace-api-jp.bluerock-e6f4ebd4.japaneast.azurecontainerapps.io/health
 - Verified over public HTTPS: health, admin login, and authenticated account lookup returned HTTP 200.
+
+GitHub repository variable `AZURE_CONTAINER_APP=pace-api-jp` selects the deployment target. The workflow falls back to `pace-api` when this variable is absent. Its OIDC identity has the existing narrow deployment role scoped to the Japan app. The registry and PostgreSQL database are reused. The old Hong Kong app remains available during the trial; it is not automatically deleted. Frontend hosting must set `BACKEND_API_URL` to the Japan API URL above and redeploy.
 
 Azure CLI authentication for the initial deployment used a temporary configuration directory; authenticate again if that session has expired before managing these resources.
 

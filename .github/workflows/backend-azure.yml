@@ -1,0 +1,60 @@
+name: Backend CI and Azure deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Never interrupt an in-flight deployment or its rollback.
+concurrency:
+  group: backend-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      AZURE_RESOURCE_GROUP: pace-demo-rg
+      AZURE_CONTAINER_APP: pace-api
+      AZURE_REGISTRY: pace638443565b84
+      IMAGE: pace638443565b84.azurecr.io/pace-api:git-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Test backend
+        run: dotnet test PACE.Tests/PACE.Tests.csproj --configuration Release --verbosity minimal
+      - name: Test deployment safeguards
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Build production image
+        run: docker build --label org.opencontainers.image.revision="$GITHUB_SHA" --tag "$IMAGE" .
+      - name: Check image starts before touching Azure
+        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        run: python3 scripts/ci_deploy_backend.py --image "$IMAGE" --smoke-only
+      - name: Sign in to Azure using OIDC
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Prepare Container Apps CLI
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: az extension add --name containerapp --upgrade --allow-preview true --only-show-errors
+      - name: Sign in to container registry
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: az acr login --name "$AZURE_REGISTRY" --only-show-errors
+      - name: Deploy and restore previous image on failure
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: >-
+          python3 scripts/ci_deploy_backend.py --image "$IMAGE"
+          --resource-group "$AZURE_RESOURCE_GROUP" --app "$AZURE_CONTAINER_APP"
+          --revision "$GITHUB_SHA" --push

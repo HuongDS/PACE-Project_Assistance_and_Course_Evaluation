@@ -45,3 +45,36 @@ Frontend integration later: set its server-side `BACKEND_API_URL` to `https://<b
 - Repository analysis and AI evaluation are synchronous today. Requests can exceed the default ingress timeout; large workloads need a job/polling flow. This deployment does not change that workflow.
 - Repository clones live under `/tmp/pace_repos` and are temporary. They are not durable application storage.
 - Email + MSSV entry remains the explicitly requested temporary authentication flow.
+
+## Automatic deployment from GitHub main
+
+`.github/workflows/backend-azure.yml` runs for pushes to `main`, PRs targeting
+`main`, and manual dispatches. PRs only test/build/start the image. A main run tests
+the backend and rollback safeguards, builds a SHA-tagged image, signs in to Azure
+using OIDC, checks image startup, pushes the image and updates the existing app.
+Deployments are serialized; a newer push does not cancel an in-flight rollout.
+
+GitHub repository variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and
+`AZURE_SUBSCRIPTION_ID`. The user-assigned identity `pace-github-actions` trusts
+only this repository's `refs/heads/main`. It has a custom read/write role scoped
+to the one Container App and AcrPush scoped to the one registry. It cannot delete
+resources or list runtime secrets. AI/database credentials stay in Azure.
+
+Before mutation, the deployment captures the old image and deployment marker.
+Test, build, or local startup failure leaves Azure untouched. On update/health
+failure, it restores the prior image/marker and checks health, then fails the
+workflow so GitHub shows the unsuccessful deployment. `/health` returns an
+`X-PACE-Revision` header when configured, so success requires the new commit to
+actually serve requests, not just a healthy old instance.
+
+Express is single-revision; rollback may involve a brief interruption. This is
+not a zero-downtime blue/green guarantee. If Azure's management API is unavailable
+or the runner is killed during rollback, automatic restoration cannot be guaranteed;
+the run reports failure and requires operator inspection. Runtime secrets and
+schema are never modified by the workflow. No destructive migrations run.
+The health check verifies process startup, not every business flow or AI balance.
+
+Monitor: GitHub repository → Actions → Backend CI and Azure deployment. Old image
+tags are retained for rollback and may incur registry storage charges. Configure
+branch protection to require the backend check if failed PRs must be prevented
+from merging; failed main builds still leave the deployed app unchanged.

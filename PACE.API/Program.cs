@@ -135,7 +135,16 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapHealthChecks("/health").AllowAnonymous();
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        var revision = app.Configuration["Deployment:Revision"];
+        if (!string.IsNullOrWhiteSpace(revision)) context.Response.Headers["X-PACE-Revision"] = revision;
+        context.Response.ContentType = "text/plain";
+        await context.Response.WriteAsync(report.Status.ToString());
+    }
+}).AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
 

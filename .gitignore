@@ -63,3 +63,7 @@ nunit-*.xml
 
 # Secrets - KHÔNG commit, mỗi người tự tạo từ appsettings.Development.example.json
 **/appsettings.Development.json
+
+# Python tooling caches
+__pycache__/
+*.py[cod]

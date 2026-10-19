@@ -10,7 +10,8 @@ namespace PACE.Application.Dtos.StudentAnswer
         [JsonIgnore]
         public bool HasContent => new[] { Positives, ConstructiveCriticism, NextSteps, CodeEvidence, LogicExplanation, Comment }
             .Any(value => !string.IsNullOrWhiteSpace(value))
-            || Criteria?.Any(c => !string.IsNullOrWhiteSpace(c.Name) || !string.IsNullOrWhiteSpace(c.Comment)) == true;
+            || Criteria?.Any(c => !string.IsNullOrWhiteSpace(c.Name) || !string.IsNullOrWhiteSpace(c.Comment)) == true
+            || Researching != null;
 
         [JsonPropertyName("student_answer_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -51,6 +52,11 @@ namespace PACE.Application.Dtos.StudentAnswer
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? LogicExplanation { get; set; }
 
+        // Researching format (Multi-LLM Ensemble)
+        [JsonPropertyName("researching")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public ResearchingFeedbackDto? Researching { get; set; }
+
         // Guardrails Metadata
         [JsonPropertyName("guardrail_warnings")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -63,5 +69,24 @@ namespace PACE.Application.Dtos.StudentAnswer
         [JsonPropertyName("review_reason")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ReviewReason { get; set; }
+    }
+
+    public class ResearchingFeedbackDto
+    {
+        [JsonPropertyName("consensus_summary")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? ConsensusSummary { get; set; }
+
+        [JsonPropertyName("code_inspection")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? CodeInspection { get; set; }
+
+        [JsonPropertyName("pedagogical_guidance")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? PedagogicalGuidance { get; set; }
+
+        [JsonPropertyName("models_involved")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? ModelsInvolved { get; set; }
     }
 }

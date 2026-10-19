@@ -51,6 +51,7 @@ public static class DependencyInjection
         // LLM Service & HttpClient
         services.AddHttpClient();
         services.AddScoped<ILlmService, DeepSeekService>();
+        services.AddScoped<IGroqService, GroqService>();
 
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
         services.AddSingleton<IQuestionLlmClient, GeminiQuestionLlmClient>();

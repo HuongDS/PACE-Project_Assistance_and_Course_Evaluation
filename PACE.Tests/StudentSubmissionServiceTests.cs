@@ -218,9 +218,8 @@ public class StudentSubmissionServiceTests
         Assert.Equal(3, detail.Answers.Count);
         Assert.Equal(result.SubmissionId, detail.SubmissionId);
         Assert.Equal(3, evaluatedFormats.Count);
-        Assert.Contains(FeedbackFormat.Sandwich, evaluatedFormats);
-        Assert.Contains(FeedbackFormat.Rubric, evaluatedFormats);
-        Assert.Contains(FeedbackFormat.Explainable, evaluatedFormats);
+        Assert.Equal(3, evaluatedFormats.Distinct().Count());
+        Assert.All(evaluatedFormats, f => Assert.Contains(f, Enum.GetValues<FeedbackFormat>()));
     }
     [Fact] public async Task RepeatedSubmitReturnsSavedAnswersWithoutReevaluation()
     {
@@ -281,6 +280,130 @@ public class StudentSubmissionServiceTests
     {
         var request = Request(); request.Answers = Enumerable.Repeat(request.Answers[0], count).ToList();
         await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(request)); Assert.Empty(saved);
+    }
+
+    [Fact]
+    public async Task SubmitWithFourBusinessesRequiresFourAnswersAndEvaluatesAllFourFormats()
+    {
+        // Add 4th business to repository
+        var runId = user.AnalysisRunId!.Value;
+        var b4 = new Business { Id = Guid.NewGuid(), AnalysisRunId = runId, BusinessName = "Business 3" };
+        b4.Questions.Add(new GeneratedQuestion { Id = Guid.NewGuid(), BusinessId = b4.Id, Business = b4, QuestionText = "Question 3" });
+        businesses.Add(b4);
+
+        // 3 answers should be rejected because repo has 4 businesses
+        var threeAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = businesses.Take(3).Select(b => new StudentAnswerRequest
+            {
+                BusinessId = b.Id,
+                QuestionId = b.Questions.First().Id,
+                AnswerText = "Detailed answer text"
+            }).ToList()
+        };
+        await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(threeAnswersReq));
+
+        // 4 answers should succeed and assign all 4 distinct formats
+        var fourAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = businesses.Select(b => new StudentAnswerRequest
+            {
+                BusinessId = b.Id,
+                QuestionId = b.Questions.First().Id,
+                AnswerText = "Detailed answer text"
+            }).ToList()
+        };
+
+        var result = await service.SubmitAsync(fourAnswersReq);
+        Assert.Equal(4, result.EvaluatedAnswers.Count);
+        Assert.Equal(4, evaluatedFormats.Count);
+
+        // Verify all 4 formats: Sandwich, Rubric, Explainable, Researching are present
+        var allFormats = Enum.GetValues<FeedbackFormat>().ToHashSet();
+        Assert.Equal(allFormats, evaluatedFormats.ToHashSet());
+    }
+
+    [Fact]
+    public async Task SubmitWithThreeBusinessesAndFourQuestionsRequiresFourAnswersAndAllowsTwoQuestionsFromSameBusiness()
+    {
+        // Business 0 gets an additional question, so total questions = 4 across 3 businesses
+        var extraQ = new GeneratedQuestion
+        {
+            Id = Guid.NewGuid(),
+            BusinessId = businesses[0].Id,
+            Business = businesses[0],
+            QuestionText = "Extra Question for Business 0"
+        };
+        businesses[0].Questions.Add(extraQ);
+
+        // Submitting 3 answers should be rejected because total questions = 4
+        var threeAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = businesses.Select(b => new StudentAnswerRequest
+            {
+                BusinessId = b.Id,
+                QuestionId = b.Questions.First().Id,
+                AnswerText = "Detailed answer text"
+            }).ToList()
+        };
+        await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(threeAnswersReq));
+
+        // Submitting 4 answers (2 from Business 0, 1 from Business 1, 1 from Business 2) should succeed!
+        var fourAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = new List<StudentAnswerRequest>
+            {
+                new() { BusinessId = businesses[0].Id, QuestionId = businesses[0].Questions.First().Id, AnswerText = "Answer 1" },
+                new() { BusinessId = businesses[0].Id, QuestionId = extraQ.Id, AnswerText = "Answer 2" },
+                new() { BusinessId = businesses[1].Id, QuestionId = businesses[1].Questions.First().Id, AnswerText = "Answer 3" },
+                new() { BusinessId = businesses[2].Id, QuestionId = businesses[2].Questions.First().Id, AnswerText = "Answer 4" },
+            }
+        };
+
+        var result = await service.SubmitAsync(fourAnswersReq);
+        Assert.Equal(4, result.EvaluatedAnswers.Count);
+        Assert.Equal(4, evaluatedFormats.Count);
+        var allFormats = Enum.GetValues<FeedbackFormat>().ToHashSet();
+        Assert.Equal(allFormats, evaluatedFormats.ToHashSet());
+
+        // Duplicate question rejected
+        fourAnswersReq.Answers[1].QuestionId = fourAnswersReq.Answers[0].QuestionId;
+        await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(fourAnswersReq));
+    }
+
+    [Fact]
+    public async Task SubmitWithTwoBusinessesRequiresTwoAnswersAndSelectsTwoDistinctRandomFormats()
+    {
+        // Reduce to 2 businesses
+        businesses.RemoveAt(2);
+
+        // 3 answers should be rejected because repo only has 2 businesses
+        var threeAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = Enumerable.Range(0, 3).Select(_ => new StudentAnswerRequest
+            {
+                BusinessId = Guid.NewGuid(),
+                QuestionId = Guid.NewGuid(),
+                AnswerText = "Answer"
+            }).ToList()
+        };
+        await Assert.ThrowsAsync<BadRequestException>(() => service.SubmitAsync(threeAnswersReq));
+
+        // 2 answers should succeed
+        var twoAnswersReq = new SubmitStudentSubmissionRequest
+        {
+            Answers = businesses.Select(b => new StudentAnswerRequest
+            {
+                BusinessId = b.Id,
+                QuestionId = b.Questions.First().Id,
+                AnswerText = "Detailed answer text"
+            }).ToList()
+        };
+
+        var result = await service.SubmitAsync(twoAnswersReq);
+        Assert.Equal(2, result.EvaluatedAnswers.Count);
+        Assert.Equal(2, evaluatedFormats.Count);
+        Assert.Equal(2, evaluatedFormats.Distinct().Count());
     }
     [Fact] public async Task DuplicateBusinessRejected()
     {

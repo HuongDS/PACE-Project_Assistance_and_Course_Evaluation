@@ -143,4 +143,15 @@ public class StudentAnswerServiceTests
         Assert.Contains(answer.Id.ToString(), json);
     }
 
+    [Fact]
+    public async Task ResearchingFeedbackFormatIsEvaluatedAndSaved()
+    {
+        var answer = new StudentAnswer { Id = Guid.NewGuid(), UserId = studentId, QuestionId = questionId, AnswerText = "saved answer" };
+        var request = Request();
+        request.FeedbackFormat = FeedbackFormat.Researching;
+        var json = await Service(answer, true, studentId, "{\"feedback_type\":\"Researching\",\"comment\":\"Consensus multi-llm review\"}").EvaluateStudentAnswerAsync(request);
+        Assert.Equal(1, saves);
+        Assert.Equal("Researching", answer.FeedbackFormat);
+        Assert.Contains("Consensus multi-llm review", json);
+    }
 }

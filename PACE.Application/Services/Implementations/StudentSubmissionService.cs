@@ -345,12 +345,6 @@ public class StudentSubmissionService(
         return submissions.Map(s => new AdminStudentSubmissionDto(s.UserId, s.User.StudentCode, s.User.Email, MapDetail(s)));
     }
 
-    public async Task<IReadOnlyList<ReadyRepositoryDto>> GetReadyRepositoriesAsync(CancellationToken ct = default)
-    {
-        RequireRole(UserRole.Admin);
-        return await uow.StudentSubmissions.GetReadyRepositoriesAsync(ct);
-    }
-
     public Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Admin);
@@ -359,13 +353,24 @@ public class StudentSubmissionService(
             var code = request.StudentCode?.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(code) || code.Length > 20)
                 throw new BadRequestException("MSSV phải có từ 1 đến 20 ký tự.");
-            var run = await uow.AnalysisRuns.GetByIdAsync(request.AnalysisRunId, token)
-                ?? throw new NotFoundException("Repository không tồn tại.");
-            if (string.IsNullOrWhiteSpace(run.RepoUrl)
-                || !(await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token)).Any())
-                throw new BadRequestException("Repository chưa có câu hỏi. Hãy sinh câu hỏi trước khi tạo bài làm.");
+            var problem = PACE.Application.Common.RepoUrlHelper.FindProblem(request.RepoUrl);
+            if (problem != null) throw new BadRequestException(problem);
+            var repoUrl = PACE.Application.Common.RepoUrlHelper.Normalize(request.RepoUrl);
+            var email = request.Email?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 255
+                || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email))
+                throw new BadRequestException("Vui lòng nhập email hợp lệ.");
 
-            await uow.StudentSubmissions.LockStudentCodeAsync(code, token);
+            // No clone or AI request inside this short registration transaction.
+            await uow.StudentSubmissions.LockQuickCreateKeyAsync("repo:" + repoUrl.ToLowerInvariant(), token);
+            var run = await uow.AnalysisRuns.GetByRepoUrlAsync(repoUrl, token);
+            if (run == null)
+            {
+                run = new AnalysisRun { Id = Guid.NewGuid(), RepoUrl = repoUrl,
+                    RepoName = PACE.Application.Common.RepoUrlHelper.DeriveName(repoUrl) };
+                await uow.AnalysisRuns.AddAsync(run, token);
+            }
+            await uow.StudentSubmissions.LockQuickCreateKeyAsync("student:" + code, token);
             var matches = await uow.Users.FindAsync(u => u.StudentCode != null && u.StudentCode.Trim().ToUpper() == code, ct: token);
             if (matches.Count > 1) throw new ConflictException("MSSV bị trùng trong dữ liệu. Vui lòng kiểm tra tài khoản.");
             var user = matches.SingleOrDefault();
@@ -377,11 +382,6 @@ public class StudentSubmissionService(
                 if (user.Role != UserRole.Student)
                     throw new ConflictException("MSSV thuộc tài khoản admin/giảng viên, không thể chuyển thành sinh viên.");
             }
-            var email = string.IsNullOrWhiteSpace(request.Email)
-                ? user?.Email ?? $"{code.ToLowerInvariant()}@fpt.edu.vn"
-                : request.Email.Trim().ToLowerInvariant();
-            if (!new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email) || email.Length > 255)
-                throw new BadRequestException("Email không hợp lệ.");
             if (await uow.Users.EmailExistsAsync(email, user?.Id, token))
                 throw new ConflictException("Email đã thuộc tài khoản khác. Vui lòng kiểm tra MSSV và email.");
             if (user == null)

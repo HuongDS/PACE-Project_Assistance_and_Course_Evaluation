@@ -9,15 +9,8 @@ namespace PACE.Infrastructure.Repositories;
 
 public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmissionRepository
 {
-    public async Task LockStudentCodeAsync(string code, CancellationToken ct = default)
-        => await context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({code}, 0))", ct);
-
-    public async Task<IReadOnlyList<ReadyRepositoryDto>> GetReadyRepositoriesAsync(CancellationToken ct = default)
-        => await context.AnalysisRuns.AsNoTracking()
-            .Where(r => r.RepoUrl != null && r.RepoUrl != "" && r.Businesses.Any(b => b.Questions.Any()))
-            .OrderBy(r => r.RepoName).ThenBy(r => r.Id)
-            .Select(r => new ReadyRepositoryDto(r.Id, r.RepoName, r.RepoUrl!,
-                r.Businesses.SelectMany(b => b.Questions).Count())).ToListAsync(ct);
+    public async Task LockQuickCreateKeyAsync(string key, CancellationToken ct = default)
+        => await context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
 
     public Task<List<StudentAnswer>> GetSurveyAnswersAsync(CancellationToken ct = default)
         => context.StudentAnswers.AsNoTracking().AsSplitQuery()

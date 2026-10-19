@@ -15,7 +15,8 @@ public class AdminQuickCreateTests
     private readonly AnalysisRun run = new() {Id = Guid.NewGuid(), RepoName = "Ready repo", RepoUrl = "https://example.com/repo"};
     private User? user;
     private readonly List<StudentSubmission> submissions = [];
-    private bool hasQuestions = true, collision, codeLocked, userLocked, transaction;
+    private bool collision, codeLocked, userLocked, transaction, repoExists = true;
+    private int addedRepos;
     private readonly StudentSubmissionService service;
 
     public AdminQuickCreateTests()
@@ -27,11 +28,14 @@ public class AdminQuickCreateTests
             "AddAsync" => AddUser((User)a[0]!),
             _ => throw new NotSupportedException(m.Name)
         });
-        var runs = Stub<IAnalysisRunRepository>.Create((m,a) => Task.FromResult<AnalysisRun?>(run));
+        var runs = Stub<IAnalysisRunRepository>.Create((m,a) => m.Name switch {
+            "GetByRepoUrlAsync" => Task.FromResult<AnalysisRun?>(repoExists ? run : null),
+            "AddAsync" => AddRepo((AnalysisRun)a[0]!),
+            _ => throw new NotSupportedException(m.Name)
+        });
         var repo = Stub<IStudentSubmissionRepository>.Create((m,a) => {
             switch (m.Name) {
-                case "GetBusinessesWithQuestionsAsync": return Task.FromResult(hasQuestions ? new List<Business> {new() {Id = Guid.NewGuid()}} : []);
-                case "LockStudentCodeAsync": Assert.True(transaction);codeLocked = true;return Task.CompletedTask;
+                case "LockQuickCreateKeyAsync": Assert.True(transaction);codeLocked = true;return Task.CompletedTask;
                 case "LockUserAsync": Assert.True(transaction && codeLocked);userLocked = true;return Task.CompletedTask;
                 case "GetSubmittedAsync": return Task.FromResult(submissions.FirstOrDefault(s => s.SubmittedAt != null));
                 case "GetActiveSessionAsync": return Task.FromResult(submissions.FirstOrDefault(s => s.SubmittedAt == null));
@@ -53,10 +57,16 @@ public class AdminQuickCreateTests
         var ai = Stub<IStudentAnswerService>.Create((m,a) => throw new Exception("Quick create must never invoke AI"));
         service = new(uow, current, ai);
     }
+    private Task AddRepo(AnalysisRun value)
+    {
+        Assert.True(transaction && codeLocked);repoExists = true;addedRepos++;
+        run.Id = value.Id;run.RepoUrl = value.RepoUrl;run.RepoName = value.RepoName;
+        return Task.CompletedTask;
+    }
     private Task AddUser(User value) {Assert.True(codeLocked);user = value;return Task.CompletedTask;}
     private async Task<AdminStudentSubmissionDto> Execute(Func<CancellationToken,Task<AdminStudentSubmissionDto>> action)
     { transaction = true;try {return await action(default);}finally {transaction = false;} }
-    private QuickCreateStudentSubmissionRequest Request() => new() {StudentCode = " se192251 ", Email = " STUDENT@GMAIL.COM ", AnalysisRunId = run.Id};
+    private QuickCreateStudentSubmissionRequest Request() => new() {StudentCode = " se192251 ", Email = " STUDENT@GMAIL.COM ", RepoUrl = run.RepoUrl!};
     [Fact] public async Task WalkInStudentCanLogInWithoutSheetAndRepeatedCreateReusesDraft()
     {
         var first = await service.QuickCreateAsync(Request());
@@ -72,10 +82,26 @@ public class AdminQuickCreateTests
         Assert.Equal(first.Submission.SubmissionId, second.Submission.SubmissionId);
         Assert.NotNull(second.Submission.SubmittedAt);Assert.Single(submissions);
     }
-    [Fact] public async Task EmptyRepoIsRejectedBeforeAnyUserOrDraftIsCreated()
+    [Fact] public async Task NewRepoIsRegisteredBeforeAnalysisAndRepeatedRequestReusesIt()
     {
-        hasQuestions = false;
-        await Assert.ThrowsAsync<BadRequestException>(() => service.QuickCreateAsync(Request()));
+        repoExists = false;
+        var first = await service.QuickCreateAsync(Request());
+        var second = await service.QuickCreateAsync(Request());
+        Assert.Equal(1, addedRepos);
+        Assert.Equal(first.Submission.Repository.AnalysisRunId, second.Submission.Repository.AnalysisRunId);
+        Assert.Empty(first.Submission.Answers);
+        Assert.Single(submissions);
+    }
+    [Fact] public async Task OwnerOnlyUrlIsRejectedBeforeRegistration()
+    {
+        var request = Request();request.RepoUrl = "https://github.com/student";
+        await Assert.ThrowsAsync<BadRequestException>(() => service.QuickCreateAsync(request));
+        Assert.Null(user);Assert.Empty(submissions);Assert.Equal(0, addedRepos);
+    }
+    [Fact] public async Task GmailIsRequiredEvenForExistingStudent()
+    {
+        var request = Request();request.Email = " ";
+        await Assert.ThrowsAsync<BadRequestException>(() => service.QuickCreateAsync(request));
         Assert.Null(user);Assert.Empty(submissions);
     }
     [Theory][InlineData(UserRole.Admin)][InlineData(UserRole.Lecturer)]

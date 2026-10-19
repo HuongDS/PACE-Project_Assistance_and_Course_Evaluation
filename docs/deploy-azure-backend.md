@@ -63,7 +63,11 @@ to the one Container App and AcrPush scoped to the one registry. It cannot delet
 resources or list runtime secrets. AI/database credentials stay in Azure.
 
 Before mutation, the deployment captures the old image and deployment marker.
-Test, build, or local startup failure leaves Azure untouched. On update/health
+Test, build, or local startup failure leaves Azure untouched. Idempotent Container
+App reads/updates retry transient Azure management errors (429 and 5xx) up to five
+attempts, with exponential delays of 5/10/20/40 seconds plus jitter. Numeric
+Retry-After values are honored; a server cooldown over 60 seconds fails without
+retrying early. Validation/auth failures are not retried. On exhausted update/health
 failure, it restores the prior image/marker and checks health, then fails the
 workflow so GitHub shows the unsuccessful deployment. `/health` returns an
 `X-PACE-Revision` header when configured, so success requires the new commit to

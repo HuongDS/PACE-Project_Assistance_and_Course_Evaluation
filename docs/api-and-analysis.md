@@ -46,7 +46,7 @@ Hiện chỉ đăng nhập bằng email (chưa chốt B3: email / email+OTP / Go
 
 | Bảng | Admin | Student |
 |---|---|---|
-| users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `POST /api/users/import` (Excel .xlsx: cột Email + cột Repo/Link GitHub, tuỳ chọn cột Tên nhóm) | `GET /api/auth/me` |
+| users | `GET/POST /api/users`, `GET/PUT/DELETE /api/users/{id}`, `POST /api/users/import` (Excel .xlsx: cột Email + cột Repo/Link GitHub, tuỳ chọn cột MSSV và Tên nhóm; MSSV được lưu vào `users.StudentCode`, sinh viên đã có mà thiếu MSSV sẽ được điền, kết quả trả `updatedUsers`) | `GET /api/auth/me` |
 | analysis_runs | `POST /api/analysis-runs?force=false` (gửi link repo → tạo repo nếu chưa có rồi phân tích luôn), `GET /api/analysis-runs`, `GET/PUT/DELETE /api/analysis-runs/{id}`, `GET/PUT /api/analysis-runs/{id}/template` | `GET /api/analysis-runs/me` |
 | businesses | `GET /api/businesses?analysisRunId=`, `GET/PUT /api/businesses/{id}` (đổi tên), `GET /api/businesses/{id}/flows` | |
 | method_sources | `GET /api/method-sources?analysisRunId=&businessId=&language=&search=`, `GET /api/method-sources/{id}` | |

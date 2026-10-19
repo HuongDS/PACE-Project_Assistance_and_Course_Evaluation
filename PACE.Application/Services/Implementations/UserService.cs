@@ -15,6 +15,8 @@ namespace PACE.Application.Services.Implementations;
 public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUserImportReader importReader) : IUserService
 {
     private static readonly EmailAddressAttribute EmailValidator = new();
+    // FPT student codes: campus/program letters followed by digits, e.g. SE183398, QE180011 (users.StudentCode is varchar(20)).
+    private static readonly System.Text.RegularExpressions.Regex StudentCodePattern = new(@"^[A-Z]{2,3}\d{5,8}$");
 
     public async Task<PagedResult<UserDto>> GetPagedAsync(UserQuery query, CancellationToken ct = default)
     {
@@ -73,8 +75,10 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
         foreach (var run in runs) runsByUrl.TryAdd(RepoUrlHelper.Normalize(run.RepoUrl!), run);
 
         var newUsers = new List<User>();
+        var updatedUsers = new List<User>();
         var newRuns = new List<AnalysisRun>();
         var seenInFile = new HashSet<string>();
+        var codesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var row in rows)
         {
@@ -90,9 +94,46 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
             }
 
             var email = NormalizeEmail(row.Email);
-            if (existingEmails.Contains(email) || !seenInFile.Add(email))
+            var code = NormalizeStudentCode(row.StudentCode);
+            if (code is not null && !StudentCodePattern.IsMatch(code))
             {
+                skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, $"MSSV \"{row.StudentCode}\" không hợp lệ."));
+                continue;
+            }
+            if (!seenInFile.Add(email))
+            {
+                skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, "Email trùng với một dòng phía trên."));
+                continue;
+            }
+            if (code is not null && !codesInFile.Add(code))
+            {
+                skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, $"MSSV {code} trùng với một dòng phía trên."));
+                continue;
+            }
+
+            if (existingEmails.Contains(email))
+            {
+                // Students imported before the MSSV column existed get their code filled in, so MSSV login works.
+                var existing = await uow.Users.GetByEmailAsync(email, ct);
+                if (code is not null && existing is { Role: UserRole.Student } && string.IsNullOrWhiteSpace(existing.StudentCode))
+                {
+                    if (await uow.Users.GetByStudentCodeAsync(code, ct) is not null)
+                    {
+                        skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, $"MSSV {code} đã thuộc tài khoản khác."));
+                        continue;
+                    }
+                    existing.StudentCode = code;
+                    // GetByEmailAsync includes the repo; several students share one repo, so attaching it repeatedly would collide in EF.
+                    existing.AnalysisRun = null;
+                    updatedUsers.Add(existing);
+                    continue;
+                }
                 skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, "Email đã tồn tại."));
+                continue;
+            }
+            if (code is not null && await uow.Users.GetByStudentCodeAsync(code, ct) is not null)
+            {
+                skipped.Add(new ImportRowError(row.Row, email, row.RepoUrl, $"MSSV {code} đã thuộc tài khoản khác."));
                 continue;
             }
 
@@ -109,17 +150,21 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
                 newRuns.Add(run);
             }
 
-            newUsers.Add(new User { Id = Guid.NewGuid(), Email = email, Role = UserRole.Student, AnalysisRunId = run.Id });
+            newUsers.Add(new User { Id = Guid.NewGuid(), Email = email, StudentCode = code, Role = UserRole.Student, AnalysisRunId = run.Id });
         }
 
         await uow.ExecuteInTransactionAsync(async token =>
         {
             await uow.AnalysisRuns.AddRangeAsync(newRuns, token);
             await uow.Users.AddRangeAsync(newUsers, token);
+            foreach (var user in updatedUsers) uow.Users.Update(user);
         }, ct);
 
-        return new ImportUsersResult(rows.Count, newUsers.Count, newRuns.Count, skipped);
+        return new ImportUsersResult(rows.Count, newUsers.Count, newRuns.Count, skipped, updatedUsers.Count);
     }
+
+    private static string? NormalizeStudentCode(string? code)
+        => string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();
 
     private async Task<User> LoadAsync(Guid id, bool asNoTracking, CancellationToken ct)
         => await uow.Users.GetWithRepoAsync(id, asNoTracking, ct)

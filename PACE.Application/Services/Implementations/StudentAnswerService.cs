@@ -137,22 +137,25 @@ namespace PACE.Application.Services.Implementations
                     var flows = await flowService.GetByBusinessAsync(businessId);
                     if (flows == null || !flows.Any())
                     {
-                        // FAIL-FAST: Không gọi LLM khi thiếu dữ liệu đồ thị
-                        throw new NotFoundException($"Không tìm thấy đồ thị luồng xử lý (graph) cho nghiệp vụ với BusinessId: {businessId}");
+                        // FALLBACK AN TOÀN: Nếu nghiệp vụ thiếu đồ thị luồng, tự động lùi về mã nguồn (Raw) để không làm gián đoạn bài nộp
+                        goto case ContextType.Raw;
                     }
                     var sbGraph = new StringBuilder();
                     sbGraph.AppendLine("Đồ thị luồng xử lý nghiệp vụ:");
+                    var hasValidGraphContent = false;
                     foreach (var flow in flows)
                     {
                         sbGraph.AppendLine($"[Luồng: {flow.Name}] - [Điểm vào: {flow.EntryMethod}]");
                         var detail = await flowService.GetDetailAsync(flow.Id);
                         if (!string.IsNullOrWhiteSpace(detail.MermaidGraph))
                         {
+                            hasValidGraphContent = true;
                             sbGraph.AppendLine("Sơ đồ Mermaid:");
                             sbGraph.AppendLine(detail.MermaidGraph);
                         }
                         if (detail.Edges != null && detail.Edges.Any())
                         {
+                            hasValidGraphContent = true;
                             sbGraph.AppendLine("Danh sách các bước (Edges):");
                             foreach (var edge in detail.Edges.OrderBy(e => e.StepOrder))
                             {
@@ -160,6 +163,10 @@ namespace PACE.Application.Services.Implementations
                             }
                         }
                         sbGraph.AppendLine();
+                    }
+                    if (!hasValidGraphContent)
+                    {
+                        goto case ContextType.Raw;
                     }
                     return sbGraph.ToString();
 

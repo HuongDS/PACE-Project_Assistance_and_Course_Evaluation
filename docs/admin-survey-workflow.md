@@ -2,17 +2,20 @@
 
 ## Sinh viên chưa có trong sheet
 
-Admin vào `/admin/submissions` → **Tạo nhanh bài làm**, nhập MSSV, email (nếu biết), chọn repository. Danh sách chỉ có repo đã có câu hỏi; API vẫn kiểm tra lại trước khi ghi. Không tạo repo hay gọi AI khi tạo phiên.
+Admin vào `/admin/submissions` → **Tạo nhanh bài làm**, nhập đủ **MSSV, Gmail/email và link repository** rồi bấm **Lưu & tiếp tục phân tích repo**. Không cần nhập sheet và không yêu cầu repo đã có câu hỏi.
 
-- MSSV được trim và viết hoa, email trim và viết thường.
-- Tài khoản chưa có: tạo Student và phiên chưa nộp.
-- Tài khoản đã có: giữ nguyên vai trò; chỉ Student mới được gán repo.
-- Cùng MSSV/repo: dùng lại phiên đang làm, hoặc trả bài đã nộp để xem lại. Không reset/xóa đáp án hay feedback.
-- Nếu để email trống, giữ email cũ; sinh viên mới được gán email theo MSSV và có thể bổ sung email thực lúc đăng nhập nhanh.
-- Từ chối email thuộc tài khoản khác và MSSV bị trùng dữ liệu.
-- Có transaction, advisory lock theo MSSV và row lock cho tài khoản hiện hữu để tránh tạo trùng khi admin bấm lại.
+1. BE chuẩn hóa link repo, dùng lại repository có cùng URL hoặc tạo repository chưa phân tích; tạo/dùng lại Student và phiên bài làm.
+2. FE chuyển ngay sang wizard phân tích dùng chung với trang Repository: tải/đề xuất template nghiệp vụ, admin xem lại rồi **Chốt & phân tích**.
+3. Phân tích xong, bấm **Chọn nghiệp vụ & sinh câu hỏi** để mở `/admin/questions?run=<id>` đúng repository. Admin tick nghiệp vụ, chọn số câu/độ khó và sinh câu hỏi như luồng bình thường.
+4. Nếu repo đã có nghiệp vụ, có thể chọn **Chọn nghiệp vụ hiện có & sinh câu hỏi** để dùng lại; không bắt phân tích lại repo đã có câu hỏi/đáp án.
 
-API (Admin): `GET /api/student-submissions/admin/ready-repositories`, `POST /api/student-submissions/admin/quick-create`.
+- MSSV trim/viết hoa, email trim/viết thường; email là bắt buộc.
+- Từ chối link thiếu tên repo, email thuộc tài khoản khác, MSSV bị trùng hoặc tài khoản có vai trò Admin/Lecturer.
+- Cùng MSSV/repo: dùng lại phiên đang làm hoặc bài đã nộp. Không reset/xóa đáp án hay feedback.
+- Có transaction, advisory lock theo URL repo và MSSV, row lock cho tài khoản hiện hữu. Clone/AI chạy sau transaction đăng ký qua luồng phân tích chuẩn.
+- Nếu phân tích hoặc sinh câu hỏi lỗi, tài khoản/repo/phiên vừa đăng ký vẫn còn để thử lại; không báo sinh viên đã sẵn sàng khi chưa có câu hỏi.
+
+API (Admin): `POST /api/student-submissions/admin/quick-create` nhận `{ studentCode, email, repoUrl }`. Không còn yêu cầu `analysisRunId` hay danh mục repo có câu hỏi.
 
 ## Kết quả sau khảo sát
 

@@ -69,8 +69,8 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
 
         var existingEmails = await uow.Users.GetAllEmailsAsync(ct);
         var runs = await uow.AnalysisRuns.GetAllWithRepoUrlAsync(ct);
-        var runsByUrl = new Dictionary<string, AnalysisRun>(StringComparer.OrdinalIgnoreCase);
-        foreach (var run in runs) runsByUrl.TryAdd(RepoUrlHelper.Normalize(run.RepoUrl!), run);
+        var runsByUrl = new Dictionary<string, AnalysisRun>(StringComparer.Ordinal);
+        foreach (var run in runs) runsByUrl.TryAdd(RepoUrlHelper.SourceKey(run.RepoUrl!), run);
 
         var newUsers = new List<User>();
         var newRuns = new List<AnalysisRun>();
@@ -97,7 +97,7 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
             }
 
             var url = RepoUrlHelper.Normalize(row.RepoUrl);
-            if (!runsByUrl.TryGetValue(url, out var run))
+            if (!runsByUrl.TryGetValue(RepoUrlHelper.SourceKey(url), out var run))
             {
                 run = new AnalysisRun
                 {
@@ -105,7 +105,7 @@ public class UserService(IUnitOfWork uow, ICurrentUserService currentUser, IUser
                     RepoUrl = url,
                     RepoName = string.IsNullOrWhiteSpace(row.RepoName) ? RepoUrlHelper.DeriveName(url) : row.RepoName.Trim()
                 };
-                runsByUrl[url] = run;
+                runsByUrl[RepoUrlHelper.SourceKey(url)] = run;
                 newRuns.Add(run);
             }
 

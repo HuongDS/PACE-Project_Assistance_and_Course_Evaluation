@@ -131,50 +131,44 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
     public Task<byte[]> GenerateCriteriaTemplateExcelAsync(CancellationToken ct = default)
         => Task.FromResult(excelService.GenerateCriteriaTemplate());
 
-    public async Task<SurveySummaryResponseDto> GetSurveyResultsAsync(CancellationToken ct = default)
+    public async Task<SurveyFilterOptions> GetSurveyFilterOptionsAsync(CancellationToken ct = default)
     {
-        var criteria = await uow.RubricCriteria.GetAllOrderedAsync(ct);
-        var paged = await uow.StudentSubmissions.GetPagedAsync(new StudentSubmissionQuery { Page = 1, PageSize = 500 }, ct);
-        var submissions = paged.Items;
+        var answers = await uow.StudentSubmissions.GetSurveyAnswersAsync(ct);
+        return new SurveyFilterOptions(
+            answers.Select(a => a.Submission!.AnalysisRun).DistinctBy(r => r.Id)
+                .OrderBy(r => r.RepoName).Select(r => new SurveyRepoOption(r.Id, r.RepoName ?? r.RepoUrl ?? "Repository")).ToList(),
+            answers.Select(a => a.Question.Business).DistinctBy(b => b.Id).OrderBy(b => b.BusinessName)
+                .Select(b => new SurveyBusinessOption(b.Id, b.AnalysisRunId, b.BusinessName)).ToList(),
+            answers.Select(a => a.Question).DistinctBy(q => q.Id).OrderBy(q => q.QuestionText)
+                .Select(q => new SurveyQuestionOption(q.Id, q.Business.AnalysisRunId, q.BusinessId, q.QuestionText)).ToList());
+    }
 
+    public async Task<SurveySummaryResponseDto> GetSurveyResultsAsync(SurveyResultQuery? query = null, CancellationToken ct = default)
+    {
+        query ??= new SurveyResultQuery();
+        SurveyResultFiltering.Validate(query);
+        var criteria = (await uow.RubricCriteria.GetAllOrderedAsync(ct))
+            .Where(c => !query.CriterionId.HasValue || c.Id == query.CriterionId).ToList();
+        var answers = await uow.StudentSubmissions.GetSurveyAnswersAsync(ct);
         var items = new List<SurveySubmissionItemDto>();
         var allRatings = new List<(Guid CriterionId, int Score)>();
-
-        foreach (var sub in submissions)
+        foreach (var answer in answers)
         {
-            var studentEmail = sub.User?.Email ?? "—";
-            var studentCode = sub.User?.StudentCode;
-            var repoName = sub.AnalysisRun?.RepoName;
-
-            foreach (var answer in sub.Answers)
+            var sub = answer.Submission!;
+            var scores = answer.RubricScores.Where(r => !query.CriterionId.HasValue || r.CriterionId == query.CriterionId)
+                .Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId, r.Criterion?.Code ?? "",
+                    r.Criterion?.Name ?? "", r.Criterion?.Statement ?? "", r.Score)).ToList();
+            var item = new SurveySubmissionItemDto(sub.Id, answer.Id, answer.User.Email, answer.User.StudentCode,
+                sub.AnalysisRun.RepoName, answer.Question.Business.BusinessName, answer.Question.QuestionText,
+                answer.AnswerText ?? "", answer.AiFeedback, answer.StudentReply,
+                scores.Count > 0 ? scores.Average(s => s.Score) : 0, sub.SubmittedAt, scores)
             {
-                var scores = answer.RubricScores.Select(r => new SubmissionRubricScoreDto(
-                    r.Id, r.CriterionId, r.Criterion?.Code ?? "", r.Criterion?.Name ?? "", r.Criterion?.Statement ?? "", r.Score
-                )).ToList();
-
-                double avg = scores.Count > 0 ? scores.Average(s => s.Score) : 0;
-
-                foreach (var sc in scores)
-                {
-                    allRatings.Add((sc.CriterionId, sc.Score));
-                }
-
-                items.Add(new SurveySubmissionItemDto(
-                    sub.Id,
-                    answer.Id,
-                    studentEmail,
-                    studentCode,
-                    repoName,
-                    answer.Question?.Business?.BusinessName ?? "Nghiệp vụ",
-                    answer.Question?.QuestionText ?? "Câu hỏi",
-                    answer.AnswerText ?? "",
-                    answer.AiFeedback,
-                    answer.StudentReply,
-                    avg,
-                    sub.SubmittedAt ?? sub.CreatedAt,
-                    scores
-                ));
-            }
+                AnalysisRunId = sub.AnalysisRunId, BusinessId = answer.Question.BusinessId,
+                QuestionId = answer.QuestionId, FeedbackFormat = answer.FeedbackFormat
+            };
+            if (!SurveyResultFiltering.Matches(item, query)) continue;
+            items.Add(item);
+            allRatings.AddRange(scores.Select(sc => (sc.CriterionId, sc.Score)));
         }
 
         var criteriaStats = new List<CriterionStatDto>();
@@ -204,7 +198,7 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
         var lowest = criteriaStats.Where(c => c.TotalRatings > 0).OrderBy(c => c.AverageScore).FirstOrDefault();
 
         return new SurveySummaryResponseDto(
-            submissions.Count,
+            items.Select(i => i.SubmissionId).Distinct().Count(),
             items.Count,
             allRatings.Count,
             overallAvg,
@@ -215,9 +209,9 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
         );
     }
 
-    public async Task<byte[]> ExportSurveyResultsToExcelAsync(CancellationToken ct = default)
+    public async Task<byte[]> ExportSurveyResultsToExcelAsync(SurveyResultQuery? query = null, CancellationToken ct = default)
     {
-        var summary = await GetSurveyResultsAsync(ct);
+        var summary = await GetSurveyResultsAsync(query, ct);
         return excelService.ExportSurveyResults(summary);
     }
 

@@ -9,6 +9,17 @@ namespace PACE.Infrastructure.Repositories;
 
 public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmissionRepository
 {
+    public async Task LockQuickCreateKeyAsync(string key, CancellationToken ct = default)
+        => await context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+
+    public Task<List<StudentAnswer>> GetSurveyAnswersAsync(CancellationToken ct = default)
+        => context.StudentAnswers.AsNoTracking().AsSplitQuery()
+            .Where(a => a.Submission != null && a.Submission.SubmittedAt != null)
+            .Include(a => a.Submission).ThenInclude(s => s!.AnalysisRun)
+            .Include(a => a.User).Include(a => a.Question).ThenInclude(q => q.Business)
+            .Include(a => a.RubricScores).ThenInclude(r => r.Criterion)
+            .OrderByDescending(a => a.Submission!.SubmittedAt).ThenBy(a => a.Id).ToListAsync(ct);
+
     public async Task LockUserAsync(Guid userId, CancellationToken ct = default)
     {
         // Materialize directly: FOR UPDATE must execute on the same context/transaction as SaveChanges.

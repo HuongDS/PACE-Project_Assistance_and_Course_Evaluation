@@ -1,0 +1,282 @@
+[
+  {
+    "studentCode": "LOAD001",
+    "email": "pace-load-001@example.com"
+  },
+  {
+    "studentCode": "LOAD002",
+    "email": "pace-load-002@example.com"
+  },
+  {
+    "studentCode": "LOAD003",
+    "email": "pace-load-003@example.com"
+  },
+  {
+    "studentCode": "LOAD004",
+    "email": "pace-load-004@example.com"
+  },
+  {
+    "studentCode": "LOAD005",
+    "email": "pace-load-005@example.com"
+  },
+  {
+    "studentCode": "LOAD006",
+    "email": "pace-load-006@example.com"
+  },
+  {
+    "studentCode": "LOAD007",
+    "email": "pace-load-007@example.com"
+  },
+  {
+    "studentCode": "LOAD008",
+    "email": "pace-load-008@example.com"
+  },
+  {
+    "studentCode": "LOAD009",
+    "email": "pace-load-009@example.com"
+  },
+  {
+    "studentCode": "LOAD010",
+    "email": "pace-load-010@example.com"
+  },
+  {
+    "studentCode": "LOAD011",
+    "email": "pace-load-011@example.com"
+  },
+  {
+    "studentCode": "LOAD012",
+    "email": "pace-load-012@example.com"
+  },
+  {
+    "studentCode": "LOAD013",
+    "email": "pace-load-013@example.com"
+  },
+  {
+    "studentCode": "LOAD014",
+    "email": "pace-load-014@example.com"
+  },
+  {
+    "studentCode": "LOAD015",
+    "email": "pace-load-015@example.com"
+  },
+  {
+    "studentCode": "LOAD016",
+    "email": "pace-load-016@example.com"
+  },
+  {
+    "studentCode": "LOAD017",
+    "email": "pace-load-017@example.com"
+  },
+  {
+    "studentCode": "LOAD018",
+    "email": "pace-load-018@example.com"
+  },
+  {
+    "studentCode": "LOAD019",
+    "email": "pace-load-019@example.com"
+  },
+  {
+    "studentCode": "LOAD020",
+    "email": "pace-load-020@example.com"
+  },
+  {
+    "studentCode": "LOAD021",
+    "email": "pace-load-021@example.com"
+  },
+  {
+    "studentCode": "LOAD022",
+    "email": "pace-load-022@example.com"
+  },
+  {
+    "studentCode": "LOAD023",
+    "email": "pace-load-023@example.com"
+  },
+  {
+    "studentCode": "LOAD024",
+    "email": "pace-load-024@example.com"
+  },
+  {
+    "studentCode": "LOAD025",
+    "email": "pace-load-025@example.com"
+  },
+  {
+    "studentCode": "LOAD026",
+    "email": "pace-load-026@example.com"
+  },
+  {
+    "studentCode": "LOAD027",
+    "email": "pace-load-027@example.com"
+  },
+  {
+    "studentCode": "LOAD028",
+    "email": "pace-load-028@example.com"
+  },
+  {
+    "studentCode": "LOAD029",
+    "email": "pace-load-029@example.com"
+  },
+  {
+    "studentCode": "LOAD030",
+    "email": "pace-load-030@example.com"
+  },
+  {
+    "studentCode": "LOAD031",
+    "email": "pace-load-031@example.com"
+  },
+  {
+    "studentCode": "LOAD032",
+    "email": "pace-load-032@example.com"
+  },
+  {
+    "studentCode": "LOAD033",
+    "email": "pace-load-033@example.com"
+  },
+  {
+    "studentCode": "LOAD034",
+    "email": "pace-load-034@example.com"
+  },
+  {
+    "studentCode": "LOAD035",
+    "email": "pace-load-035@example.com"
+  },
+  {
+    "studentCode": "LOAD036",
+    "email": "pace-load-036@example.com"
+  },
+  {
+    "studentCode": "LOAD037",
+    "email": "pace-load-037@example.com"
+  },
+  {
+    "studentCode": "LOAD038",
+    "email": "pace-load-038@example.com"
+  },
+  {
+    "studentCode": "LOAD039",
+    "email": "pace-load-039@example.com"
+  },
+  {
+    "studentCode": "LOAD040",
+    "email": "pace-load-040@example.com"
+  },
+  {
+    "studentCode": "LOAD041",
+    "email": "pace-load-041@example.com"
+  },
+  {
+    "studentCode": "LOAD042",
+    "email": "pace-load-042@example.com"
+  },
+  {
+    "studentCode": "LOAD043",
+    "email": "pace-load-043@example.com"
+  },
+  {
+    "studentCode": "LOAD044",
+    "email": "pace-load-044@example.com"
+  },
+  {
+    "studentCode": "LOAD045",
+    "email": "pace-load-045@example.com"
+  },
+  {
+    "studentCode": "LOAD046",
+    "email": "pace-load-046@example.com"
+  },
+  {
+    "studentCode": "LOAD047",
+    "email": "pace-load-047@example.com"
+  },
+  {
+    "studentCode": "LOAD048",
+    "email": "pace-load-048@example.com"
+  },
+  {
+    "studentCode": "LOAD049",
+    "email": "pace-load-049@example.com"
+  },
+  {
+    "studentCode": "LOAD050",
+    "email": "pace-load-050@example.com"
+  },
+  {
+    "studentCode": "LOAD051",
+    "email": "pace-load-051@example.com"
+  },
+  {
+    "studentCode": "LOAD052",
+    "email": "pace-load-052@example.com"
+  },
+  {
+    "studentCode": "LOAD053",
+    "email": "pace-load-053@example.com"
+  },
+  {
+    "studentCode": "LOAD054",
+    "email": "pace-load-054@example.com"
+  },
+  {
+    "studentCode": "LOAD055",
+    "email": "pace-load-055@example.com"
+  },
+  {
+    "studentCode": "LOAD056",
+    "email": "pace-load-056@example.com"
+  },
+  {
+    "studentCode": "LOAD057",
+    "email": "pace-load-057@example.com"
+  },
+  {
+    "studentCode": "LOAD058",
+    "email": "pace-load-058@example.com"
+  },
+  {
+    "studentCode": "LOAD059",
+    "email": "pace-load-059@example.com"
+  },
+  {
+    "studentCode": "LOAD060",
+    "email": "pace-load-060@example.com"
+  },
+  {
+    "studentCode": "LOAD061",
+    "email": "pace-load-061@example.com"
+  },
+  {
+    "studentCode": "LOAD062",
+    "email": "pace-load-062@example.com"
+  },
+  {
+    "studentCode": "LOAD063",
+    "email": "pace-load-063@example.com"
+  },
+  {
+    "studentCode": "LOAD064",
+    "email": "pace-load-064@example.com"
+  },
+  {
+    "studentCode": "LOAD065",
+    "email": "pace-load-065@example.com"
+  },
+  {
+    "studentCode": "LOAD066",
+    "email": "pace-load-066@example.com"
+  },
+  {
+    "studentCode": "LOAD067",
+    "email": "pace-load-067@example.com"
+  },
+  {
+    "studentCode": "LOAD068",
+    "email": "pace-load-068@example.com"
+  },
+  {
+    "studentCode": "LOAD069",
+    "email": "pace-load-069@example.com"
+  },
+  {
+    "studentCode": "LOAD070",
+    "email": "pace-load-070@example.com"
+  }
+]

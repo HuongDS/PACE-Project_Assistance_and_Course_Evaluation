@@ -69,14 +69,19 @@ public class RubricCriteriaController(IRubricCriterionService criterionService) 
 
     [HttpGet("survey-results")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<ActionResult<SurveySummaryResponseDto>> GetSurveyResults(CancellationToken ct)
-        => Ok(await criterionService.GetSurveyResultsAsync(ct));
+    public async Task<ActionResult<SurveySummaryResponseDto>> GetSurveyResults([FromQuery] SurveyResultQuery query, CancellationToken ct)
+        => Ok(await criterionService.GetSurveyResultsAsync(query, ct));
+
+    [HttpGet("survey-results/options")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<SurveyFilterOptions>> GetSurveyFilterOptions(CancellationToken ct)
+        => Ok(await criterionService.GetSurveyFilterOptionsAsync(ct));
 
     [HttpGet("survey-results/export-excel")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> ExportSurveyResults(CancellationToken ct)
+    public async Task<IActionResult> ExportSurveyResults([FromQuery] SurveyResultQuery query, CancellationToken ct)
     {
-        var bytes = await criterionService.ExportSurveyResultsToExcelAsync(ct);
+        var bytes = await criterionService.ExportSurveyResultsToExcelAsync(query, ct);
         var fileName = $"PACE-Survey-Report-{DateTime.Now:yyyyMMdd-HHmmss}.xlsx";
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }

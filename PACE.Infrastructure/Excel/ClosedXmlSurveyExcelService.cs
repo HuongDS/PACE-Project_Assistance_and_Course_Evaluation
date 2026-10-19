@@ -34,19 +34,19 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
 
         // KPI Box
         int r = 3;
-        ws1.Cell(r, 1).Value = "Tổng số bài nộp khảo sát:";
+        ws1.Cell(r, 1).Value = "Tổng số bài đã nộp khớp bộ lọc:";
         ws1.Cell(r, 1).Style.Font.Bold = true;
         ws1.Cell(r, 2).Value = summary.TotalSubmissions;
         ws1.Cell(r, 2).Style.Font.Bold = true;
 
         ws1.Cell(r, 4).Value = "Điểm đồng thuận trung bình:";
         ws1.Cell(r, 4).Style.Font.Bold = true;
-        ws1.Cell(r, 5).Value = $"{summary.OverallAverageScore:F2} / 5.0 ⭐";
+        ws1.Cell(r, 5).Value = summary.TotalRatings > 0 ? $"{summary.OverallAverageScore:F2} / 5.0 ⭐" : "—";
         ws1.Cell(r, 5).Style.Font.Bold = true;
         ws1.Cell(r, 5).Style.Font.FontColor = XLColor.FromHtml("#15803d");
 
         r++;
-        ws1.Cell(r, 1).Value = "Tổng số câu hỏi được đánh giá:";
+        ws1.Cell(r, 1).Value = "Tổng số câu trả lời khớp bộ lọc:";
         ws1.Cell(r, 1).Style.Font.Bold = true;
         ws1.Cell(r, 2).Value = summary.TotalEvaluatedAnswers;
 
@@ -66,9 +66,9 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
         ws1.Cell(r, 5).Style.Font.FontColor = XLColor.FromHtml("#b91c1c");
 
         r++;
-        ws1.Cell(r, 1).Value = "Thời gian xuất báo cáo:";
+        ws1.Cell(r, 1).Value = "Thời gian xuất báo cáo (UTC):";
         ws1.Cell(r, 1).Style.Font.Bold = true;
-        ws1.Cell(r, 2).Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        ws1.Cell(r, 2).Value = DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss");
 
         // Criteria Table
         r = 8;
@@ -152,7 +152,8 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
             headers2.Add($"{c.Name} ({c.Code})");
         }
         headers2.Add("Điểm TB câu");
-        headers2.Add("Thời gian làm bài");
+        headers2.Add("Thời gian nộp bài (UTC)");
+        headers2.AddRange(new[] { "Loại feedback", "Repository ID", "Business ID", "Question ID", "Submission ID", "Student Answer ID" });
 
         int r2 = 1;
         for (int c = 0; c < headers2.Count; c++)
@@ -200,7 +201,8 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
             }
 
             var avgCell = ws2.Cell(rowStart2, col++);
-            avgCell.Value = Math.Round(item.AverageScore, 2);
+            if (item.Scores.Count > 0) avgCell.Value = Math.Round(item.AverageScore, 2);
+            else avgCell.Value = "—";
             avgCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             avgCell.Style.Font.Bold = true;
 
@@ -208,6 +210,12 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
             timeCell.Value = item.SubmittedAt.HasValue ? item.SubmittedAt.Value.ToString("dd/MM/yyyy HH:mm") : "—";
             timeCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
+            ws2.Cell(rowStart2, col++).Value = item.FeedbackFormat ?? "—";
+            ws2.Cell(rowStart2, col++).Value = item.AnalysisRunId.ToString();
+            ws2.Cell(rowStart2, col++).Value = item.BusinessId.ToString();
+            ws2.Cell(rowStart2, col++).Value = item.QuestionId.ToString();
+            ws2.Cell(rowStart2, col++).Value = item.SubmissionId.ToString();
+            ws2.Cell(rowStart2, col++).Value = item.StudentAnswerId.ToString();
             rowStart2++;
         }
 

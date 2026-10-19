@@ -13,8 +13,9 @@ public interface IRubricCriterionService
     Task<BulkImportRubricCriteriaResult> BulkImportAsync(List<UpsertRubricCriterionRequest> items, CancellationToken ct = default);
     Task<BulkImportRubricCriteriaResult> ImportFromStreamAsync(Stream stream, string fileName, CancellationToken ct = default);
     Task<byte[]> GenerateCriteriaTemplateExcelAsync(CancellationToken ct = default);
-    Task<SurveySummaryResponseDto> GetSurveyResultsAsync(CancellationToken ct = default);
-    Task<byte[]> ExportSurveyResultsToExcelAsync(CancellationToken ct = default);
+    Task<SurveySummaryResponseDto> GetSurveyResultsAsync(SurveyResultQuery? query = null, CancellationToken ct = default);
+    Task<byte[]> ExportSurveyResultsToExcelAsync(SurveyResultQuery? query = null, CancellationToken ct = default);
+    Task<SurveyFilterOptions> GetSurveyFilterOptionsAsync(CancellationToken ct = default);
     Task<int> SeedSampleSurveysIfEmptyAsync(CancellationToken ct = default);
     Task SubmitSurveyAsync(SubmitSurveyRequest request, Guid userId, CancellationToken ct = default);
 }

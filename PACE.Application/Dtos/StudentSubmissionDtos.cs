@@ -41,11 +41,11 @@ public class QuickCreateStudentSubmissionRequest
     [Required, MaxLength(20)]
     public string StudentCode { get; set; } = string.Empty;
 
-    [EmailAddress]
-    public string? Email { get; set; }
+    [Required, EmailAddress, MaxLength(255)]
+    public string Email { get; set; } = string.Empty;
 
-    [Required]
-    public Guid AnalysisRunId { get; set; }
+    [Required, Url, MaxLength(500)]
+    public string RepoUrl { get; set; } = string.Empty;
 }
 
 public record StudentSubmissionJoinedDto(
@@ -118,3 +118,4 @@ public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery
 }
 
 public record AdminStudentSubmissionDto(Guid UserId, string? StudentId, string Email, StudentSubmissionDetailDto Submission);
+

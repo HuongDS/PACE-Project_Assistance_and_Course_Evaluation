@@ -92,6 +92,7 @@ public class EvaluatedAnswerDto
     public Guid QuestionId { get; set; }
     public string QuestionText { get; set; } = string.Empty;
     public string AnswerText { get; set; } = string.Empty;
+    public ContextType ContextType { get; set; } = ContextType.Raw;
     public StudentAnswerRes? AiEvaluation { get; set; }
     public string EvaluationStatus => AiEvaluation?.HasContent == true ? "Completed" : "Unavailable";
     public string? EvaluationError { get; set; }

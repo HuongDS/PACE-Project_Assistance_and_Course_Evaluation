@@ -281,7 +281,7 @@ public class StudentSubmissionService(
                     UserId = student.Id,
                     StudentAnswer = a.AnswerText.Trim(),
                     FeedbackFormat = format,
-                    ContextModel = ContextType.Raw
+                    ContextModel = question.ContextType
                 };
 
                 var jsonResult = await studentAnswerService.EvaluateStudentAnswerAsync(evalReq);
@@ -311,6 +311,7 @@ public class StudentSubmissionService(
                 QuestionId = a.QuestionId,
                 QuestionText = question.QuestionText,
                 AnswerText = a.AnswerText.Trim(),
+                ContextType = question.ContextType,
                 AiEvaluation = parsed,
                 EvaluationError = evaluationError
             };

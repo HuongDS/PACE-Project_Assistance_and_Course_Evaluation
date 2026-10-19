@@ -34,7 +34,7 @@ public sealed class RepositoryScanner : IRepositoryScanner
 
     private static readonly HashSet<string> BackendMarkers = new(StringComparer.OrdinalIgnoreCase)
     {
-        "express", "@nestjs/core", "koa", "fastify", "@hapi/hapi", "restify", "mongoose", "sequelize",
+        "hono", "@hono/node-server", "express", "@nestjs/core", "koa", "fastify", "@hapi/hapi", "restify", "mongoose", "sequelize",
         "typeorm", "prisma", "@prisma/client", "knex", "pg", "mysql2", "mongodb", "socket.io"
     };
 

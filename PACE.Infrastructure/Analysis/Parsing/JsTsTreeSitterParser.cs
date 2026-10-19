@@ -102,6 +102,8 @@ internal sealed class JsFileAnalyzer
     private readonly HashSet<string> _moduleFunctionNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _classNames = new(StringComparer.Ordinal);
     private readonly HashSet<string> _emittedMethods = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _honoConstructors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Node> _honoVariables = new(StringComparer.Ordinal);
 
     private sealed record FunctionCandidate(string Name, Node Function, Node Source);
 
@@ -195,6 +197,13 @@ internal sealed class JsFileAnalyzer
         foreach (var (classNode, source, decorators) in classes)
             AnalyzeClass(classNode, source, decorators);
 
+        // Hono routers often live inside factory functions and use fluent chains.
+        foreach (var declaration in root.Descendants().Where(n => n.Type == "variable_declarator"))
+        {
+            var name = declaration.Field("name");
+            var value = declaration.Field("value");
+            if (name?.Type == "identifier" && value != null) _honoVariables[name.Text] = value;
+        }
         CollectRoutes(root);
     }
 
@@ -346,6 +355,12 @@ internal sealed class JsFileAnalyzer
     {
         var sourceNode = statement.Field("source");
         var path = ParserText.StringLiteralValue(sourceNode?.Text);
+        if (path == "hono")
+        {
+            foreach (var spec in statement.Descendants().Where(n => n.Type == "import_specifier" && n.FieldText("name") == "Hono"))
+                _honoConstructors.Add(spec.FieldText("alias") ?? "Hono");
+            return;
+        }
         if (path is null || !IsRelative(path)) return;
         var module = ImportModuleName(path);
 
@@ -686,6 +701,19 @@ internal sealed class JsFileAnalyzer
             : new ParsedCall { ReceiverType = receiver, MethodName = property, Condition = condition, ArgumentCount = argCount };
     }
 
+    private bool IsHonoRouter(Node? node, int depth = 0)
+    {
+        if (node == null || depth > 64) return false;
+        if (node.Type == "new_expression") return _honoConstructors.Contains(node.FieldText("constructor") ?? "");
+        if (node.Type == "identifier" && _honoVariables.TryGetValue(node.Text, out var initializer))
+            return IsHonoRouter(initializer, depth + 1);
+        if (node.Type == "call_expression" && node.Field("function") is { Type: "member_expression" } member)
+            return IsHonoRouter(member.Field("object"), depth + 1);
+        if (node.Type is "parenthesized_expression" or "as_expression" or "satisfies_expression")
+            return IsHonoRouter(node.NamedChildren.FirstOrDefault(), depth + 1);
+        return false;
+    }
+
     private void CollectRoutes(Node root)
     {
         foreach (var call in root.Descendants().Where(n => n.Type == "call_expression"))
@@ -698,8 +726,9 @@ internal sealed class JsFileAnalyzer
             var args = call.Field("arguments")?.NamedChildren.Where(a => a.Type != "comment").ToList() ?? [];
             var obj = function.Field("object");
             string? path = null;
+            var hono = IsHonoRouter(obj);
             var chained = false;
-            for (var cursor = obj; cursor?.Type == "call_expression" && cursor.Field("function")?.Type == "member_expression";)
+            for (var cursor = hono ? null : obj; cursor?.Type == "call_expression" && cursor.Field("function")?.Type == "member_expression";)
             {
                 var member = cursor.Field("function")!;
                 if (member.FieldText("property") == "route")
@@ -717,7 +746,7 @@ internal sealed class JsFileAnalyzer
             }
             else
             {
-                if (obj?.Type != "identifier" || !LooksLikeRouter(obj.Text) || args.Count < 2) continue;
+                if ((!hono && (obj?.Type != "identifier" || !LooksLikeRouter(obj.Text))) || args.Count < 2) continue;
                 path = ParserText.StringLiteralValue(args[0].Text);
             }
 

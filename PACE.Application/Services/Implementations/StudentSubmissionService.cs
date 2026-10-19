@@ -139,18 +139,18 @@ public class StudentSubmissionService(
     public async Task<StudentSubmissionResultDto> SubmitAsync(SubmitStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Student);
-        if (request.Answers is null || request.Answers.Count != 3
+        if (request.Answers is null || request.Answers.Count == 0
             || request.Answers.Any(a => a is null || a.BusinessId == Guid.Empty || a.QuestionId == Guid.Empty
                 || string.IsNullOrWhiteSpace(a.AnswerText)))
-            throw new BadRequestException("Phải gửi đúng 3 câu trả lời không rỗng với Business và Question hợp lệ.");
-        if (request.Answers.Select(a => a.BusinessId).Distinct().Count() != 3)
-            throw new BadRequestException("Phải chọn 3 Business khác nhau.");
+            throw new BadRequestException("Phải gửi các câu trả lời không rỗng với Business và Question hợp lệ.");
+        if (request.Answers.Select(a => a.QuestionId).Distinct().Count() != request.Answers.Count)
+            throw new BadRequestException("Không được chọn trùng câu hỏi trong bài làm.");
 
         var student = await FindStudentAsync(ct);
         var submittedAt = DateTime.UtcNow;
         Guid submissionId = request.SubmissionId ?? Guid.NewGuid();
 
-        // 1. Lưu bài nộp và 3 câu trả lời vào Database (Transaction nhanh < 200ms)
+        // 1. Lưu bài nộp và các câu trả lời vào Database (Transaction nhanh < 200ms)
         var (submission, businesses, alreadySubmitted) = await uow.ExecuteInTransactionAsync(async token =>
         {
             await uow.StudentSubmissions.LockUserAsync(student.Id, token);
@@ -175,6 +175,15 @@ public class StudentSubmissionService(
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
 
             var bizList = await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token);
+            var totalQuestionsCount = bizList.SelectMany(b => b.Questions).Count();
+            var expectedCount = Math.Min(4, totalQuestionsCount);
+            if (expectedCount > 0 && request.Answers.Count != expectedCount)
+            {
+                throw new BadRequestException(
+                    expectedCount >= 4
+                        ? "Quy chế bài thi yêu cầu bạn phải chọn và trả lời đúng 4 câu hỏi."
+                        : $"Repository của bạn có tổng cộng {expectedCount} câu hỏi, do đó bài thi yêu cầu bạn phải chọn và trả lời toàn bộ {expectedCount} câu hỏi.");
+            }
 
             foreach (var answer in request.Answers)
             {
@@ -233,6 +242,12 @@ public class StudentSubmissionService(
         {
             assignedFormats = allFormats.ToArray();
             Random.Shared.Shuffle(assignedFormats);
+        }
+        else if (request.Answers.Count < allFormats.Length)
+        {
+            var shuffled = allFormats.ToArray();
+            Random.Shared.Shuffle(shuffled);
+            assignedFormats = shuffled.Take(request.Answers.Count).ToArray();
         }
         else
         {

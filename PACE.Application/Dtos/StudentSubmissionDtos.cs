@@ -10,7 +10,7 @@ public class SubmitStudentSubmissionRequest
 {
     public Guid? SubmissionId { get; set; }
 
-    [Required, MinLength(3), MaxLength(3)]
+    [Required, MinLength(1), MaxLength(4)]
     public List<StudentAnswerRequest> Answers { get; set; } = [];
 }
 

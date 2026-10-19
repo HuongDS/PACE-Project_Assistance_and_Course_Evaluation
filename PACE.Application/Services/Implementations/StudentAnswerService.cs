@@ -21,7 +21,8 @@ namespace PACE.Application.Services.Implementations
         IBusinessService businessService,
         IBusinessFlowService flowService,
         IUnitOfWork uow,
-        ICurrentUserService currentUserService) : IStudentAnswerService
+        ICurrentUserService currentUserService,
+        IGroqService? groqService = null) : IStudentAnswerService
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -100,7 +101,12 @@ namespace PACE.Application.Services.Implementations
 
             string userPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat, sanitizedSuggestedAnswer);
 
-            // 4. TIẾN HÀNH ĐÁNH GIÁ VÀ CẬP NHẬT XUỐNG DB
+            // 4. TIẾN HÀNH ĐÁNH GIÁ VÀ CẬP NHẬT XUỐNG DB (NẾU RESEARCHING THÌ CHẠY MULTI-LLM ENSEMBLE DEEPSEEK + GROQ)
+            if (request.FeedbackFormat == FeedbackFormat.Researching && groqService != null && groqService.IsConfigured)
+            {
+                return await EvaluateResearchingMultiLlmAsync(context, sanitizedQuestion, sanitizedStudentAnswer, request, submittedAnswer);
+            }
+
             return await EvaluateSingleIterationAsync(systemPrompt, userPrompt, request, submittedAnswer);
         }
 
@@ -205,6 +211,144 @@ QUY TẮC PHÂN CẤP CHỈ THỊ (INSTRUCTION HIERARCHY - ĐẶC QUYỀN CAO NH
 VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM ĐIỂM SỐ TỔNG THỂ):
 {BuildJsonFormatRule(feedbackFormat)}
 ";
+        }
+
+        private async Task<string> EvaluateResearchingMultiLlmAsync(
+            string context,
+            string sanitizedQuestion,
+            string sanitizedStudentAnswer,
+            StudentAnswerReq request,
+            StudentAnswer submittedAnswer)
+        {
+            // BƯỚC 1: DeepSeek (Code Inspector) - Soi kỹ thuật và mã nguồn
+            string deepSeekSystemPrompt = @"Bạn là Chuyên gia Kiểm định Mã nguồn Kỹ thuật (DeepSeek Code Inspector) thuộc hệ thống PACE.
+Nhiệm vụ: Đối chiếu câu trả lời của sinh viên với mã nguồn thực tế của hệ thống.
+Hãy phân tích khách quan:
+1. Bằng chứng mã nguồn: Chỉ ra cụ thể các hàm, file, điều kiện rẽ nhánh trong mã nguồn liên quan.
+2. Điểm sinh viên nói đúng so với logic mã nguồn.
+3. Điểm sinh viên nói sai, thiếu sót hoặc nhầm lẫn so với mã nguồn thực tế.
+Trả về DUY NHẤT một JSON theo cấu trúc:
+{
+  ""code_evidence"": ""[Trích dẫn cụ thể hàm, file, điều kiện mã nguồn thực tế]"",
+  ""technical_accuracy"": ""[Phân tích sinh viên đúng hay sai so với logic code]"",
+  ""logical_flaws"": ""[Các điểm thiếu sót hoặc hiểu nhầm kỹ thuật]""
+}";
+
+            string deepSeekUserPrompt = $@"Mã nguồn thực tế:
+{context}
+
+Câu hỏi:
+{sanitizedQuestion}
+
+Câu trả lời của sinh viên:
+{sanitizedStudentAnswer}";
+
+            string codeInspectionJson = string.Empty;
+            try
+            {
+                codeInspectionJson = await llmService.EvaluateWithLlmAsync(deepSeekSystemPrompt, deepSeekUserPrompt);
+            }
+            catch
+            {
+                // Fallback nếu DeepSeek gián đoạn
+            }
+
+            // BƯỚC 2: Groq (Pedagogical Synthesizer & Rubric Grader) - Tổng hợp sư phạm & barem định lượng
+            string groqSystemPrompt = @"Bạn là Giảng viên Đại học & Chuyên gia Sư phạm Đánh giá Đồ án (Groq Pedagogical Synthesizer).
+Bạn có nhiệm vụ kết hợp phân tích kỹ thuật từ DeepSeek Code Inspector để đưa ra bản đánh giá toàn diện, công tâm và mang tính sư phạm cao cho sinh viên.
+Quy tắc đánh giá:
+- Đánh giá điểm định lượng theo barem tiêu chí (rubric) thang điểm 1-5, chấm điểm khách quan dựa trên bằng chứng kỹ thuật.
+- Lời nhận xét sư phạm phải mang tính định hướng, ân cần nhưng chuẩn xác về chuyên môn (khắc phục điểm yếu tâng bốc điểm của ChatGPT và sự khô khan của Copilot).
+- Trả về DUY NHẤT một khối JSON theo cấu trúc sau:
+{
+  ""feedback_type"": ""Researching"",
+  ""comment"": ""[Nhận xét tổng quan mang tính sư phạm và định hướng học tập]"",
+  ""positives"": ""[Các điểm sinh viên nắm vững so với mã nguồn thực tế]"",
+  ""constructive_criticism"": ""[Các lỗ hổng logic kỹ thuật hoặc thiếu sót cần khắc phục]"",
+  ""next_steps"": ""[Gợi ý cụ thể các class/hàm/tài liệu sinh viên cần xem lại]"",
+  ""code_evidence"": ""[Bằng chứng mã nguồn từ DeepSeek]"",
+  ""logic_explanation"": ""[Phân tích logic đối chiếu giữa câu trả lời và code thực tế]"",
+  ""criteria"": [
+    {
+      ""name"": ""Độ chính xác kỹ thuật mã nguồn"",
+      ""score"": 4,
+      ""comment"": ""[Nhận xét tiêu chí 1]""
+    },
+    {
+      ""name"": ""Hiểu biết kiến trúc & luồng xử lý"",
+      ""score"": 4,
+      ""comment"": ""[Nhận xét tiêu chí 2]""
+    }
+  ],
+  ""researching"": {
+    ""consensus_summary"": ""[Tóm tắt đánh giá đồng thuận giữa các mô hình]"",
+    ""code_inspection"": ""[Phân tích kỹ thuật chuyên sâu]"",
+    ""pedagogical_guidance"": ""[Định hướng phát triển kỹ năng lập trình]"",
+    ""models_involved"": [""DeepSeek-V3 (Code Inspector)"", ""Groq-GPT-OSS-120B (Pedagogical Synthesizer)""]
+  }
+}";
+
+            string groqUserPrompt = $@"Bối cảnh câu hỏi:
+{sanitizedQuestion}
+
+Câu trả lời của sinh viên:
+{sanitizedStudentAnswer}
+
+Báo cáo kiểm định kỹ thuật từ DeepSeek Code Inspector:
+{(string.IsNullOrWhiteSpace(codeInspectionJson) ? "(Chưa có báo cáo chi tiết, vui lòng đối chiếu trực tiếp mã nguồn)" : codeInspectionJson)}
+
+Mã nguồn tham chiếu:
+{context}
+
+VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC ĐÃ NÊU TRÊN.";
+
+            string rawGroqResponse = string.Empty;
+            if (groqService != null && groqService.IsConfigured)
+            {
+                rawGroqResponse = await groqService.EvaluateWithGroqAsync(groqSystemPrompt, groqUserPrompt);
+            }
+
+            // Nếu Groq không phản hồi được, fallback sang đánh giá DeepSeek đơn lẻ
+            if (string.IsNullOrWhiteSpace(rawGroqResponse))
+            {
+                string fallbackSystemPrompt = BuildHierarchicalSystemPrompt();
+                string fallbackUserPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat);
+                return await EvaluateSingleIterationAsync(fallbackSystemPrompt, fallbackUserPrompt, request, submittedAnswer);
+            }
+
+            var (isValid, cleanJson) = AnswerEvaluationHelper.ValidateAndSanitizeOutput(rawGroqResponse);
+            if (!isValid)
+            {
+                string fallbackSystemPrompt = BuildHierarchicalSystemPrompt();
+                string fallbackUserPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat);
+                return await EvaluateSingleIterationAsync(fallbackSystemPrompt, fallbackUserPrompt, request, submittedAnswer);
+            }
+
+            StudentAnswerRes? parsedResult = null;
+            try
+            {
+                parsedResult = JsonSerializer.Deserialize<StudentAnswerRes>(cleanJson, JsonOptions);
+            }
+            catch (JsonException) { }
+
+            if (parsedResult?.HasContent != true)
+            {
+                string fallbackSystemPrompt = BuildHierarchicalSystemPrompt();
+                string fallbackUserPrompt = BuildUserPrompt(context, sanitizedQuestion, sanitizedStudentAnswer, request.FeedbackFormat);
+                return await EvaluateSingleIterationAsync(fallbackSystemPrompt, fallbackUserPrompt, request, submittedAnswer);
+            }
+
+            parsedResult.FeedbackType = FeedbackFormat.Researching;
+            parsedResult.Researching ??= new ResearchingFeedbackDto
+            {
+                ConsensusSummary = parsedResult.Comment ?? parsedResult.Positives,
+                CodeInspection = parsedResult.CodeEvidence,
+                PedagogicalGuidance = parsedResult.NextSteps ?? parsedResult.ConstructiveCriticism,
+                ModelsInvolved = ["DeepSeek-V3 (Code Inspector)", "Groq-GPT-OSS-120B (Pedagogical Synthesizer)"]
+            };
+
+            await SaveEvaluationToDbAsync(request, submittedAnswer, cleanJson, parsedResult);
+            return JsonSerializer.Serialize(parsedResult, JsonOptions);
         }
 
         private async Task<string> EvaluateSingleIterationAsync(
@@ -317,6 +461,38 @@ VUI LÒNG TRẢ VỀ DUY NHẤT 1 KHỐI JSON THEO CẤU TRÚC SAU (KHÔNG KÈM 
   ""feedback_type"": ""Explainable"",
   ""code_evidence"": ""[Trích dẫn cụ thể hàm, điều kiện, dòng code trong ngữ cảnh minh chứng cho đánh giá]"",
   ""logic_explanation"": ""[Giải thích chi tiết logic đúng/sai và phân tích câu trả lời của sinh viên]""
+}
+```";
+
+                case FeedbackFormat.Researching:
+                    return @"
+```json
+{
+  ""feedback_type"": ""Researching"",
+  ""comment"": ""[Nhận xét tổng quan mang tính sư phạm và định hướng học tập]"",
+  ""positives"": ""[Các điểm sinh viên nắm vững so với mã nguồn thực tế]"",
+  ""constructive_criticism"": ""[Các lỗ hổng logic kỹ thuật hoặc thiếu sót cần khắc phục]"",
+  ""next_steps"": ""[Gợi ý cụ thể các class/hàm/tài liệu sinh viên cần xem lại]"",
+  ""code_evidence"": ""[Trích dẫn cụ thể hàm, file, logic trong source code]"",
+  ""logic_explanation"": ""[Phân tích logic đối chiếu giữa câu trả lời và code thực tế]"",
+  ""criteria"": [
+    {
+      ""name"": ""Độ chính xác kỹ thuật mã nguồn"",
+      ""score"": 4,
+      ""comment"": ""[Nhận xét tiêu chí 1]""
+    },
+    {
+      ""name"": ""Hiểu biết kiến trúc & luồng xử lý"",
+      ""score"": 4,
+      ""comment"": ""[Nhận xét tiêu chí 2]""
+    }
+  ],
+  ""researching"": {
+    ""consensus_summary"": ""[Tóm tắt đánh giá đồng thuận giữa các mô hình]"",
+    ""code_inspection"": ""[Phân tích kỹ thuật chuyên sâu]"",
+    ""pedagogical_guidance"": ""[Định hướng phát triển kỹ năng lập trình]"",
+    ""models_involved"": [""DeepSeek-V3 (Code Inspector)"", ""Groq-GPT-OSS-120B (Pedagogical Synthesizer)""]
+  }
 }
 ```";
 

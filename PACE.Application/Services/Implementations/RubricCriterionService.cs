@@ -282,6 +282,8 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
                 ?? throw new NotFoundException("Bài nộp", request.SubmissionId);
             if (submission.UserId != userId)
                 throw new ForbiddenException("Bạn không có quyền gửi khảo sát cho bài làm này.");
+            if (submission.Answers.Any(a => a.RubricScores.Count > 0))
+                throw new ConflictException("Khảo sát đã hoàn tất. Bạn chỉ có thể xem lại kết quả đã lưu.");
             if (submission.SubmittedAt == null)
                 throw new BadRequestException("Vui lòng nộp bài trước khi gửi khảo sát.");
             if (request.Answers is null || request.Answers.Count == 0)
@@ -312,6 +314,9 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
                 }
                 changes.Add((answer, input));
             }
+
+            if (changes.Count != submission.Answers.Count || changes.Any(change => !criteria.SetEquals(change.Input.Scores.Select(s => s.CriterionId))))
+                throw new BadRequestException("Vui lòng đánh giá đủ tiêu chí cho tất cả câu trả lời trước khi gửi khảo sát.");
 
             foreach (var (answer, input) in changes)
             {

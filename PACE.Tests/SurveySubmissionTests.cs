@@ -11,16 +11,16 @@ namespace PACE.Tests;
 public class SurveySubmissionTests
 {
     [Fact]
-    public async Task SurveyPersistsNewScoresAndRetryUpdatesExistingScoreAndReply()
+    public async Task SurveyPersistsScoresAndRejectsResubmissionWithoutOverwriting()
     {
         var f = new Fixture();
         await f.Service.SubmitSurveyAsync(f.Request(4), f.Submission.UserId);
         Assert.Equal(4, Assert.Single(f.Answer.RubricScores).Score);
         Assert.Equal("Helpful", f.Answer.StudentReply);
-        await f.Service.SubmitSurveyAsync(f.Request(2), f.Submission.UserId);
-        Assert.Equal(2, Assert.Single(f.Answer.RubricScores).Score);
+        await Assert.ThrowsAsync<ConflictException>(() => f.Service.SubmitSurveyAsync(f.Request(2), f.Submission.UserId));
+        Assert.Equal(4, Assert.Single(f.Answer.RubricScores).Score);
         Assert.Equal(1, f.Insertions);
-        Assert.Equal(2, f.Saves);
+        Assert.Equal(1, f.Saves);
     }
 
     [Fact]
@@ -50,6 +50,17 @@ public class SurveySubmissionTests
         var request = f.Request(4);
         request.Answers[0].StudentAnswerId = Guid.NewGuid();
         await Assert.ThrowsAsync<BadRequestException>(() => f.Service.SubmitSurveyAsync(request, f.Submission.UserId));
+        Assert.Equal(0, f.Saves);
+    }
+
+    [Fact]
+    public async Task IncompleteSurveyDoesNotLockOrSavePartialRatings()
+    {
+        var f = new Fixture();
+        f.Submission.Answers.Add(new StudentAnswer { Id = Guid.NewGuid(), QuestionId = Guid.NewGuid() });
+        await Assert.ThrowsAsync<BadRequestException>(() => f.Service.SubmitSurveyAsync(f.Request(4), f.Submission.UserId));
+        Assert.Empty(f.Answer.RubricScores);
+        Assert.Null(f.Answer.StudentReply);
         Assert.Equal(0, f.Saves);
     }
 

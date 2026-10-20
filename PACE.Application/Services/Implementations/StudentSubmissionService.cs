@@ -453,6 +453,10 @@ public class StudentSubmissionService(
                 {
                     BusinessId = a.Question.BusinessId, BusinessName = a.Question.Business.BusinessName,
                     QuestionId = a.QuestionId, QuestionText = a.Question.QuestionText, AnswerText = a.AnswerText ?? "",
+                    StudentAnswerId = a.Id,
+                    StudentReply = a.StudentReply,
+                    RubricScores = a.RubricScores.Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId,
+                        r.Criterion.Code, r.Criterion.Name, r.Criterion.Statement, r.Score)).ToList(),
                     AiEvaluation = ParseSavedFeedback(a.AiFeedback)
                 }).ToList()
         };

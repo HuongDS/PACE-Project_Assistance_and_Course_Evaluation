@@ -81,6 +81,7 @@ public record SubmissionRubricScoreDto(Guid Id, Guid CriterionId, string Code, s
 public record StudentSubmissionDetailDto(Guid SubmissionId, DateTime CreatedAt, DateTime? SubmittedAt, SubmissionRepositoryDto Repository, IReadOnlyList<SubmittedAnswerDto> Answers)
 {
     public SubmissionStudentDto Student { get; init; } = null!;
+    public bool SurveyCompleted => Answers.Any(a => a.RubricScores.Count > 0);
 }
 public record SubmissionStudentDto(Guid UserId, string? StudentCode, string Email);
 
@@ -93,6 +94,8 @@ public class EvaluatedAnswerDto
     public string QuestionText { get; set; } = string.Empty;
     public string AnswerText { get; set; } = string.Empty;
     public ContextType ContextType { get; set; } = ContextType.Raw;
+    public string? StudentReply { get; set; }
+    public IReadOnlyList<SubmissionRubricScoreDto> RubricScores { get; set; } = [];
     public StudentAnswerRes? AiEvaluation { get; set; }
     public string EvaluationStatus => AiEvaluation?.HasContent == true ? "Completed" : "Unavailable";
     public string? EvaluationError { get; set; }
@@ -105,6 +108,7 @@ public class StudentSubmissionResultDto
     public DateTime? SubmittedAt { get; set; }
     public SubmissionRepositoryDto Repository { get; set; } = null!;
     public List<EvaluatedAnswerDto> EvaluatedAnswers { get; set; } = new();
+    public bool SurveyCompleted => EvaluatedAnswers.Any(a => a.RubricScores.Count > 0);
 }
 
 public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery

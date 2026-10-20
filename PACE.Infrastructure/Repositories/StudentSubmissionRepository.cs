@@ -48,6 +48,13 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
             .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
             .Include(s => s.Answers).ThenInclude(a => a.RubricScores).ThenInclude(r => r.Criterion);
 
+    public Task<StudentSubmission?> GetForSurveyUpdateAsync(Guid id, CancellationToken ct = default)
+        => context.StudentSubmissions.AsTracking().AsSplitQuery()
+            .Include(s => s.Answers).ThenInclude(a => a.RubricScores)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+    public void AddSurveyScore(RubricScore score) => context.RubricScores.Add(score);
+
     public Task<StudentSubmission?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => Details().FirstOrDefaultAsync(s => s.Id == id, ct);
 

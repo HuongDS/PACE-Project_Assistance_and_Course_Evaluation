@@ -48,4 +48,6 @@ public record ImportUsersResult(
     int TotalRows,
     int CreatedUsers,
     int CreatedRepos,
-    IReadOnlyList<ImportRowError> Skipped);
+    IReadOnlyList<ImportRowError> Skipped,
+    // Existing students whose missing MSSV was filled in from the file.
+    int UpdatedUsers = 0);

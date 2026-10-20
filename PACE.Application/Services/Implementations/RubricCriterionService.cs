@@ -274,49 +274,61 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
 
     public async Task SubmitSurveyAsync(SubmitSurveyRequest request, Guid userId, CancellationToken ct = default)
     {
-        var submission = await uow.StudentSubmissions.GetByIdAsync(request.SubmissionId, ct)
-            ?? throw new NotFoundException("Bài nộp", request.SubmissionId);
-
-        if (submission.UserId != userId)
-            throw new ForbiddenException("Bạn không có quyền gửi khảo sát cho bài làm này.");
-
-        var criteria = (await uow.RubricCriteria.GetAllOrderedAsync(ct)).ToDictionary(c => c.Id);
-
-        foreach (var answerInput in request.Answers)
+        await uow.ExecuteInTransactionAsync(async token =>
         {
-            var answer = submission.Answers.FirstOrDefault(a => a.Id == answerInput.StudentAnswerId)
-                      ?? (answerInput.QuestionId != Guid.Empty ? submission.Answers.FirstOrDefault(a => a.QuestionId == answerInput.QuestionId) : null);
-            if (answer is null) continue;
+            // Serialize retries before reading scores so concurrent requests update rather than duplicate.
+            await uow.StudentSubmissions.LockUserAsync(userId, token);
+            var submission = await uow.StudentSubmissions.GetForSurveyUpdateAsync(request.SubmissionId, token)
+                ?? throw new NotFoundException("Bài nộp", request.SubmissionId);
+            if (submission.UserId != userId)
+                throw new ForbiddenException("Bạn không có quyền gửi khảo sát cho bài làm này.");
+            if (submission.SubmittedAt == null)
+                throw new BadRequestException("Vui lòng nộp bài trước khi gửi khảo sát.");
+            if (request.Answers is null || request.Answers.Count == 0)
+                throw new BadRequestException("Danh sách đánh giá khảo sát rỗng.");
 
-            if (!string.IsNullOrWhiteSpace(answerInput.StudentReply))
+            var criteria = (await uow.RubricCriteria.GetAllOrderedAsync(token)).Select(c => c.Id).ToHashSet();
+            var changes = new List<(StudentAnswer Answer, StudentAnswerSurveyInputDto Input)>();
+            var seenAnswers = new HashSet<Guid>();
+            // Validate the whole payload before modifying tracked entities.
+            foreach (var input in request.Answers)
             {
-                answer.StudentReply = answerInput.StudentReply.Trim();
+                var answer = input.StudentAnswerId != Guid.Empty
+                    ? submission.Answers.FirstOrDefault(a => a.Id == input.StudentAnswerId)
+                    : submission.Answers.FirstOrDefault(a => a.QuestionId == input.QuestionId);
+                if (answer == null || (input.QuestionId != Guid.Empty && answer.QuestionId != input.QuestionId))
+                    throw new BadRequestException("Câu trả lời không thuộc bài nộp này.");
+                if (!seenAnswers.Add(answer.Id))
+                    throw new BadRequestException("Câu trả lời bị lặp trong khảo sát.");
+                if (input.Scores is null || input.Scores.Count == 0)
+                    throw new BadRequestException("Chưa có điểm đánh giá tiêu chí.");
+                var seenCriteria = new HashSet<Guid>();
+                foreach (var score in input.Scores)
+                {
+                    if (!criteria.Contains(score.CriterionId) || !seenCriteria.Add(score.CriterionId))
+                        throw new BadRequestException("Tiêu chí khảo sát không hợp lệ hoặc bị lặp.");
+                    if (score.Score < 1 || score.Score > 5)
+                        throw new BadRequestException("Điểm khảo sát phải từ 1 đến 5.");
+                }
+                changes.Add((answer, input));
             }
 
-            foreach (var sc in answerInput.Scores)
+            foreach (var (answer, input) in changes)
             {
-                if (!criteria.ContainsKey(sc.CriterionId)) continue;
-                if (sc.Score < 1 || sc.Score > 5) throw new BadRequestException("Điểm khảo sát phải từ 1 đến 5.");
-
-                var existing = answer.RubricScores.FirstOrDefault(s => s.CriterionId == sc.CriterionId);
-                if (existing != null)
+                if (input.StudentReply != null) answer.StudentReply = input.StudentReply.Trim();
+                foreach (var score in input.Scores)
                 {
-                    existing.Score = sc.Score;
-                }
-                else
-                {
-                    answer.RubricScores.Add(new RubricScore
+                    var existing = answer.RubricScores.FirstOrDefault(s => s.CriterionId == score.CriterionId);
+                    if (existing != null) existing.Score = score.Score;
+                    else uow.StudentSubmissions.AddSurveyScore(new RubricScore
                     {
-                        Id = Guid.NewGuid(),
-                        StudentAnswerId = answer.Id,
-                        CriterionId = sc.CriterionId,
-                        Score = sc.Score
+                        Id = Guid.NewGuid(), StudentAnswerId = answer.Id,
+                        CriterionId = score.CriterionId, Score = score.Score
                     });
                 }
             }
-        }
-
-        await uow.SaveChangesAsync(ct);
+            await uow.SaveChangesAsync(token);
+        }, ct);
     }
 
     private async Task EnsureCodeAvailableAsync(string code, Guid? exceptId, CancellationToken ct)

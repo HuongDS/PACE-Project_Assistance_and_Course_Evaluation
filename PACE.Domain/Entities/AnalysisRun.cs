@@ -6,6 +6,8 @@ public class AnalysisRun
 {
     public Guid Id { get; set; }
     public string? RepoUrl { get; set; }
+    public string? AnalyzedRepoUrl { get; set; }
+    public bool IsArchived { get; set; }
     public string? RepoName { get; set; }
     public string? AnalyzedCommitSha { get; set; }
     public DateTime? AnalyzedAt { get; set; }

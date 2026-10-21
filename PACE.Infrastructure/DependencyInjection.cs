@@ -53,8 +53,12 @@ public static class DependencyInjection
         services.AddScoped<ILlmService, DeepSeekService>();
         services.AddScoped<IGroqService, GroqService>();
 
+        services.Configure<PACE.Infrastructure.AI.OpenAiOptions>(configuration.GetSection(PACE.Infrastructure.AI.OpenAiOptions.SectionName));
+        services.AddSingleton<GeminiQuestionLlmClient>();
+        services.AddSingleton<OpenAiQuestionLlmClient>();
+
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
-        services.AddSingleton<IQuestionLlmClient, GeminiQuestionLlmClient>();
+        services.AddSingleton<IQuestionLlmClient, RoutingQuestionLlmClient>();
         return services;
     }
 }

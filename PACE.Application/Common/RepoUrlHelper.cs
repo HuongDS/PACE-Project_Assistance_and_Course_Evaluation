@@ -60,4 +60,38 @@ public static partial class RepoUrlHelper
             _ => null
         };
     }
+
+    /// <summary>
+    /// Sinh tên bản sao của repository với số thứ tự (1), (2), ... dựa trên tên gốc và danh sách các tên đã có.
+    /// Ví dụ: "Nhóm 1" -> "Nhóm 1 (1)"; nếu đã có "Nhóm 1 (1)" -> "Nhóm 1 (2)".
+    /// </summary>
+    public static string ComputeCopyName(string baseName, IEnumerable<string> existingNames)
+    {
+        if (string.IsNullOrWhiteSpace(baseName)) baseName = "Repository";
+        var match = Regex.Match(baseName.Trim(), @"^(.*?)(?:\s*\((\d+)\))?$");
+        var cleanBase = (match.Success && match.Groups[1].Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)
+            ? match.Groups[1].Value
+            : baseName).Trim();
+
+        var pattern = new Regex(
+            $@"^{Regex.Escape(cleanBase)}\s*\((\d+)\)$",
+            RegexOptions.IgnoreCase);
+
+        int maxNum = 0;
+        foreach (var name in existingNames)
+        {
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            var trimmed = name.Trim();
+            if (string.Equals(trimmed, cleanBase, StringComparison.OrdinalIgnoreCase))
+            {
+                maxNum = Math.Max(maxNum, 0);
+            }
+            var m = pattern.Match(trimmed);
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var num))
+            {
+                if (num > maxNum) maxNum = num;
+            }
+        }
+        return $"{cleanBase} ({maxNum + 1})";
+    }
 }

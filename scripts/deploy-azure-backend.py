@@ -31,11 +31,12 @@ def main():
         'database': config.get('ConnectionStrings', {}).get('DefaultConnection', ''),
         'jwt-key': config.get('Jwt', {}).get('Key', '') or secrets.token_urlsafe(48),
         'admin-password-hash': config.get('AdminLogin', {}).get('PasswordHash', ''),
+        'openai-key': config.get('OpenAI', {}).get('ApiKey', ''),
         'gemini-key': config.get('Gemini', {}).get('ApiKey', ''),
         'deepseek-key': config.get('DeepSeekConfig', {}).get('ApiKey', ''),
         'github-token': config.get('Analysis', {}).get('GitHubToken', ''),
     }
-    for key in ['database', 'admin-password-hash', 'gemini-key', 'deepseek-key']:
+    for key in ['database', 'admin-password-hash', 'gemini-key', 'openai-key', 'deepseek-key']:
         if not secret_values[key]:
             raise SystemExit(f'Missing configuration: {key}. No Azure resources created.')
     if len(secret_values['jwt-key'].encode()) < 32:
@@ -83,6 +84,7 @@ def main():
     for name, secret in {
         'ConnectionStrings__DefaultConnection': 'database', 'Jwt__Key': 'jwt-key',
         'AdminLogin__PasswordHash': 'admin-password-hash', 'Gemini__ApiKey': 'gemini-key',
+        'OpenAI__ApiKey': 'openai-key',
         'DeepSeekConfig__ApiKey': 'deepseek-key', 'Analysis__GitHubToken': 'github-token',
     }.items():
         if secret_values[secret]:

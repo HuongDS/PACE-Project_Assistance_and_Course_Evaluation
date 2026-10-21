@@ -21,7 +21,7 @@ Azure CLI authentication for the initial deployment used a temporary configurati
 
 - Docker, Python 3, Azure CLI, and an Azure subscription with permission to create resources.
 - `az login` completed and the intended subscription selected with `az account set --subscription <id>`.
-- Local `PACE.API/appsettings.Development.json` containing the database connection, JWT signing key, `AdminLogin:PasswordHash`, `Auth:SeedAdminEmails`, Gemini API key and DeepSeek API key. This ignored file is read locally and excluded from the image.
+- Local `PACE.API/appsettings.Development.json` containing the database connection, JWT signing key, `AdminLogin:PasswordHash`, `Auth:SeedAdminEmails`, Gemini API key, OpenAI API key and DeepSeek API key. This ignored file is read locally and excluded from the image.
 
 ```bash
 python3 scripts/deploy-azure-backend.py

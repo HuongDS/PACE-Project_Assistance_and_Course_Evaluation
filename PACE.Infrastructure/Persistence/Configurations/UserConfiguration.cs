@@ -9,9 +9,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> e)
     {
-        e.ToTable("users", t =>
-            t.HasCheckConstraint("CK_users_StudentHasRepo",
-                "\"Role\" IN ('Admin', 'Lecturer') OR \"AnalysisRunId\" IS NOT NULL"));
+        e.ToTable("users");
 
         e.HasKey(x => x.Id);
         e.Property(x => x.Email).IsRequired().HasMaxLength(255);

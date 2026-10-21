@@ -678,10 +678,7 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"StudentCode\" IS NOT NULL");
 
-                    b.ToTable("users", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_users_StudentHasRepo", "\"Role\" IN ('Admin', 'Lecturer') OR \"AnalysisRunId\" IS NOT NULL");
-                        });
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>

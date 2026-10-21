@@ -111,14 +111,21 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
 
     public async Task<AnalysisRunDto> UpdateAsync(Guid id, UpdateAnalysisRunRequest request, CancellationToken ct = default)
     {
-        var run = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
-        var url = RepoUrlHelper.Normalize(request.RepoUrl);
-        await EnsureUrlAvailableAsync(url, id, ct);
-
-        run.RepoUrl = url;
-        run.RepoName = string.IsNullOrWhiteSpace(request.RepoName) ? RepoUrlHelper.DeriveName(url) : request.RepoName.Trim();
-        await uow.SaveChangesAsync(ct);
-        return (await GetDetailAsync(id, ct)).Run;
+        if (RepoUrlHelper.FindProblem(request.RepoUrl) is { } problem) throw new BadRequestException(problem);
+        if (!AnalysisRunLock.TryAcquire(id)) throw new ConflictException("Repo đang được phân tích, vui lòng đợi xong rồi sửa link.");
+        try
+        {
+            var run = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
+            if (run.IsArchived) throw new BadRequestException("Không thể sửa bản lịch sử.");
+            var url = RepoUrlHelper.Normalize(request.RepoUrl);
+            await EnsureUrlAvailableAsync(url, id, ct);
+            run.AnalyzedRepoUrl ??= run.RepoUrl;
+            run.RepoUrl = url;
+            run.RepoName = string.IsNullOrWhiteSpace(request.RepoName) ? RepoUrlHelper.DeriveName(url) : request.RepoName.Trim();
+            await uow.SaveChangesAsync(ct);
+            return (await GetDetailAsync(id, ct)).Run;
+        }
+        finally { AnalysisRunLock.Release(id); }
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)

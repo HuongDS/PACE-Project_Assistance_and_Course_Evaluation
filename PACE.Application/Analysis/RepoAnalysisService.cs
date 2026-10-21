@@ -54,7 +54,7 @@ public sealed class RepoAnalysisService(
 
         try
         {
-            return await AnalyzeAsync(run.Id, confirmed, ct);
+            return await AnalyzeAsync(run.Id, confirmed, request.ReplaceExisting, ct);
         }
         catch
         {
@@ -79,12 +79,13 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, CancellationToken ct)
+    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, bool replaceExisting, CancellationToken ct)
     {
         var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
         if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
-        if (await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, ct))
-            throw new ConflictException("Repo đã có câu hỏi. Phân tích lại sẽ xoá nghiệp vụ cũ kéo theo câu hỏi và câu trả lời (cascade); gọi với force=true nếu chắc chắn.");
+        if (run.IsArchived) throw new BadRequestException("Không thể phân tích lại bản lịch sử.");
+        if (!replaceExisting && await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, ct))
+            throw new ConflictException("Repo đã có câu hỏi. Hãy xác nhận cập nhật nghiệp vụ để phân tích lại và lưu dữ liệu cũ vào lịch sử.");
 
         if (!AnalysisRunLock.TryAcquire(analysisRunId))
             throw new ConflictException("Repo này đang được phân tích, vui lòng đợi lần chạy trước xong.");
@@ -124,6 +125,9 @@ public sealed class RepoAnalysisService(
 
             await uow.ExecuteInTransactionAsync(async token =>
             {
+                if (replaceExisting) await uow.AnalysisRuns.ArchiveCurrentAsync(analysisRunId, token);
+                else if (await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, token))
+                    throw new ConflictException("Repo vừa có thêm câu hỏi. Vui lòng xác nhận phân tích lại.");
                 await uow.Businesses.DeleteByRepoAsync(analysisRunId, token);
                 await uow.MethodSources.DeleteByRepoAsync(analysisRunId, token);
 
@@ -136,6 +140,7 @@ public sealed class RepoAnalysisService(
                 // Tải lại trong transaction: lần retry của execution strategy chạy sau khi change tracker đã bị xoá.
                 var trackedRun = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, token) ?? throw new NotFoundException("repo", analysisRunId);
                 StoredBusinessTemplate.Save(trackedRun, templates, templateSource);
+                trackedRun.AnalyzedRepoUrl = run.RepoUrl;
                 trackedRun.AnalyzedCommitSha = clone.CommitSha;
                 trackedRun.AnalyzedAt = DateTime.UtcNow;
             }, ct);

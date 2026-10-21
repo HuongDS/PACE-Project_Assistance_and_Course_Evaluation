@@ -34,6 +34,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<string>("AnalyzedCommitSha")
                         .HasColumnType("text");
 
+                    b.Property<string>("AnalyzedRepoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("BusinessTemplateJson")
                         .HasColumnType("jsonb");
 
@@ -41,6 +45,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("RepoName")
                         .HasMaxLength(255)

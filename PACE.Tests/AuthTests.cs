@@ -48,7 +48,7 @@ public class AuthTests
                 return Task.FromResult(string.Equals(student.StudentCode?.Trim(), code, StringComparison.OrdinalIgnoreCase) ? found : null);
             }
             Assert.Equal("GetByEmailAsync", m.Name);
-            Assert.Equal(student.Email, a[0]);
+            Assert.Equal((found ?? student).Email, a[0]);
             lookups++;
             return Task.FromResult(found);
         });
@@ -140,16 +140,18 @@ public class AuthTests
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public async Task QuickEntryStillRequiresEmailInput(string email)
+    public async Task QuickEntryAllowsOptionalEmailInput(string? email)
     {
-        await Assert.ThrowsAsync<BadRequestException>(() => Service(student).StudentQuickLoginAsync(new()
+        var result = await Service(student).StudentQuickLoginAsync(new()
         {
             Email = email, StudentCode = student.StudentCode!
-        }));
-        Assert.Equal(0, lookups);
-        Assert.Equal(0, tokens);
+        });
+        Assert.NotNull(result);
+        Assert.Equal(student.StudentCode, result.Student.StudentId);
+        Assert.Equal(1, tokens);
     }
 
     [Theory]
@@ -289,4 +291,20 @@ public class AuthTests
         Assert.Equal(0, tokens);
     }
 
+    [Fact]
+    public async Task ManagerLoginSucceedsWithManagerAt123()
+    {
+        var manager = new User { Id = Guid.NewGuid(), Email = "manager", Role = UserRole.Admin };
+        var response = await Service(manager).LoginAsync(new() { Email = "manager", Password = "manager@123" });
+        Assert.Equal(UserRole.Admin, response.User.Role);
+        Assert.Equal("manager", response.User.Email);
+        Assert.Equal(1, tokens);
+    }
+
+    [Fact]
+    public async Task ManagerLoginRejectsIncorrectPassword()
+    {
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(null).LoginAsync(new() { Email = "manager", Password = "wrong-password" }));
+        Assert.Equal(0, tokens);
+    }
 }

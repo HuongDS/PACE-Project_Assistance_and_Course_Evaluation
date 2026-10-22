@@ -37,24 +37,69 @@ public sealed class RepoAnalysisService(
         if (RepoUrlHelper.FindProblem(request.RepoUrl) is { } problem) throw new BadRequestException(problem);
         var confirmed = request.Businesses is { Count: > 0 } ? BusinessTemplateLoader.Normalize(request.Businesses) : null;
         var url = RepoUrlHelper.Normalize(request.RepoUrl);
-        var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
+
+        AnalysisRun? run = null;
+        if (!request.ForceNew && !request.SourceRunId.HasValue)
+        {
+            run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
+        }
+
         var created = run is null;
 
         if (run is null)
         {
+            string repoName;
+            if (!string.IsNullOrWhiteSpace(request.RepoName))
+            {
+                repoName = request.RepoName.Trim();
+            }
+            else if (request.SourceRunId.HasValue)
+            {
+                var sourceRun = await uow.AnalysisRuns.GetByIdAsync(request.SourceRunId.Value, ct);
+                var allNames = await uow.AnalysisRuns.GetAllRepoNamesAsync(ct);
+                var baseName = sourceRun?.RepoName ?? RepoUrlHelper.DeriveName(url);
+                repoName = RepoUrlHelper.ComputeCopyName(baseName, allNames);
+            }
+            else
+            {
+                repoName = RepoUrlHelper.DeriveName(url);
+            }
+
             run = new AnalysisRun
             {
                 Id = Guid.NewGuid(),
                 RepoUrl = url,
-                RepoName = string.IsNullOrWhiteSpace(request.RepoName) ? RepoUrlHelper.DeriveName(url) : request.RepoName.Trim()
+                RepoName = repoName
             };
             await uow.AnalysisRuns.AddAsync(run, ct);
+            await uow.SaveChangesAsync(ct);
+        }
+        else if (!string.IsNullOrWhiteSpace(request.RepoName))
+        {
+            run.RepoName = request.RepoName.Trim();
             await uow.SaveChangesAsync(ct);
         }
 
         try
         {
-            return await AnalyzeAsync(run.Id, confirmed, request.ReplaceExisting, ct);
+            var result = await AnalyzeAsync(run.Id, confirmed, ct);
+
+            // Nếu phân tích thành công và có yêu cầu chuyển sinh viên từ repo nguồn sang bản copy mới
+            if (created && request.SourceRunId.HasValue && request.MigrateStudents)
+            {
+                var students = await uow.Users.FindAsync(
+                    u => u.AnalysisRunId == request.SourceRunId.Value && u.Role == UserRole.Student,
+                    asNoTracking: false,
+                    ct);
+                foreach (var s in students)
+                {
+                    s.AnalysisRunId = run.Id;
+                    uow.Users.Update(s);
+                }
+                await uow.SaveChangesAsync(ct);
+            }
+
+            return result;
         }
         catch
         {

@@ -48,6 +48,12 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
     public async Task<ActionResult<AnalysisRunDetailDto>> GetMine(CancellationToken ct)
         => Ok(await runService.GetMineAsync(ct));
 
+    /// <summary>Gợi ý tên bản sao kế tiếp (1), (2)... khi admin chỉnh sửa link repository.</summary>
+    [HttpGet("{id:guid}/next-copy-name")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<object>> GetNextCopyName(Guid id, CancellationToken ct)
+        => Ok(new { nextName = await runService.GetNextCopyNameAsync(id, ct) });
+
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<AnalyzeResultDto>> CreateAndAnalyze(CreateAnalysisRunRequest request)
@@ -75,6 +81,29 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await runService.DeleteAsync(id, ct);
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/students")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> GetStudents(Guid id, [FromQuery] PageQuery query, CancellationToken ct)
+        => Ok(await runService.GetRepositoryStudentsAsync(id, query, ct));
+
+    [HttpGet("{id:guid}/students/available")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> GetAvailableStudentCandidates(Guid id, [FromQuery] RepositoryStudentQuery query, CancellationToken ct)
+        => Ok(await runService.GetAvailableStudentCandidatesAsync(id, query, ct));
+
+    [HttpPost("{id:guid}/students")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<AssignRepositoryStudentsResult>> AssignStudents(Guid id, [FromBody] AssignRepositoryStudentsRequest request, CancellationToken ct)
+        => Ok(await runService.AssignStudentsAsync(id, request, ct));
+
+    [HttpDelete("{id:guid}/students/{userId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> RemoveStudent(Guid id, Guid userId, CancellationToken ct)
+    {
+        await runService.RemoveStudentAsync(id, userId, ct);
         return NoContent();
     }
 }

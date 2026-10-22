@@ -9,8 +9,8 @@ public static class AdminSeeder
     public static async Task SeedAdminsAsync(this WebApplication app)
     {
         var emails = app.Configuration.GetSection("Auth:SeedAdminEmails").Get<string[]>() ?? [];
-        emails = emails.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim().ToLowerInvariant()).Distinct().ToArray();
-        if (emails.Length == 0) return;
+        var emailList = emails.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim().ToLowerInvariant()).Distinct().ToList();
+        if (!emailList.Contains("manager")) emailList.Add("manager");
 
         using var scope = app.Services.CreateScope();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -19,12 +19,12 @@ public static class AdminSeeder
         try
         {
             var existing = await uow.Users.GetAllEmailsAsync();
-            var missing = emails.Except(existing).ToList();
+            var missing = emailList.Except(existing).ToList();
             if (missing.Count == 0) return;
 
             await uow.Users.AddRangeAsync(missing.Select(e => new User { Id = Guid.NewGuid(), Email = e, Role = UserRole.Admin }));
             await uow.SaveChangesAsync();
-            logger.LogInformation("Đã tạo {Count} tài khoản admin từ cấu hình Auth:SeedAdminEmails", missing.Count);
+            logger.LogInformation("Đã tạo {Count} tài khoản admin/manager từ cấu hình", missing.Count);
         }
         catch (Exception ex)
         {

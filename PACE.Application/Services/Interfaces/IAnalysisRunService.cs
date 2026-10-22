@@ -15,4 +15,9 @@ public interface IAnalysisRunService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunTemplateDto> GetTemplateAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunTemplateDto> SaveTemplateAsync(Guid id, BusinessTemplateRequest request, CancellationToken ct = default);
+    Task<string> GetNextCopyNameAsync(Guid id, CancellationToken ct = default);
+    Task<PagedResult<RepositoryStudentDto>> GetRepositoryStudentsAsync(Guid runId, PageQuery query, CancellationToken ct = default);
+    Task<PagedResult<RepositoryStudentDto>> GetAvailableStudentCandidatesAsync(Guid runId, RepositoryStudentQuery query, CancellationToken ct = default);
+    Task<AssignRepositoryStudentsResult> AssignStudentsAsync(Guid runId, AssignRepositoryStudentsRequest request, CancellationToken ct = default);
+    Task RemoveStudentAsync(Guid runId, Guid userId, CancellationToken ct = default);
 }

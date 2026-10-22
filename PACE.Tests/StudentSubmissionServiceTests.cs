@@ -64,6 +64,8 @@ public class StudentSubmissionServiceTests
                         .Where(x => !query.IsSubmitted.HasValue || (x.SubmittedAt != null) == query.IsSubmitted.Value)
                         .ToList();
                     return Task.FromResult(new PagedResult<StudentSubmission> { Items = items, TotalCount = items.Count, Page = 1, PageSize = 20 });
+                case "GetAllSubmittedForStatsAsync":
+                    return Task.FromResult(saved.Where(s => s.SubmittedAt != null).ToList());
                 case "UpdateAsync":
                     var updated = (StudentSubmission)a[0]!;
                     foreach (var answer in updated.Answers)
@@ -145,13 +147,15 @@ public class StudentSubmissionServiceTests
     }
 
     [Fact]
-    public async Task JoinStillRequiresEmail()
+    public async Task JoinAllowsOptionalEmail()
     {
-        await Assert.ThrowsAsync<BadRequestException>(() => service.JoinAsync(new()
+        var result = await service.JoinAsync(new()
         {
-            Email = " ", StudentCode = user.StudentCode!
-        }));
-        Assert.Empty(saved);
+            Email = null, StudentCode = user.StudentCode!
+        });
+        Assert.NotNull(result);
+        Assert.Equal(user.StudentCode, result.StudentCode);
+        Assert.Equal(user.Email, result.Email);
     }
 
     private SubmitStudentSubmissionRequest Request() => new()
@@ -591,6 +595,72 @@ public class StudentSubmissionServiceTests
         Assert.Single(result.Items);
         Assert.Null(result.Items[0].Submission.SubmittedAt);
         Assert.Equal(user.Email, result.Items[0].Email);
+    }
+
+    [Fact]
+    public async Task GetManagerStatistics_CalculatesSuccessfulSurveyAndPendingEvaluation()
+    {
+        saved.Clear();
+        claimedRole = UserRole.Admin;
+        var q = businesses[0].Questions.First();
+
+        var subWithSurvey = new StudentSubmission
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            AnalysisRunId = user.AnalysisRunId!.Value,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            SubmittedAt = DateTime.UtcNow.AddDays(-1),
+            User = user,
+            AnalysisRun = user.AnalysisRun!,
+            Answers = new List<StudentAnswer>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    QuestionId = q.Id,
+                    Question = q,
+                    AnswerText = "Test answer",
+                    RubricScores = new List<RubricScore> { new() { Id = Guid.NewGuid(), Score = 5 } }
+                }
+            }
+        };
+
+        var otherUser = new User { Id = Guid.NewGuid(), Email = "other@student.com", StudentCode = "SE999999", Role = UserRole.Student, AnalysisRunId = user.AnalysisRunId };
+        var subWithoutSurvey = new StudentSubmission
+        {
+            Id = Guid.NewGuid(),
+            UserId = otherUser.Id,
+            AnalysisRunId = user.AnalysisRunId!.Value,
+            CreatedAt = DateTime.UtcNow,
+            SubmittedAt = DateTime.UtcNow,
+            User = otherUser,
+            AnalysisRun = user.AnalysisRun!,
+            Answers = new List<StudentAnswer>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    QuestionId = q.Id,
+                    Question = q,
+                    AnswerText = "Test answer 2",
+                    RubricScores = new List<RubricScore>() // No survey completed yet
+                }
+            }
+        };
+
+        saved.Add(subWithSurvey);
+        saved.Add(subWithoutSurvey);
+
+        var stats = await service.GetManagerStatisticsAsync();
+
+        Assert.Equal(2, stats.TotalSubmissions);
+        Assert.Equal(1, stats.TotalSuccessfulSubmissions); // Only the one with completed survey
+        Assert.Equal(1, stats.TotalPendingEvaluationSubmissions); // The one without survey
+        Assert.Equal(1, stats.TotalSurveyedStudents); // 1 distinct student surveyed
+        Assert.Single(stats.DailySuccessfulSubmissions);
+        Assert.Single(stats.PendingEvaluationSubmissions);
+        Assert.Equal("SE999999", stats.PendingEvaluationSubmissions[0].StudentCode);
     }
 }
 

@@ -109,6 +109,9 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
         return new PagedResult<StudentSubmission> { Items = items, Page = page, PageSize = pageSize, TotalCount = total };
     }
 
+    public Task<List<StudentSubmission>> GetAllSubmittedForStatsAsync(CancellationToken ct = default)
+        => Details().Where(s => s.SubmittedAt != null).OrderByDescending(s => s.SubmittedAt).ToListAsync(ct);
+
     public void Add(StudentSubmission submission) => context.StudentSubmissions.Add(submission);
     public async Task UpdateAsync(StudentSubmission submission, CancellationToken ct = default)
     {

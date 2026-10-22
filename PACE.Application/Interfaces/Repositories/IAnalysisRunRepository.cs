@@ -12,6 +12,7 @@ public interface IAnalysisRunRepository : IGenericRepository<AnalysisRun>
     Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default);
     Task<bool> RepoUrlExistsAsync(string repoUrl, Guid? exceptId = null, CancellationToken ct = default);
     Task<List<AnalysisRun>> GetAllWithRepoUrlAsync(CancellationToken ct = default);
+    Task<List<string>> GetAllRepoNamesAsync(CancellationToken ct = default);
     Task ArchiveCurrentAsync(Guid analysisRunId, CancellationToken ct = default);
     Task<bool> HasQuestionsAsync(Guid analysisRunId, CancellationToken ct = default);
 }

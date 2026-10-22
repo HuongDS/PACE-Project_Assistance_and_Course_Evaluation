@@ -69,11 +69,10 @@ public class StudentSubmissionService(
 
     private async Task<StudentSubmissionJoinedDto> JoinCoreAsync(JoinStudentSubmissionRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.StudentCode) || string.IsNullOrWhiteSpace(request.Email))
-            throw new BadRequestException("Mã số sinh viên và Email không được để trống.");
+        if (string.IsNullOrWhiteSpace(request.StudentCode))
+            throw new BadRequestException("Mã số sinh viên không được để trống.");
 
         var authenticated = await FindStudentAsync(ct);
-        var email = request.Email.Trim().ToLowerInvariant();
         var studentCode = request.StudentCode.Trim();
 
         var user = await uow.Users.GetWithRepoAsync(authenticated.Id, asNoTracking: false, ct: ct);
@@ -83,6 +82,10 @@ public class StudentSubmissionService(
         if (string.IsNullOrWhiteSpace(user.StudentCode)
             || !string.Equals(user.StudentCode.Trim(), studentCode, StringComparison.OrdinalIgnoreCase))
             throw new BadRequestException("Mã số sinh viên không khớp với phiên đăng nhập.");
+
+        var email = !string.IsNullOrWhiteSpace(request.Email)
+            ? request.Email.Trim().ToLowerInvariant()
+            : user.Email;
 
         var userWithRepo = await uow.Users.GetWithRepoAsync(user.Id, ct: ct);
         var run = RequireRepository(userWithRepo ?? user);
@@ -345,7 +348,57 @@ public class StudentSubmissionService(
         return submissions.Map(s => new AdminStudentSubmissionDto(s.UserId, s.User.StudentCode, s.User.Email, MapDetail(s)));
     }
 
-    public Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
+    public async Task<ManagerStatisticsDto> GetManagerStatisticsAsync(CancellationToken ct = default)
+    {
+        RequireRole(UserRole.Admin);
+        var allSubmitted = await uow.StudentSubmissions.GetAllSubmittedForStatsAsync(ct);
+
+        static bool IsSurveyCompleted(StudentSubmission s) =>
+            s.Answers.Count > 0 && s.Answers.All(a => a.RubricScores.Count > 0);
+
+        var successfulSubmissions = allSubmitted.Where(IsSurveyCompleted).ToList();
+        var pendingEvaluationSubmissions = allSubmitted.Where(s => !IsSurveyCompleted(s)).ToList();
+
+        var totalSurveyedStudents = successfulSubmissions.Select(s => s.UserId).Distinct().Count();
+
+        var dailyStats = successfulSubmissions
+            .GroupBy(s => (s.SubmittedAt ?? s.CreatedAt).ToLocalTime().ToString("yyyy-MM-dd"))
+            .OrderByDescending(g => g.Key)
+            .Select(g => new DailySubmissionStatDto
+            {
+                Date = g.Key,
+                SuccessfulSubmissionsCount = g.Count()
+            })
+            .ToList();
+
+        var pendingList = pendingEvaluationSubmissions
+            .OrderByDescending(s => s.SubmittedAt ?? s.CreatedAt)
+            .Select(s => new PendingEvaluationDto
+            {
+                SubmissionId = s.Id,
+                UserId = s.UserId,
+                StudentCode = s.User?.StudentCode,
+                Email = s.User?.Email ?? "—",
+                RepoName = s.AnalysisRun?.RepoName,
+                RepoUrl = s.AnalysisRun?.RepoUrl,
+                SubmittedAt = s.SubmittedAt,
+                TotalQuestions = s.Answers.Count,
+                SurveyCompletedQuestions = s.Answers.Count(a => a.RubricScores.Count > 0)
+            })
+            .ToList();
+
+        return new ManagerStatisticsDto
+        {
+            TotalSubmissions = allSubmitted.Count,
+            TotalSuccessfulSubmissions = successfulSubmissions.Count,
+            TotalPendingEvaluationSubmissions = pendingEvaluationSubmissions.Count,
+            TotalSurveyedStudents = totalSurveyedStudents,
+            DailySuccessfulSubmissions = dailyStats,
+            PendingEvaluationSubmissions = pendingList
+        };
+    }
+
+    public async Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Admin);
         return uow.ExecuteInTransactionAsync(async token =>

@@ -96,4 +96,17 @@ public class RepoUrlHelperTests
 
         Assert.Contains("thiếu tên repo", ex.Message);
     }
+
+    [Theory]
+    [InlineData("Nhóm 1", new string[] { }, "Nhóm 1 (1)")]
+    [InlineData("Nhóm 1", new string[] { "Nhóm 1" }, "Nhóm 1 (1)")]
+    [InlineData("Nhóm 1", new string[] { "Nhóm 1", "Nhóm 1 (1)" }, "Nhóm 1 (2)")]
+    [InlineData("Nhóm 1", new string[] { "Nhóm 1", "Nhóm 1 (1)", "Nhóm 1 (2)" }, "Nhóm 1 (3)")]
+    [InlineData("Nhóm 1 (1)", new string[] { "Nhóm 1", "Nhóm 1 (1)" }, "Nhóm 1 (2)")]
+    [InlineData("SWP391_Project", new string[] { "Other_Repo" }, "SWP391_Project (1)")]
+    public void ComputeCopyName_formats_incremental_sequence_numbers_correctly(string baseName, string[] existing, string expected)
+    {
+        var result = RepoUrlHelper.ComputeCopyName(baseName, existing);
+        Assert.Equal(expected, result);
+    }
 }

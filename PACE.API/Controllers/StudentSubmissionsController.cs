@@ -50,4 +50,9 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<AdminStudentSubmissionDto>> QuickCreate([FromBody] QuickCreateStudentSubmissionRequest request, CancellationToken ct)
         => Ok(await service.QuickCreateAsync(request, ct));
+
+    [HttpGet("manager-statistics")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<ManagerStatisticsDto>> GetManagerStatistics(CancellationToken ct)
+        => Ok(await service.GetManagerStatisticsAsync(ct));
 }

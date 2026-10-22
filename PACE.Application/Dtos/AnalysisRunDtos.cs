@@ -35,6 +35,15 @@ public class CreateAnalysisRunRequest
 
     /// <summary>Template đã chốt (từ POST /api/templates/generate); bỏ trống thì đọc template_business.json trong repo.</summary>
     public List<BusinessTemplate>? Businesses { get; set; }
+
+    /// <summary>Nếu true hoặc có SourceRunId, luôn tạo bản ghi AnalysisRun mới thay vì tái sử dụng repo cũ cùng URL.</summary>
+    public bool ForceNew { get; set; }
+
+    /// <summary>Repo nguồn nếu đây là bản copy khi chỉnh sửa link.</summary>
+    public Guid? SourceRunId { get; set; }
+
+    /// <summary>Nếu true và có SourceRunId, chuyển sinh viên của repo nguồn sang repo mới.</summary>
+    public bool MigrateStudents { get; set; } = true;
 }
 
 public class UpdateAnalysisRunRequest
@@ -58,3 +67,25 @@ public record AnalyzeResultDto(
     int FlowCount,
     int EdgeCount,
     IReadOnlyList<string> Warnings);
+
+public record RepositoryStudentDto(
+    Guid UserId,
+    string? StudentCode,
+    string Email,
+    Guid? AnalysisRunId,
+    string? RepoName);
+
+public class AssignRepositoryStudentsRequest
+{
+    public List<string> StudentCodes { get; set; } = [];
+}
+
+public record AssignRepositoryStudentsResult(
+    int Total,
+    int Created,
+    int Moved,
+    int AlreadyAssigned);
+
+public class RepositoryStudentQuery : PageQuery
+{
+}

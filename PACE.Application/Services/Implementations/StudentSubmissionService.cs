@@ -401,7 +401,7 @@ public class StudentSubmissionService(
     public async Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Admin);
-        return uow.ExecuteInTransactionAsync(async token =>
+        return await uow.ExecuteInTransactionAsync(async token =>
         {
             var code = request.StudentCode?.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(code) || code.Length > 20)

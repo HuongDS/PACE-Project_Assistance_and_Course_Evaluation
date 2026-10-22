@@ -52,11 +52,6 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.AddScoped<ILlmService, DeepSeekService>();
         services.AddScoped<IGroqService, GroqService>();
-
-        services.Configure<PACE.Infrastructure.AI.OpenAiOptions>(configuration.GetSection(PACE.Infrastructure.AI.OpenAiOptions.SectionName));
-        services.AddSingleton<GeminiQuestionLlmClient>();
-        services.AddSingleton<OpenAiQuestionLlmClient>();
-
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
         services.AddHttpClient<IQuestionLlmClient, OpenAiQuestionLlmClient>((provider, client) =>

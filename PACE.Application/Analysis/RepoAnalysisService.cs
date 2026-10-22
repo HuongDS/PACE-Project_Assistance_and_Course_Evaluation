@@ -82,7 +82,7 @@ public sealed class RepoAnalysisService(
 
         try
         {
-            var result = await AnalyzeAsync(run.Id, confirmed, ct);
+            var result = await AnalyzeAsync(run.Id, confirmed, request.ReplaceExisting, ct);
 
             // Nếu phân tích thành công và có yêu cầu chuyển sinh viên từ repo nguồn sang bản copy mới
             if (created && request.SourceRunId.HasValue && request.MigrateStudents)

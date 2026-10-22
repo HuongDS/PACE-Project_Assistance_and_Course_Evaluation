@@ -109,7 +109,10 @@ public static partial class RepoUrlHelper
                 if (num > maxNum) maxNum = num;
             }
         }
+
         return $"{cleanBase} ({maxNum + 1})";
+    }
+
     private static string? ValidateHostedSuffix(string[] segments)
     {
         if (segments.Length == 2) return null;

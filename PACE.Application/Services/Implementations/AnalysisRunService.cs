@@ -97,4 +97,93 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
         var baseName = run.RepoName ?? (run.RepoUrl != null ? RepoUrlHelper.DeriveName(run.RepoUrl) : "Repository");
         return RepoUrlHelper.ComputeCopyName(baseName, allNames);
     }
+
+    public async Task<PagedResult<RepositoryStudentDto>> GetRepositoryStudentsAsync(Guid runId, PageQuery query, CancellationToken ct = default)
+    {
+        var _ = await uow.AnalysisRuns.GetByIdAsync(runId, ct) ?? throw new NotFoundException("repo", runId);
+        var page = await uow.Users.SearchAsync(UserRole.Student, runId, null, query.Page, query.PageSize, ct);
+        return page.Map(u => new RepositoryStudentDto(u.Id, u.StudentCode, u.Email, u.AnalysisRunId, u.AnalysisRun?.RepoName));
+    }
+
+    public async Task<PagedResult<RepositoryStudentDto>> GetAvailableStudentCandidatesAsync(Guid runId, RepositoryStudentQuery query, CancellationToken ct = default)
+    {
+        var _ = await uow.AnalysisRuns.GetByIdAsync(runId, ct) ?? throw new NotFoundException("repo", runId);
+        var page = await uow.Users.SearchAsync(UserRole.Student, null, query.Search, query.Page, query.PageSize, ct);
+        return page.Map(u => new RepositoryStudentDto(u.Id, u.StudentCode, u.Email, u.AnalysisRunId, u.AnalysisRun?.RepoName));
+    }
+
+    public async Task<AssignRepositoryStudentsResult> AssignStudentsAsync(Guid runId, AssignRepositoryStudentsRequest request, CancellationToken ct = default)
+    {
+        var run = await uow.AnalysisRuns.GetByIdAsync(runId, ct) ?? throw new NotFoundException("repo", runId);
+
+        var codes = (request.StudentCodes ?? [])
+            .Select(c => c.Trim().ToUpperInvariant())
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Distinct()
+            .Take(100)
+            .ToList();
+
+        if (codes.Count == 0)
+            return new AssignRepositoryStudentsResult(0, 0, 0, 0);
+
+        var created = 0;
+        var moved = 0;
+        var alreadyAssigned = 0;
+
+        foreach (var code in codes)
+        {
+            var existing = await uow.Users.GetByStudentCodeAsync(code, ct);
+            if (existing is not null)
+            {
+                if (existing.AnalysisRunId == runId)
+                {
+                    alreadyAssigned++;
+                }
+                else
+                {
+                    var tracked = await uow.Users.GetWithRepoAsync(existing.Id, asNoTracking: false, ct: ct);
+                    if (tracked is not null)
+                    {
+                        tracked.AnalysisRunId = runId;
+                        moved++;
+                    }
+                }
+            }
+            else
+            {
+                var email = $"{code.ToLowerInvariant()}@gmail.com";
+                if (await uow.Users.EmailExistsAsync(email, null, ct))
+                {
+                    email = $"{code.ToLowerInvariant()}_{Guid.NewGuid().ToString("N")[..6]}@gmail.com";
+                }
+
+                var newUser = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = email,
+                    StudentCode = code,
+                    Role = UserRole.Student,
+                    AnalysisRunId = runId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await uow.Users.AddAsync(newUser, ct);
+                created++;
+            }
+        }
+
+        await uow.SaveChangesAsync(ct);
+        return new AssignRepositoryStudentsResult(created + moved + alreadyAssigned, created, moved, alreadyAssigned);
+    }
+
+    public async Task RemoveStudentAsync(Guid runId, Guid userId, CancellationToken ct = default)
+    {
+        var user = await uow.Users.GetWithRepoAsync(userId, asNoTracking: false, ct: ct)
+                   ?? throw new NotFoundException("Sinh viên không tồn tại.");
+
+        if (user.AnalysisRunId == runId)
+        {
+            user.AnalysisRunId = null;
+            await uow.SaveChangesAsync(ct);
+        }
+    }
 }

@@ -67,25 +67,3 @@ public record AnalyzeResultDto(
     int FlowCount,
     int EdgeCount,
     IReadOnlyList<string> Warnings);
-
-public record RepositoryStudentDto(
-    Guid UserId,
-    string? StudentCode,
-    string Email,
-    Guid? AnalysisRunId,
-    string? RepoName);
-
-public class AssignRepositoryStudentsRequest
-{
-    public List<string> StudentCodes { get; set; } = [];
-}
-
-public record AssignRepositoryStudentsResult(
-    int Total,
-    int Created,
-    int Moved,
-    int AlreadyAssigned);
-
-public class RepositoryStudentQuery : PageQuery
-{
-}

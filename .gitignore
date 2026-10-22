@@ -67,3 +67,10 @@ nunit-*.xml
 # Python tooling caches
 __pycache__/
 *.py[cod]
+
+# K6 synthetic accounts, recovery manifests and local reports
+scripts/k6/students.json
+scripts/k6/batches/
+scripts/k6/*.log
+scripts/k6/summary*.json
+scripts/k6/results*.json

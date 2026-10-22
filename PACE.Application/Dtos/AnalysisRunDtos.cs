@@ -25,6 +25,8 @@ public record AnalysisRunDetailDto(
 
 public class CreateAnalysisRunRequest
 {
+    public bool ReplaceExisting { get; set; }
+
     [Required, Url, MaxLength(500)]
     public string RepoUrl { get; set; } = null!;
 

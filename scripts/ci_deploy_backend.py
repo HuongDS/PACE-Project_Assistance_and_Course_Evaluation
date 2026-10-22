@@ -3,6 +3,9 @@
 import argparse
 import json
 import os
+import random
+import re
+import sys
 from pathlib import Path
 import secrets
 import subprocess
@@ -17,7 +20,25 @@ def command(*args):
 
 
 def az(*args):
-    return json.loads(command('az', *args, '--only-show-errors', '--output', 'json') or 'null')
+    # Retrying the same image/env update is idempotent. Never retry arbitrary mutations.
+    retryable_command = args[:2] in [('containerapp', 'show'), ('containerapp', 'update')]
+    invocation = ['az', *args, '--only-show-errors', '--output', 'json']
+    for attempt in range(5):
+        result = subprocess.run(invocation, capture_output=True, text=True)
+        if result.returncode == 0:
+            return json.loads(result.stdout or 'null')
+        diagnostic = (result.stderr or '') + '\n' + (result.stdout or '')
+        transient = re.search(r'\b(?:429|500|502|503|504)\b|Too\s*Many\s*Requests|ServiceUnavailable|GatewayTimeout|InternalServerError', diagnostic, re.IGNORECASE)
+        retry_after = re.search(r'retry-after[\s:=]+(\d+)', diagnostic, re.IGNORECASE)
+        delay = max(5 * 2 ** attempt, int(retry_after[1]) if retry_after else 0)
+        if not retryable_command or not transient or attempt == 4 or delay > 60:
+            if result.stderr:
+                print(result.stderr.strip(), file=sys.stderr, flush=True)
+            raise subprocess.CalledProcessError(result.returncode, invocation, output=result.stdout, stderr=result.stderr)
+        delay += random.uniform(0, 1)
+        print(f'Azure throttled or temporarily unavailable; retrying {args[1]} in {delay:.1f}s ({attempt + 1}/4).', flush=True)
+        time.sleep(delay)
+    raise AssertionError('Unreachable retry state')
 
 
 def healthy(url, revision=None, timeout=180, alive=None):

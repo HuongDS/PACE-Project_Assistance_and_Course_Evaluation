@@ -21,6 +21,29 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
     public async Task<ActionResult<AnalysisRunDetailDto>> GetById(Guid id, CancellationToken ct)
         => Ok(await runService.GetDetailAsync(id, ct));
 
+    [HttpGet("{id:guid}/students")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> Students(Guid id, [FromQuery] PageQuery query, CancellationToken ct)
+        => Ok(await runService.GetStudentsAsync(id, false, query, ct));
+
+    [HttpGet("{id:guid}/students/available")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> AvailableStudents(Guid id, [FromQuery] PageQuery query, CancellationToken ct)
+        => Ok(await runService.GetStudentsAsync(id, true, query, ct));
+
+    [HttpPost("{id:guid}/students")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<AssignRepositoryStudentsResult>> AssignStudents(Guid id, AssignRepositoryStudentsRequest request, CancellationToken ct)
+        => Ok(await runService.AssignStudentsAsync(id, request, ct));
+
+    [HttpDelete("{id:guid}/students/{studentId:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> RemoveStudent(Guid id, Guid studentId, CancellationToken ct)
+    {
+        await runService.RemoveStudentAsync(id, studentId, ct);
+        return NoContent();
+    }
+
     [HttpGet("me")]
     public async Task<ActionResult<AnalysisRunDetailDto>> GetMine(CancellationToken ct)
         => Ok(await runService.GetMineAsync(ct));

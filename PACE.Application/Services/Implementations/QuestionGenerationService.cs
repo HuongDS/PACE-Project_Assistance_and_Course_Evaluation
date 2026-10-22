@@ -54,7 +54,7 @@ public class QuestionGenerationService(
         var flows = await uow.BusinessFlows.GetQuestionContextsByBusinessAsync(businessId, ct);
         var methods = await uow.MethodSources.GetCodeByBusinessAsync(businessId, ct);
 
-        // Không có mã nguồn thì DỪNG — nếu không Gemini sẽ bịa câu hỏi chỉ từ tên nghiệp vụ.
+        // Không có mã nguồn thì DỪNG — nếu không OpenAI sẽ bịa câu hỏi chỉ từ tên nghiệp vụ.
         if (methods.Count == 0)
             throw new BadRequestException("Không tìm thấy Source Code nào được map cho Business này để sinh câu hỏi.");
 
@@ -77,7 +77,7 @@ public class QuestionGenerationService(
             "Sinh {Count} câu hỏi cho nghiệp vụ {BusinessId} ({BusinessName}): mode={Mode}, N_w={NodeCount}, ngưỡng={Threshold} → {Context}",
             request.NumberOfQuestions, business.Id, business.BusinessName, request.Mode, nodeCount, threshold, route.ContextType);
 
-        // 4. Gọi Gemini với prompt nguyên văn.
+        // 4. Gọi OpenAI với prompt nguyên văn.
         var prompt = QuestionPromptBuilder.Build(
             businessName: business.BusinessName,
             codeBuilder: codeBuilder,
@@ -89,7 +89,7 @@ public class QuestionGenerationService(
         var result = await llm.GenerateJsonAsync(prompt.SystemInstruction, prompt.UserPrompt, _options.Temperature, ct);
         var generated = LlmQuestionParser.Parse(result.Text).Take(request.NumberOfQuestions).ToList();
         if (generated.Count == 0)
-            throw new ExternalServiceException("Gemini", "Phản hồi hợp lệ nhưng không có câu hỏi nào.");
+            throw new ExternalServiceException("OpenAI", "Phản hồi hợp lệ nhưng không có câu hỏi nào.");
 
         // 5. Lưu DB.
         var entities = generated.Select(q => new GeneratedQuestion

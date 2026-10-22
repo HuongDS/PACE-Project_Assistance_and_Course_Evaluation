@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import subprocess
 from unittest.mock import patch, MagicMock
 
 spec = importlib.util.spec_from_file_location('deploy', Path(__file__).parents[1] / 'ci_deploy_backend.py')
@@ -55,6 +56,54 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(1, azure.call_count)  # Read-only app snapshot; no secrets access.
         deploy.assert_not_called()
         run.assert_not_called()
+
+
+class AzureRetryTests(unittest.TestCase):
+    @staticmethod
+    def failure(message):
+        return subprocess.CompletedProcess([], 1, stdout='', stderr=message)
+
+    def test_429_update_retries_same_arguments_without_rollback(self):
+        responses = [self.failure('ERROR: Too Many Requests (429)'), subprocess.CompletedProcess([], 0, stdout='{}', stderr='')]
+        with patch.object(module.subprocess, 'run', side_effect=responses) as run, patch.object(module.time, 'sleep') as sleep, patch.object(module.random, 'uniform', return_value=0):
+            self.assertEqual({}, module.az('containerapp', 'update', '--image', 'registry/new:sha'))
+        self.assertEqual(run.call_args_list[0], run.call_args_list[1])
+        sleep.assert_called_once_with(5)
+
+    def test_429_is_bounded_and_respects_retry_after(self):
+        with patch.object(module.subprocess, 'run', return_value=self.failure('TooManyRequests Retry-After: 12')) as run, patch.object(module.time, 'sleep') as sleep, patch.object(module.random, 'uniform', return_value=0):
+            with self.assertRaises(subprocess.CalledProcessError):
+                module.az('containerapp', 'show')
+        self.assertEqual(5, run.call_count)
+        self.assertEqual([12, 12, 20, 40], [c.args[0] for c in sleep.call_args_list])
+
+    def test_bad_request_and_permission_failures_are_not_retried(self):
+        for message in ['ERROR: Bad Request (400)', 'ERROR: AuthorizationFailed (403)']:
+            with self.subTest(message=message), patch.object(module.subprocess, 'run', return_value=self.failure(message)) as run, patch.object(module.time, 'sleep') as sleep:
+                with self.assertRaises(subprocess.CalledProcessError): module.az('containerapp', 'update')
+                self.assertEqual(1, run.call_count)
+                sleep.assert_not_called()
+
+    def test_non_idempotent_commands_are_not_automatically_retried(self):
+        with patch.object(module.subprocess, 'run', return_value=self.failure('429 TooManyRequests')) as run, patch.object(module.time, 'sleep') as sleep:
+            with self.assertRaises(subprocess.CalledProcessError): module.az('containerapp', 'create')
+            self.assertEqual(1, run.call_count)
+            sleep.assert_not_called()
+
+    def test_successful_retry_completes_deployment_without_restore(self):
+        responses = [self.failure('429 TooManyRequests'), subprocess.CompletedProcess([], 0, stdout='{}', stderr=''),
+            subprocess.CompletedProcess([], 0, stdout=module.json.dumps(application('registry/new:sha')), stderr='')]
+        with patch.object(module.subprocess, 'run', side_effect=responses) as run, patch.object(module.time, 'sleep'), patch.object(module.random, 'uniform', return_value=0), patch.object(module, 'healthy') as health:
+            module.deploy(application(), 'registry/new:sha', 'new-sha', 'group', 'api')
+        self.assertEqual(3, run.call_count)
+        self.assertTrue(all('registry/old:stable' not in c.args[0] for c in run.call_args_list))
+        health.assert_called_once_with('https://example.invalid/health', 'new-sha')
+
+    def test_long_server_cooldown_is_not_shortened(self):
+        with patch.object(module.subprocess, 'run', return_value=self.failure('429 Retry-After: 300')) as run, patch.object(module.time, 'sleep') as sleep:
+            with self.assertRaises(subprocess.CalledProcessError): module.az('containerapp', 'update')
+            self.assertEqual(1, run.call_count)
+            sleep.assert_not_called()
 
 
 if __name__ == '__main__':

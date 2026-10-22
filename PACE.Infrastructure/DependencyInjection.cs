@@ -58,7 +58,12 @@ public static class DependencyInjection
         services.AddSingleton<OpenAiQuestionLlmClient>();
 
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
-        services.AddSingleton<IQuestionLlmClient, RoutingQuestionLlmClient>();
+        services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
+        services.AddHttpClient<IQuestionLlmClient, OpenAiQuestionLlmClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(30, options.TimeoutSeconds));
+        });
         return services;
     }
 }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -9,128 +10,133 @@ using PACE.Application.QuestionGeneration;
 
 namespace PACE.Infrastructure.AI;
 
-/// <summary>
-/// Gọi OpenAI API (/chat/completions) để sinh câu hỏi vấn đáp với JSON Mode (response_format: json_object).
-/// </summary>
-public sealed class OpenAiQuestionLlmClient : IQuestionLlmClient
+/// <summary>Sinh câu hỏi bằng OpenAI Responses API, giữ nguyên hợp đồng JSON của ứng dụng.</summary>
+public sealed class OpenAiQuestionLlmClient(
+    HttpClient httpClient,
+    IOptions<OpenAiOptions> options,
+    ILogger<OpenAiQuestionLlmClient> logger) : IQuestionLlmClient
 {
-    private readonly OpenAiOptions _options;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<OpenAiQuestionLlmClient> _logger;
-
-    public OpenAiQuestionLlmClient(
-        IOptions<OpenAiOptions> options,
-        IHttpClientFactory httpClientFactory,
-        ILogger<OpenAiQuestionLlmClient> logger)
-    {
-        _options = options.Value;
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
-    }
+    private readonly OpenAiOptions _options = options.Value;
 
     public async Task<LlmResult> GenerateJsonAsync(string systemInstruction, string prompt, float temperature, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            throw new ExternalServiceException("OpenAI", $"Chưa cấu hình API key OpenAI ({OpenAiOptions.SectionName}:ApiKey trong appsettings.Development.json).");
+            throw new ExternalServiceException("OpenAI", "Chưa cấu hình OpenAI:ApiKey (hoặc biến môi trường OpenAI__ApiKey).");
 
-        var client = _httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(Math.Max(30, _options.TimeoutSeconds));
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey.Trim());
-
-        var url = _options.Endpoint.TrimEnd('/') + "/chat/completions";
-
-        var requestBody = new
+        // Structured Outputs requires an object root. The existing parser accepts { questions: [...] }.
+        var payload = new
         {
             model = _options.Model,
-            messages = new object[]
+            instructions = systemInstruction + "\nĐịnh dạng truyền tải: bọc mảng câu hỏi trong object JSON có key questions theo schema được cung cấp.",
+            input = prompt,
+            reasoning = new { effort = "none" }, // GPT-6 Luna supports temperature with reasoning disabled.
+            temperature,
+            store = false,
+            text = new
             {
-                new { role = "system", content = systemInstruction },
-                new { role = "user", content = prompt }
-            },
-            temperature = temperature,
-            response_format = new { type = "json_object" }
+                format = new
+                {
+                    type = "json_schema", name = "generated_questions", strict = true,
+                    schema = new
+                    {
+                        type = "object", additionalProperties = false,
+                        required = new[] { "questions" },
+                        properties = new
+                        {
+                            questions = new
+                            {
+                                type = "array",
+                                items = new
+                                {
+                                    type = "object", additionalProperties = false,
+                                    required = new[] { "question", "suggestedAnswer", "difficulty", "targetedEntryPoints" },
+                                    properties = new
+                                    {
+                                        question = new { type = "string" },
+                                        suggestedAnswer = new { type = "string" },
+                                        difficulty = new { type = "string" },
+                                        targetedEntryPoints = new { type = "array", items = new { type = "string" } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         };
 
-        var jsonContent = new StringContent(
-            JsonSerializer.Serialize(requestBody),
-            Encoding.UTF8,
-            "application/json");
-
-        var maxRetries = Math.Max(1, _options.MaxRetries);
-        var delay = TimeSpan.FromSeconds(Math.Max(1, _options.InitialRetryDelaySeconds));
+        var attempts = Math.Max(1, _options.MaxRetries);
+        var delay = TimeSpan.FromSeconds(Math.Max(0, _options.InitialRetryDelaySeconds));
         var stopwatch = Stopwatch.StartNew();
-        HttpResponseMessage? response = null;
-        string? responseBody = null;
-
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; attempt <= attempts; attempt++)
         {
             ct.ThrowIfCancellationRequested();
             try
             {
-                response = await client.PostAsync(url, jsonContent, ct);
-                responseBody = await response.Content.ReadAsStringAsync(ct);
-
-                if (response.IsSuccessStatusCode)
-                    break;
-
-                var isTransient = (int)response.StatusCode == 429 || (int)response.StatusCode >= 500;
-                if (attempt < maxRetries && isTransient)
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+                request.Content = JsonContent.Create(payload);
+                using var response = await httpClient.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("OpenAI lỗi HTTP {Status}. Thử lại sau {Delay}s (lần {Attempt}/{Max}).",
-                        response.StatusCode, delay.TotalSeconds, attempt, maxRetries);
-                    await Task.Delay(delay, ct);
-                    delay *= 2;
-                    continue;
+                    if (attempt < attempts && (response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500))
+                    {
+                        var retryAfter = response.Headers.RetryAfter;
+                        var retryDelay = retryAfter?.Delta ?? (retryAfter?.Date - DateTimeOffset.UtcNow) ?? delay;
+                        await RetryAsync(attempt, retryDelay > TimeSpan.Zero ? retryDelay : delay, ct);
+                        delay *= 2;
+                        continue;
+                    }
+                    // Do not expose provider response bodies, which can contain submitted source code.
+                    throw new ExternalServiceException("OpenAI", $"Gọi API thất bại: HTTP {(int)response.StatusCode}.");
                 }
 
-                throw new ExternalServiceException("OpenAI", $"API trả về lỗi {response.StatusCode}: {responseBody}");
+                using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+                var root = document.RootElement;
+                if (!root.TryGetProperty("status", out var status) || status.GetString() != "completed")
+                    throw new ExternalServiceException("OpenAI", "API chưa hoàn thành phản hồi; không sử dụng câu hỏi bị cắt ngắn.");
+
+                var parts = new List<string>();
+                foreach (var item in root.GetProperty("output").EnumerateArray())
+                {
+                    if (item.GetProperty("type").GetString() != "message") continue;
+                    foreach (var part in item.GetProperty("content").EnumerateArray())
+                    {
+                        var type = part.GetProperty("type").GetString();
+                        if (type == "refusal")
+                            throw new ExternalServiceException("OpenAI", "Model từ chối sinh câu hỏi cho nội dung này.");
+                        if (type == "output_text") parts.Add(part.GetProperty("text").GetString() ?? "");
+                    }
+                }
+                var text = string.Concat(parts);
+                if (string.IsNullOrWhiteSpace(text))
+                    throw new ExternalServiceException("OpenAI", "API không trả về nội dung văn bản nào.");
+                var usage = root.TryGetProperty("usage", out var u) ? u : default;
+                var inputTokens = usage.ValueKind == JsonValueKind.Object && usage.TryGetProperty("input_tokens", out var i) ? i.GetInt32() : 0;
+                var outputTokens = usage.ValueKind == JsonValueKind.Object && usage.TryGetProperty("output_tokens", out var o) ? o.GetInt32() : 0;
+                var model = root.TryGetProperty("model", out var m) ? m.GetString() ?? _options.Model : _options.Model;
+                logger.LogInformation("OpenAI {Model}: {Latency} ms, input={Input} token, output={Output} token",
+                    model, stopwatch.ElapsedMilliseconds, inputTokens, outputTokens);
+                return new LlmResult(text, inputTokens, outputTokens, stopwatch.ElapsedMilliseconds, model);
             }
-            catch (AppException)
+            catch (Exception ex) when (ex is HttpRequestException || ex is OperationCanceledException && !ct.IsCancellationRequested)
             {
-                throw;
-            }
-            catch (Exception ex) when (attempt < maxRetries && (ex is HttpRequestException || ex is TaskCanceledException))
-            {
-                _logger.LogWarning("OpenAI lỗi mạng ({Error}). Thử lại sau {Delay}s (lần {Attempt}/{Max}).",
-                    ex.Message, delay.TotalSeconds, attempt, maxRetries);
-                await Task.Delay(delay, ct);
+                if (attempt >= attempts)
+                    throw new ExternalServiceException("OpenAI", "Không thể kết nối API hoặc đã hết thời gian chờ.", ex);
+                await RetryAsync(attempt, delay, ct);
                 delay *= 2;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException)
             {
-                throw new ExternalServiceException("OpenAI", $"Gọi API OpenAI thất bại: {ex.Message}", ex);
+                throw new ExternalServiceException("OpenAI", "Phản hồi API không hợp lệ.", ex);
             }
         }
+        throw new ExternalServiceException("OpenAI", "Gọi API thất bại sau các lần thử lại.");
+    }
 
-        stopwatch.Stop();
-
-        if (string.IsNullOrWhiteSpace(responseBody))
-            throw new ExternalServiceException("OpenAI", "API không trả về nội dung nào.");
-
-        using var doc = JsonDocument.Parse(responseBody);
-        var root = doc.RootElement;
-
-        if (root.TryGetProperty("error", out var errorProp))
-        {
-            var msg = errorProp.TryGetProperty("message", out var m) ? m.GetString() : errorProp.ToString();
-            throw new ExternalServiceException("OpenAI", $"Lỗi từ OpenAI API: {msg}");
-        }
-
-        var text = root.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString();
-        if (string.IsNullOrWhiteSpace(text))
-            throw new ExternalServiceException("OpenAI", "Nội dung phản hồi từ OpenAI rỗng.");
-
-        var inputTokens = 0;
-        var outputTokens = 0;
-        if (root.TryGetProperty("usage", out var usageProp))
-        {
-            if (usageProp.TryGetProperty("prompt_tokens", out var pt)) inputTokens = pt.GetInt32();
-            if (usageProp.TryGetProperty("completion_tokens", out var ctProp)) outputTokens = ctProp.GetInt32();
-        }
-
-        _logger.LogInformation("OpenAI {Model}: {Latency} ms, input={Input} token, output={Output} token",
-            _options.Model, stopwatch.ElapsedMilliseconds, inputTokens, outputTokens);
-
-        return new LlmResult(text, inputTokens, outputTokens, stopwatch.ElapsedMilliseconds, _options.Model);
+    private Task RetryAsync(int attempt, TimeSpan delay, CancellationToken ct)
+    {
+        logger.LogWarning("OpenAI lỗi tạm thời. Thử lại sau {Delay}s (lần {Attempt}/{Max}).", delay.TotalSeconds, attempt, Math.Max(1, _options.MaxRetries));
+        return Task.Delay(delay, ct);
     }
 }

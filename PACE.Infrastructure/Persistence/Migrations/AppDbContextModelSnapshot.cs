@@ -34,6 +34,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<string>("AnalyzedCommitSha")
                         .HasColumnType("text");
 
+                    b.Property<string>("AnalyzedRepoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("BusinessTemplateJson")
                         .HasColumnType("jsonb");
 
@@ -41,6 +45,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("RepoName")
                         .HasMaxLength(255)
@@ -678,10 +685,7 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"StudentCode\" IS NOT NULL");
 
-                    b.ToTable("users", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_users_StudentHasRepo", "\"Role\" IN ('Admin', 'Lecturer') OR \"AnalysisRunId\" IS NOT NULL");
-                        });
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>

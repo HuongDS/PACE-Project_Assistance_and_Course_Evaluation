@@ -5,6 +5,9 @@ namespace PACE.Application.Services.Interfaces;
 
 public interface IAnalysisRunService
 {
+    Task<PagedResult<RepositoryStudentDto>> GetStudentsAsync(Guid id, bool available, PageQuery query, CancellationToken ct = default);
+    Task<AssignRepositoryStudentsResult> AssignStudentsAsync(Guid id, AssignRepositoryStudentsRequest request, CancellationToken ct = default);
+    Task RemoveStudentAsync(Guid id, Guid studentId, CancellationToken ct = default);
     Task<PagedResult<AnalysisRunDto>> GetPagedAsync(AnalysisRunQuery query, CancellationToken ct = default);
     Task<AnalysisRunDetailDto> GetDetailAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunDetailDto> GetMineAsync(CancellationToken ct = default);

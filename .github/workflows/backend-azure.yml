@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 35
     env:
       AZURE_RESOURCE_GROUP: pace-demo-rg
-      AZURE_CONTAINER_APP: pace-api
+      AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP || 'pace-api' }}
       AZURE_REGISTRY: pace638443565b84
       IMAGE: pace638443565b84.azurecr.io/pace-api:git-${{ github.sha }}
     steps:

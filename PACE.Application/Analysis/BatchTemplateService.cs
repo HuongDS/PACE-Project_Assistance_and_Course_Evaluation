@@ -24,7 +24,7 @@ public sealed class BatchTemplateService(
 
         var items = new BatchTemplateItemDto?[rows.Count];
         var work = new List<(int Index, int Row, string Url)>();
-        var firstRowOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var firstRowOf = new Dictionary<string, int>(StringComparer.Ordinal);
 
         for (var i = 0; i < rows.Count; i++)
         {
@@ -36,13 +36,13 @@ public sealed class BatchTemplateService(
             }
 
             var url = RepoUrlHelper.Normalize(row.RepoUrl);
-            if (firstRowOf.TryGetValue(url, out var firstRow))
+            if (firstRowOf.TryGetValue(RepoUrlHelper.SourceKey(url), out var firstRow))
             {
                 items[i] = new BatchTemplateItemDto(row.Row, url, BatchItemStatus.Skipped, $"Trùng với dòng {firstRow}.", null);
                 continue;
             }
 
-            firstRowOf[url] = row.Row;
+            firstRowOf[RepoUrlHelper.SourceKey(url)] = row.Row;
             work.Add((i, row.Row, url));
         }
 

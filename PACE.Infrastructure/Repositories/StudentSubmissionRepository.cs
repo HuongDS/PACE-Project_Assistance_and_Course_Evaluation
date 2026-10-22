@@ -9,6 +9,17 @@ namespace PACE.Infrastructure.Repositories;
 
 public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmissionRepository
 {
+    public async Task LockQuickCreateKeyAsync(string key, CancellationToken ct = default)
+        => await context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", ct);
+
+    public Task<List<StudentAnswer>> GetSurveyAnswersAsync(CancellationToken ct = default)
+        => context.StudentAnswers.AsNoTracking().AsSplitQuery()
+            .Where(a => a.Submission != null && a.Submission.SubmittedAt != null)
+            .Include(a => a.Submission).ThenInclude(s => s!.AnalysisRun)
+            .Include(a => a.User).Include(a => a.Question).ThenInclude(q => q.Business)
+            .Include(a => a.RubricScores).ThenInclude(r => r.Criterion)
+            .OrderByDescending(a => a.Submission!.SubmittedAt).ThenBy(a => a.Id).ToListAsync(ct);
+
     public async Task LockUserAsync(Guid userId, CancellationToken ct = default)
     {
         // Materialize directly: FOR UPDATE must execute on the same context/transaction as SaveChanges.
@@ -36,6 +47,13 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
             .Include(s => s.User).Include(s => s.AnalysisRun)
             .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
             .Include(s => s.Answers).ThenInclude(a => a.RubricScores).ThenInclude(r => r.Criterion);
+
+    public Task<StudentSubmission?> GetForSurveyUpdateAsync(Guid id, CancellationToken ct = default)
+        => context.StudentSubmissions.AsTracking().AsSplitQuery()
+            .Include(s => s.Answers).ThenInclude(a => a.RubricScores)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
+
+    public void AddSurveyScore(RubricScore score) => context.RubricScores.Add(score);
 
     public Task<StudentSubmission?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => Details().FirstOrDefaultAsync(s => s.Id == id, ct);

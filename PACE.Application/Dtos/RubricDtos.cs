@@ -70,7 +70,13 @@ public record SurveySubmissionItemDto(
     double AverageScore,
     DateTime? SubmittedAt,
     IReadOnlyList<SubmissionRubricScoreDto> Scores
-);
+)
+{
+    public Guid AnalysisRunId { get; init; }
+    public Guid BusinessId { get; init; }
+    public Guid QuestionId { get; init; }
+    public string? FeedbackFormat { get; init; }
+}
 
 public record SurveySummaryResponseDto(
     int TotalSubmissions,
@@ -83,3 +89,38 @@ public record SurveySummaryResponseDto(
     IReadOnlyList<SurveySubmissionItemDto> Submissions
 );
 
+
+public class SurveyResultQuery
+{
+    public Guid? AnalysisRunId { get; set; }
+    public Guid? BusinessId { get; set; }
+    public Guid? QuestionId { get; set; }
+    public Guid? CriterionId { get; set; }
+    [Range(1, 5)] public int? MinScore { get; set; }
+    [Range(1, 5)] public int? MaxScore { get; set; }
+    [Range(1, 5)] public double? MinAverageScore { get; set; }
+    [Range(1, 5)] public double? MaxAverageScore { get; set; }
+    public string? FeedbackFormat { get; set; }
+    public bool? HasSurvey { get; set; }
+    public bool? HasFeedback { get; set; }
+    public bool ExcludeTestData { get; set; } = true;
+    public DateTimeOffset? FromDate { get; set; }
+    public DateTimeOffset? ToDate { get; set; }
+    [MaxLength(500)] public string? Search { get; set; }
+    [MaxLength(500)] public string? StudentCode { get; set; }
+    [MaxLength(500)] public string? StudentEmail { get; set; }
+    [MaxLength(500)] public string? RepoName { get; set; }
+    [MaxLength(500)] public string? BusinessName { get; set; }
+    [MaxLength(500)] public string? QuestionText { get; set; }
+    [MaxLength(500)] public string? AnswerText { get; set; }
+    [MaxLength(500)] public string? AiFeedback { get; set; }
+    [MaxLength(500)] public string? StudentReply { get; set; }
+    [MaxLength(500)] public string? AiCriterionName { get; set; }
+    public double? MinAiScore { get; set; }
+    public double? MaxAiScore { get; set; }
+}
+public record SurveyRepoOption(Guid Id, string Name);
+public record SurveyBusinessOption(Guid Id, Guid AnalysisRunId, string Name);
+public record SurveyQuestionOption(Guid Id, Guid AnalysisRunId, Guid BusinessId, string Text);
+public record SurveyFilterOptions(IReadOnlyList<SurveyRepoOption> Repositories,
+    IReadOnlyList<SurveyBusinessOption> Businesses, IReadOnlyList<SurveyQuestionOption> Questions);

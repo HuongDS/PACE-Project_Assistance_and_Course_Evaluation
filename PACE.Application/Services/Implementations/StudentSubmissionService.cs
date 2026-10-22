@@ -401,81 +401,67 @@ public class StudentSubmissionService(
     public async Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)
     {
         RequireRole(UserRole.Admin);
-
-        if (string.IsNullOrWhiteSpace(request.StudentCode))
-            throw new BadRequestException("Mã số sinh viên không được để trống.");
-        if (request.AnalysisRunId == Guid.Empty)
-            throw new BadRequestException("Vui lòng chọn repository hợp lệ.");
-
-        var run = await uow.AnalysisRuns.GetByIdAsync(request.AnalysisRunId, ct)
-                  ?? throw new NotFoundException("Repository không tồn tại.");
-
-        var studentCode = request.StudentCode.Trim().ToUpperInvariant();
-        var email = !string.IsNullOrWhiteSpace(request.Email)
-            ? request.Email.Trim().ToLowerInvariant()
-            : $"{studentCode.ToLowerInvariant()}@fpt.edu.vn";
-
-        var user = await uow.Users.GetByStudentCodeAsync(studentCode, ct);
-        if (user is not null)
+        return uow.ExecuteInTransactionAsync(async token =>
         {
-            user = await uow.Users.GetWithRepoAsync(user.Id, asNoTracking: false, ct: ct) ?? user;
-            user.Role = UserRole.Student;
-            user.AnalysisRunId = run.Id;
-            user.AnalysisRun = run;
+            var code = request.StudentCode?.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(code) || code.Length > 20)
+                throw new BadRequestException("MSSV phải có từ 1 đến 20 ký tự.");
+            var problem = PACE.Application.Common.RepoUrlHelper.FindProblem(request.RepoUrl);
+            if (problem != null) throw new BadRequestException(problem);
+            var repoUrl = PACE.Application.Common.RepoUrlHelper.Normalize(request.RepoUrl);
+            var email = request.Email?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 255
+                || !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email))
+                throw new BadRequestException("Vui lòng nhập email hợp lệ.");
 
-            if (!string.IsNullOrWhiteSpace(request.Email) && !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            // No clone or AI request inside this short registration transaction.
+            await uow.StudentSubmissions.LockQuickCreateKeyAsync("repo:" + repoUrl.ToLowerInvariant(), token);
+            var run = await uow.AnalysisRuns.GetByRepoUrlAsync(repoUrl, token);
+            if (run == null)
             {
-                if (await uow.Users.EmailExistsAsync(email, user.Id, ct))
-                    throw new ConflictException("Email đã được sử dụng bởi tài khoản khác.");
-                user.Email = email;
+                run = new AnalysisRun { Id = Guid.NewGuid(), RepoUrl = repoUrl,
+                    RepoName = PACE.Application.Common.RepoUrlHelper.DeriveName(repoUrl) };
+                await uow.AnalysisRuns.AddAsync(run, token);
             }
-            uow.Users.Update(user);
-        }
-        else
-        {
-            if (await uow.Users.EmailExistsAsync(email, null, ct))
-                throw new ConflictException($"Email {email} đã được sử dụng bởi tài khoản khác. Vui lòng cung cấp email riêng cho sinh viên này.");
-
-            user = new User
+            await uow.StudentSubmissions.LockQuickCreateKeyAsync("student:" + code, token);
+            var matches = await uow.Users.FindAsync(u => u.StudentCode != null && u.StudentCode.Trim().ToUpper() == code, ct: token);
+            if (matches.Count > 1) throw new ConflictException("MSSV bị trùng trong dữ liệu. Vui lòng kiểm tra tài khoản.");
+            var user = matches.SingleOrDefault();
+            if (user != null)
             {
-                Id = Guid.NewGuid(),
-                StudentCode = studentCode,
-                Email = email,
-                Role = UserRole.Student,
-                AnalysisRunId = run.Id,
-                AnalysisRun = run,
-                CreatedAt = DateTime.UtcNow
-            };
-            await uow.Users.AddAsync(user, ct);
-        }
-
-        // Tạo hoặc lấy phiên bài làm đang dở dang cho sinh viên
-        var active = await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, ct);
-        StudentSubmission submission;
-        if (active is not null)
-        {
-            submission = active;
-        }
-        else
-        {
-            submission = new StudentSubmission
+                await uow.StudentSubmissions.LockUserAsync(user.Id, token);
+                user = await uow.Users.GetWithRepoAsync(user.Id, asNoTracking: false, ct: token)
+                    ?? throw new ConflictException("Tài khoản vừa thay đổi. Vui lòng thử lại.");
+                if (user.Role != UserRole.Student)
+                    throw new ConflictException("MSSV thuộc tài khoản admin/giảng viên, không thể chuyển thành sinh viên.");
+            }
+            if (await uow.Users.EmailExistsAsync(email, user?.Id, token))
+                throw new ConflictException("Email đã thuộc tài khoản khác. Vui lòng kiểm tra MSSV và email.");
+            if (user == null)
             {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                AnalysisRunId = run.Id,
-                CreatedAt = DateTime.UtcNow,
-                SubmittedAt = null
-            };
-            uow.StudentSubmissions.Add(submission);
-        }
-
-        await uow.SaveChangesAsync(ct);
-
-        var full = await uow.StudentSubmissions.GetByIdAsync(submission.Id, ct) ?? submission;
-        full.User = user;
-        full.AnalysisRun = run;
-
-        return new AdminStudentSubmissionDto(user.Id, user.StudentCode, user.Email, MapDetail(full));
+                user = new User { Id = Guid.NewGuid(), StudentCode = code, Email = email, Role = UserRole.Student,
+                    AnalysisRunId = run.Id, AnalysisRun = run };
+                await uow.Users.AddAsync(user, token);
+            }
+            else
+            {
+                user.Email = email;
+                user.AnalysisRunId = run.Id;
+                user.AnalysisRun = run;
+            }
+            var submission = await uow.StudentSubmissions.GetSubmittedAsync(user.Id, run.Id, token)
+                ?? await uow.StudentSubmissions.GetActiveSessionAsync(user.Id, run.Id, token);
+            if (submission == null)
+            {
+                submission = new StudentSubmission { Id = Guid.NewGuid(), UserId = user.Id, AnalysisRunId = run.Id };
+                uow.StudentSubmissions.Add(submission);
+            }
+            await uow.SaveChangesAsync(token);
+            var full = await uow.StudentSubmissions.GetByIdAsync(submission.Id, token) ?? submission;
+            full.User = user;
+            full.AnalysisRun = run;
+            return new AdminStudentSubmissionDto(user.Id, user.StudentCode, user.Email, MapDetail(full));
+        }, ct);
     }
 
     public async Task<StudentSubmissionDetailDto> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -520,6 +506,10 @@ public class StudentSubmissionService(
                 {
                     BusinessId = a.Question.BusinessId, BusinessName = a.Question.Business.BusinessName,
                     QuestionId = a.QuestionId, QuestionText = a.Question.QuestionText, AnswerText = a.AnswerText ?? "",
+                    StudentAnswerId = a.Id,
+                    StudentReply = a.StudentReply,
+                    RubricScores = a.RubricScores.Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId,
+                        r.Criterion.Code, r.Criterion.Name, r.Criterion.Statement, r.Score)).ToList(),
                     AiEvaluation = ParseSavedFeedback(a.AiFeedback)
                 }).ToList()
         };

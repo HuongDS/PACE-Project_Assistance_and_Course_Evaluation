@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PACE.Application.Common.Exceptions;
@@ -11,110 +12,89 @@ namespace PACE.Tests;
 
 public class OpenAiQuestionLlmClientTests
 {
-    private sealed class Handler(Func<int, HttpResponseMessage> respond) : HttpMessageHandler
+    private sealed class Handler(Func<HttpRequestMessage, int, Task<HttpResponseMessage>> respond) : HttpMessageHandler
     {
         public int Calls { get; private set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-            => Task.FromResult(respond(++Calls));
+            => respond(request, ++Calls);
     }
 
-    private sealed class StubHttpClientFactory(HttpClient client) : IHttpClientFactory
+    private static HttpResponseMessage Response(int status, string body) => new((HttpStatusCode)status)
+    { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+
+    private static OpenAiQuestionLlmClient Client(Handler handler, string key = "test-key") => new(
+        new HttpClient(handler), Options.Create(new OpenAiOptions { ApiKey = key, InitialRetryDelaySeconds = 0, MaxRetries = 2 }),
+        NullLogger<OpenAiQuestionLlmClient>.Instance);
+
+    private static string Completed(string content) => JsonSerializer.Serialize(new
     {
-        public HttpClient CreateClient(string name) => client;
-    }
-
-    private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body)
-        => new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        status = "completed", model = "gpt-6-luna", usage = new { input_tokens = 100, output_tokens = 40 },
+        output = new[] { new { type = "message", content = new[] { new { type = "output_text", text = content } } } }
+    });
 
     [Fact]
-    public async Task ThrowsWhenApiKeyIsMissing()
+    public async Task SendsLunaRequestAndReturnsQuestionsWithUsage()
     {
-        var options = Options.Create(new OpenAiOptions { ApiKey = "" });
-        var handler = new Handler(_ => JsonResponse(HttpStatusCode.OK, "{}"));
-        var client = new OpenAiQuestionLlmClient(options, new StubHttpClientFactory(new HttpClient(handler)), NullLogger<OpenAiQuestionLlmClient>.Instance);
-
-        var ex = await Assert.ThrowsAsync<ExternalServiceException>(() => client.GenerateJsonAsync("system", "prompt", 0.3f));
-        Assert.Contains("Chưa cấu hình API key", ex.Message);
-    }
-
-    [Fact]
-    public async Task SuccessfullyParsesOpenAiJsonResponse()
-    {
-        var json = """
+        var handler = new Handler(async (request, _) =>
         {
-            "choices": [
-                {
-                    "message": {
-                        "content": "[{\"question\": \"Test Question?\"}]"
-                    }
-                }
-            ],
-            "usage": {
-                "prompt_tokens": 120,
-                "completion_tokens": 80
-            }
-        }
-        """;
+            Assert.Equal("https://api.openai.com/v1/responses", request.RequestUri!.ToString());
+            Assert.Equal("Bearer", request.Headers.Authorization!.Scheme);
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
+            var root = payload.RootElement;
+            Assert.Equal("gpt-6-luna", root.GetProperty("model").GetString());
+            Assert.Equal("none", root.GetProperty("reasoning").GetProperty("effort").GetString());
+            Assert.Equal(0.3f, root.GetProperty("temperature").GetSingle());
+            Assert.False(root.GetProperty("store").GetBoolean());
+            Assert.True(root.GetProperty("text").GetProperty("format").GetProperty("strict").GetBoolean());
+            return Response(200, Completed("{\"questions\":[{\"question\":\"Tình huống?\",\"suggestedAnswer\":\"Đáp án\",\"difficulty\":\"Dễ\",\"targetedEntryPoints\":[\"A.B\"]}]}"));
+        });
+        var result = await Client(handler).GenerateJsonAsync("system", "prompt", 0.3f);
+        Assert.Single(LlmQuestionParser.Parse(result.Text));
+        Assert.Equal(100, result.InputTokens);
+        Assert.Equal(40, result.OutputTokens);
+        Assert.Equal("gpt-6-luna", result.Model);
+    }
 
-        var options = Options.Create(new OpenAiOptions { ApiKey = "sk-test", Model = "gpt-4o-mini" });
-        var handler = new Handler(_ => JsonResponse(HttpStatusCode.OK, json));
-        var client = new OpenAiQuestionLlmClient(options, new StubHttpClientFactory(new HttpClient(handler)), NullLogger<OpenAiQuestionLlmClient>.Instance);
+    [Theory]
+    [InlineData(429)] [InlineData(500)] [InlineData(503)]
+    public async Task RetriesTransientStatus(int status)
+    {
+        var handler = new Handler((_, n) => Task.FromResult(n == 1 ? Response(status, "unavailable") : Response(200, Completed("{\"questions\":[]}"))));
+        await Client(handler).GenerateJsonAsync("system", "prompt", 0.3f);
+        Assert.Equal(2, handler.Calls);
+    }
 
-        var result = await client.GenerateJsonAsync("system", "prompt", 0.3f);
+    [Theory]
+    [InlineData(400)] [InlineData(401)] [InlineData(403)]
+    public async Task PermanentErrorsDoNotRetryOrLeakProviderBody(int status)
+    {
+        var handler = new Handler((_, _) => Task.FromResult(Response(status, "secret test-key source-code")));
+        var ex = await Assert.ThrowsAsync<ExternalServiceException>(() => Client(handler).GenerateJsonAsync("s", "p", 0.3f));
+        Assert.Contains(status.ToString(), ex.Message);
+        Assert.DoesNotContain("secret", ex.Message);
+        Assert.Equal(1, handler.Calls);
+    }
 
-        Assert.Equal("[{\"question\": \"Test Question?\"}]", result.Text);
-        Assert.Equal(120, result.InputTokens);
-        Assert.Equal(80, result.OutputTokens);
-        Assert.Equal("gpt-4o-mini", result.Model);
+    [Theory]
+    [InlineData("{\"status\":\"incomplete\",\"output\":[]}")]
+    [InlineData("{\"status\":\"completed\",\"output\":[]}")]
+    [InlineData("{\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"refusal\",\"refusal\":\"No\"}]}]}")]
+    [InlineData("not json")]
+    public async Task RejectsUnusableResponses(string body)
+    {
+        var handler = new Handler((_, _) => Task.FromResult(Response(200, body)));
+        await Assert.ThrowsAsync<ExternalServiceException>(() => Client(handler).GenerateJsonAsync("s", "p", 0.3f));
         Assert.Equal(1, handler.Calls);
     }
 
     [Fact]
-    public async Task RetriesOnTransientErrorAndSucceeds()
+    public async Task MissingKeyAndCancellationDoNotSendRequests()
     {
-        var successJson = """
-        {
-            "choices": [
-                {
-                    "message": {
-                        "content": "{\"status\":\"ok\"}"
-                    }
-                }
-            ]
-        }
-        """;
-
-        var options = Options.Create(new OpenAiOptions { ApiKey = "sk-test", InitialRetryDelaySeconds = 0 });
-        var handler = new Handler(call => call == 1 ? JsonResponse(HttpStatusCode.ServiceUnavailable, "busy") : JsonResponse(HttpStatusCode.OK, successJson));
-        var client = new OpenAiQuestionLlmClient(options, new StubHttpClientFactory(new HttpClient(handler)), NullLogger<OpenAiQuestionLlmClient>.Instance);
-
-        var result = await client.GenerateJsonAsync("system", "prompt", 0.3f);
-
-        Assert.Equal(2, handler.Calls);
-        Assert.Equal("{\"status\":\"ok\"}", result.Text);
-    }
-
-    [Fact]
-    public async Task RoutingClientFallsBackToGeminiWhenOpenAiKeyIsMissing()
-    {
-        var openAiOptions = Options.Create(new OpenAiOptions { ApiKey = "" }); // Chưa có key
-        var qOptions = Options.Create(new QuestionGenerationOptions { Provider = "OpenAI" }); // Muốn dùng OpenAI
-
-        var openAiHandler = new Handler(_ => JsonResponse(HttpStatusCode.OK, "{}"));
-        var openAiClient = new OpenAiQuestionLlmClient(openAiOptions, new StubHttpClientFactory(new HttpClient(openAiHandler)), NullLogger<OpenAiQuestionLlmClient>.Instance);
-
-        var geminiOptions = Options.Create(new GeminiOptions { ApiKey = "" });
-        var geminiClient = new GeminiQuestionLlmClient(geminiOptions, NullLogger<GeminiQuestionLlmClient>.Instance);
-
-        var router = new RoutingQuestionLlmClient(
-            geminiClient,
-            openAiClient,
-            qOptions,
-            openAiOptions,
-            NullLogger<RoutingQuestionLlmClient>.Instance);
-
-        var ex = await Assert.ThrowsAsync<ExternalServiceException>(() => router.GenerateJsonAsync("system", "prompt", 0.3f));
-        Assert.Equal("Gemini", ex.ServiceName);
-        Assert.Equal(0, openAiHandler.Calls); // Không gọi OpenAI
+        var handler = new Handler((_, _) => throw new Exception("Must not send"));
+        await Assert.ThrowsAsync<ExternalServiceException>(() => Client(handler, "").GenerateJsonAsync("s", "p", 0.3f));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Client(handler).GenerateJsonAsync("s", "p", 0.3f, cts.Token));
+        Assert.Equal(0, handler.Calls);
     }
 }

@@ -28,7 +28,7 @@ public static class LlmQuestionParser
     public static List<LlmQuestion> Parse(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw))
-            throw new ExternalServiceException("Gemini", "Không trả về nội dung nào.");
+            throw new ExternalServiceException("LLM", "Không trả về nội dung nào.");
 
         var text = StripCodeFence(raw.Trim());
         text = TrimToFirstJsonValue(text);
@@ -54,7 +54,7 @@ public static class LlmQuestionParser
         catch (JsonException ex)
         {
             var preview = text.Length > 500 ? text[..500] + "..." : text;
-            throw new ExternalServiceException("Gemini", $"JSON trả về không hợp lệ: {ex.Message}. Nội dung: {preview}", ex);
+            throw new ExternalServiceException("LLM", $"JSON trả về không hợp lệ: {ex.Message}. Nội dung: {preview}", ex);
         }
     }
 

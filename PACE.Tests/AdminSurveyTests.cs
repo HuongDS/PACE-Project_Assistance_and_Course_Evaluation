@@ -10,6 +10,33 @@ namespace PACE.Tests;
 
 public class AdminSurveyTests
 {
+    [Fact]
+    public async Task SubmissionExportRequiresAdminAndExportsAllSurveyedAnswers()
+    {
+        SurveyResultQuery? exportedQuery = null;
+        var excelBytes = new byte[] { 1, 2, 3 };
+        var criterionService = Stub<PACE.Application.Services.Interfaces.IRubricCriterionService>.Create((method, arguments) =>
+        {
+            Assert.Equal("ExportSurveyResultsToExcelAsync", method.Name);
+            exportedQuery = (SurveyResultQuery)arguments[0]!;
+            return Task.FromResult(excelBytes);
+        });
+        var controller = new PACE.API.Controllers.StudentSubmissionsController(null!);
+        var result = Assert.IsType<Microsoft.AspNetCore.Mvc.FileContentResult>(
+            await controller.ExportReviewedSubmissions(criterionService, CancellationToken.None));
+        Assert.True(exportedQuery!.HasSurvey);
+        Assert.False(exportedQuery.ExcludeTestData);
+        Assert.Null(exportedQuery.FromDate);
+        Assert.Null(exportedQuery.ToDate);
+        Assert.Equal(excelBytes, result.FileContents);
+        Assert.EndsWith(".xlsx", result.FileDownloadName);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", result.ContentType);
+        var method = typeof(PACE.API.Controllers.StudentSubmissionsController)
+            .GetMethod(nameof(controller.ExportReviewedSubmissions))!;
+        var authorization = Assert.Single(method.GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false));
+        Assert.Equal(PACE.API.Controllers.Roles.Admin, ((Microsoft.AspNetCore.Authorization.AuthorizeAttribute)authorization).Roles);
+    }
+
     private static readonly Guid Criterion = Guid.NewGuid();
     private static SurveySubmissionItemDto Row(int score = 4) => new(Guid.NewGuid(), Guid.NewGuid(), "student@gmail.com", "SE192251", "Repo A",
         "Chat", "Explain validation", "Checks input", "{\"criteria\":[{\"name\":\"Correctness\",\"score\":8},{\"name\":\"Clarity\",\"score\":2}]}",

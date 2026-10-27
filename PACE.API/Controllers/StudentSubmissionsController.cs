@@ -51,6 +51,19 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
     public async Task<ActionResult<AdminStudentSubmissionDto>> QuickCreate([FromBody] QuickCreateStudentSubmissionRequest request, CancellationToken ct)
         => Ok(await service.QuickCreateAsync(request, ct));
 
+    [HttpGet("export-excel")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ExportReviewedSubmissions(
+        [FromServices] IRubricCriterionService criterionService, CancellationToken ct)
+    {
+        var bytes = await criterionService.ExportSurveyResultsToExcelAsync(new SurveyResultQuery
+        {
+            HasSurvey = true,
+            ExcludeTestData = false
+        }, ct);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"PACE-Reviewed-Submissions-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx");
+    }
     [HttpGet("manager-statistics")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<ManagerStatisticsDto>> GetManagerStatistics(CancellationToken ct)

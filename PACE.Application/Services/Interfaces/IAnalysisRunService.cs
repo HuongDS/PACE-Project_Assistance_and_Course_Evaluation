@@ -15,4 +15,5 @@ public interface IAnalysisRunService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunTemplateDto> GetTemplateAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunTemplateDto> SaveTemplateAsync(Guid id, BusinessTemplateRequest request, CancellationToken ct = default);
+    Task<string> GetNextCopyNameAsync(Guid id, CancellationToken ct = default);
 }

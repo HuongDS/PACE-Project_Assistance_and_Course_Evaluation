@@ -24,11 +24,13 @@ public sealed class ClosedXmlUserImportReader : IUserImportReader
             var sheet = workbook.Worksheets.FirstOrDefault() ?? throw new BadRequestException("File Excel không có sheet nào.");
             var header = sheet.FirstRowUsed() ?? throw new BadRequestException("File Excel trống.");
 
-            int? emailCol = null, repoCol = null, nameCol = null;
+            int? emailCol = null, repoCol = null, nameCol = null, codeCol = null;
             foreach (var cell in header.CellsUsed())
             {
                 var title = cell.GetString().Trim().ToLowerInvariant();
-                if (emailCol is null && (title.Contains("email") || title.Contains("mail"))) emailCol = cell.Address.ColumnNumber;
+                // Checked first so "Mã số sinh viên" is never taken as the group-name column.
+                if (codeCol is null && (title.Contains("mssv") || title.Contains("mã số") || title.Contains("mã sv") || title.Contains("student code") || title.Contains("studentcode"))) codeCol = cell.Address.ColumnNumber;
+                else if (emailCol is null && (title.Contains("email") || title.Contains("mail"))) emailCol = cell.Address.ColumnNumber;
                 else if (repoCol is null && (title.Contains("repo") || title.Contains("github") || title.Contains("link") || title.Contains("url"))) repoCol = cell.Address.ColumnNumber;
                 else if (nameCol is null && (title.Contains("nhóm") || title.Contains("group") || title.Contains("name") || title.Contains("tên"))) nameCol = cell.Address.ColumnNumber;
             }
@@ -43,7 +45,8 @@ public sealed class ClosedXmlUserImportReader : IUserImportReader
                 var repo = row.Cell(repoCol.Value).GetString().Trim();
                 if (string.IsNullOrEmpty(email) && string.IsNullOrEmpty(repo)) continue;
                 var name = nameCol.HasValue ? row.Cell(nameCol.Value).GetString().Trim() : null;
-                result.Add(new UserImportRow(row.RowNumber(), email, repo, name));
+                var code = codeCol.HasValue ? row.Cell(codeCol.Value).GetString().Trim() : null;
+                result.Add(new UserImportRow(row.RowNumber(), email, repo, name, string.IsNullOrEmpty(code) ? null : code));
             }
 
             return result;

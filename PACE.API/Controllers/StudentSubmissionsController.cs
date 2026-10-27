@@ -64,4 +64,8 @@ public class StudentSubmissionsController(IStudentSubmissionService service) : C
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"PACE-Reviewed-Submissions-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx");
     }
+    [HttpGet("manager-statistics")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<ManagerStatisticsDto>> GetManagerStatistics(CancellationToken ct)
+        => Ok(await service.GetManagerStatisticsAsync(ct));
 }

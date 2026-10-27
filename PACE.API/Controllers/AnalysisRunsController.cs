@@ -48,6 +48,12 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
     public async Task<ActionResult<AnalysisRunDetailDto>> GetMine(CancellationToken ct)
         => Ok(await runService.GetMineAsync(ct));
 
+    /// <summary>Gợi ý tên bản sao kế tiếp (1), (2)... khi admin chỉnh sửa link repository.</summary>
+    [HttpGet("{id:guid}/next-copy-name")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<object>> GetNextCopyName(Guid id, CancellationToken ct)
+        => Ok(new { nextName = await runService.GetNextCopyNameAsync(id, ct) });
+
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<AnalyzeResultDto>> CreateAndAnalyze(CreateAnalysisRunRequest request)

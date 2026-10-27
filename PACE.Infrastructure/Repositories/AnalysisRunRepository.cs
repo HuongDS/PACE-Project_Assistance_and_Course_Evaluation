@@ -71,6 +71,9 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .ExecuteUpdateAsync(set => set.SetProperty(s => s.AnalysisRunId, archiveId), ct);
     }
 
+    public Task<List<string>> GetAllRepoNamesAsync(CancellationToken ct = default)
+        => DbSet.AsNoTracking().Where(r => r.RepoName != null).Select(r => r.RepoName!).ToListAsync(ct);
+
     public Task<bool> HasQuestionsAsync(Guid analysisRunId, CancellationToken ct = default)
         => Context.GeneratedQuestions.AnyAsync(q => q.Business.AnalysisRunId == analysisRunId, ct);
 

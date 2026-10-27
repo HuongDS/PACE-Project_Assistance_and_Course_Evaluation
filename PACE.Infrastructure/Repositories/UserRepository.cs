@@ -47,7 +47,8 @@ public class UserRepository(AppDbContext context) : GenericRepository<User>(cont
 
         var keyword = NormalizeSearch(search);
         if (keyword is not null)
-            query = query.Where(u => (u.StudentCode != null && u.StudentCode.ToLower().Contains(keyword)) || u.Email.ToLower().Contains(keyword)
+            query = query.Where(u => u.Email.ToLower().Contains(keyword)
+                                     || (u.StudentCode != null && u.StudentCode.ToLower().Contains(keyword))
                                      || (u.AnalysisRun != null && u.AnalysisRun.RepoName != null && u.AnalysisRun.RepoName.ToLower().Contains(keyword)));
 
         return ToPagedAsync(query.OrderBy(u => u.Role).ThenBy(u => u.Email), page, pageSize, ct);

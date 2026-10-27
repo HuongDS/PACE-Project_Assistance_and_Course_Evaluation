@@ -13,6 +13,9 @@ public class QuestionGenerationOptions
 
     public int MaxQuestions { get; set; } = 20;
 
+    /// <summary>Nhà cung cấp LLM để sinh câu hỏi: "Gemini" (mặc định) hoặc "OpenAI".</summary>
+    public string Provider { get; set; } = "Gemini";
+
     /// <summary>Giống Repo_Into_Graph (GenerateUnifiedQuestionsAsync): 0.3.</summary>
     public float Temperature { get; set; } = 0.3f;
 }

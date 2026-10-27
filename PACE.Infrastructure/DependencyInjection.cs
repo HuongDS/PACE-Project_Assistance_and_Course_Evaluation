@@ -52,7 +52,6 @@ public static class DependencyInjection
         services.AddHttpClient();
         services.AddScoped<ILlmService, DeepSeekService>();
         services.AddScoped<IGroqService, GroqService>();
-
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
         services.AddHttpClient<IQuestionLlmClient, OpenAiQuestionLlmClient>((provider, client) =>

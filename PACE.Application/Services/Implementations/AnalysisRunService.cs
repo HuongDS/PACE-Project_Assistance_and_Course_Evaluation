@@ -169,4 +169,12 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
         if (await uow.AnalysisRuns.RepoUrlExistsAsync(normalizedUrl, exceptId, ct))
             throw new ConflictException($"Repo {normalizedUrl} đã tồn tại.");
     }
+
+    public async Task<string> GetNextCopyNameAsync(Guid id, CancellationToken ct = default)
+    {
+        var run = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
+        var allNames = await uow.AnalysisRuns.GetAllRepoNamesAsync(ct);
+        var baseName = run.RepoName ?? (run.RepoUrl != null ? RepoUrlHelper.DeriveName(run.RepoUrl) : "Repository");
+        return RepoUrlHelper.ComputeCopyName(baseName, allNames);
+    }
 }

@@ -67,6 +67,15 @@ public class RubricCriteriaController(IRubricCriterionService criterionService) 
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "rubric-criteria-template.xlsx");
     }
 
+    [HttpGet("export-excel")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ExportCriteria(CancellationToken ct)
+    {
+        var bytes = await criterionService.ExportCriteriaExcelAsync(ct);
+        var fileName = $"PACE-Rubric-Criteria-{DateTime.Now:yyyyMMdd-HHmmss}.xlsx";
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+    }
+
     [HttpGet("survey-results")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<SurveySummaryResponseDto>> GetSurveyResults([FromQuery] SurveyResultQuery query, CancellationToken ct)

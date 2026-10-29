@@ -131,6 +131,12 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
     public Task<byte[]> GenerateCriteriaTemplateExcelAsync(CancellationToken ct = default)
         => Task.FromResult(excelService.GenerateCriteriaTemplate());
 
+    public async Task<byte[]> ExportCriteriaExcelAsync(CancellationToken ct = default)
+    {
+        var criteria = await GetAllAsync(ct);
+        return excelService.ExportCriteria(criteria);
+    }
+
     public async Task<SurveyFilterOptions> GetSurveyFilterOptionsAsync(CancellationToken ct = default)
     {
         var answers = await uow.StudentSubmissions.GetSurveyAnswersAsync(ct);

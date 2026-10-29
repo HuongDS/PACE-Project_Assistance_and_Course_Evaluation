@@ -261,7 +261,8 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
                 if (codeCol is null && (title.Contains("code") || title.Contains("mã"))) codeCol = cell.Address.ColumnNumber;
                 else if (nameCol is null && (title.Contains("name") || title.Contains("tên") || title.Contains("tiêu chí"))) nameCol = cell.Address.ColumnNumber;
                 else if (stmtCol is null && (title.Contains("statement") || title.Contains("nội dung") || title.Contains("câu hỏi") || title.Contains("khẳng định"))) stmtCol = cell.Address.ColumnNumber;
-                else if (orderCol is null && (title.Contains("order") || title.Contains("thứ tự") || title.Contains("stt"))) orderCol = cell.Address.ColumnNumber;
+                else if (title.Contains("order") || title.Contains("thứ tự")) orderCol = cell.Address.ColumnNumber;
+                else if (orderCol is null && title.Contains("stt")) orderCol = cell.Address.ColumnNumber;
             }
 
             if (codeCol is null || nameCol is null || stmtCol is null)
@@ -317,7 +318,8 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
                 if (codeCol is null && (title.Contains("code") || title.Contains("mã"))) codeCol = i;
                 else if (nameCol is null && (title.Contains("name") || title.Contains("tên") || title.Contains("tiêu chí"))) nameCol = i;
                 else if (stmtCol is null && (title.Contains("statement") || title.Contains("nội dung") || title.Contains("câu hỏi") || title.Contains("khẳng định"))) stmtCol = i;
-                else if (orderCol is null && (title.Contains("order") || title.Contains("thứ tự") || title.Contains("stt"))) orderCol = i;
+                else if (title.Contains("order") || title.Contains("thứ tự")) orderCol = i;
+                else if (orderCol is null && title.Contains("stt")) orderCol = i;
             }
 
             if (codeCol is null || nameCol is null || stmtCol is null)
@@ -403,6 +405,63 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
 
         ws.Columns().AdjustToContents();
         ws.Column(3).Width = 55;
+
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+
+    public byte[] ExportCriteria(IReadOnlyList<RubricCriterionDto> criteria)
+    {
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("Tiêu chí khảo sát");
+        ws.ShowGridLines = true;
+
+        var headers = new[] { "STT", "Mã tiêu chí (Code)", "Tên tiêu chí (Name)", "Nội dung câu hỏi khảo sát (Statement)", "Thứ tự hiển thị (DisplayOrder)" };
+        for (int c = 0; c < headers.Length; c++)
+        {
+            var cell = ws.Cell(1, c + 1);
+            cell.Value = headers[c];
+            cell.Style.Font.Bold = true;
+            cell.Style.Font.FontColor = XLColor.White;
+            cell.Style.Fill.BackgroundColor = XLColor.FromArgb(185, 71, 32);
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        }
+        ws.Row(1).Height = 26;
+
+        int row = 2;
+        int stt = 1;
+        foreach (var c in criteria.OrderBy(x => x.DisplayOrder))
+        {
+            ws.Cell(row, 1).Value = stt++;
+            ws.Cell(row, 2).Value = c.Code;
+            ws.Cell(row, 3).Value = c.Name;
+            ws.Cell(row, 4).Value = c.Statement;
+            ws.Cell(row, 5).Value = c.DisplayOrder;
+
+            ws.Cell(row, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            ws.Cell(row, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            row++;
+        }
+
+        if (criteria.Count > 0)
+        {
+            var tableRange = ws.Range(1, 1, row - 1, headers.Length);
+            tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            tableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            tableRange.Style.Border.InsideBorderColor = XLColor.FromHtml("#cbd5e1");
+            tableRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#94a3b8");
+        }
+
+        ws.Columns().AdjustToContents();
+        ws.Column(1).Width = 8;
+        ws.Column(2).Width = 20;
+        ws.Column(3).Width = 30;
+        ws.Column(4).Width = 60;
+        ws.Column(4).Style.Alignment.WrapText = true;
+        ws.Column(5).Width = 20;
 
         using var ms = new MemoryStream();
         workbook.SaveAs(ms);

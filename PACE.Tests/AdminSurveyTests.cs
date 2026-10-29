@@ -129,4 +129,28 @@ public class AdminSurveyTests
         await service.ExportSurveyResultsToExcelAsync(query);
         Assert.Equal(filtered.Submissions.Select(x => x.StudentAnswerId), exported!.Submissions.Select(x => x.StudentAnswerId));
     }
+
+    [Fact]
+    public void ExportCriteriaGeneratesValidExcelAndCanBeReimported()
+    {
+        var excel = new PACE.Infrastructure.Excel.ClosedXmlSurveyExcelService();
+        var list = new List<RubricCriterionDto>
+        {
+            new(Guid.NewGuid(), "ACCURACY", "Độ chính xác", "Nội dung nhận định A", 1),
+            new(Guid.NewGuid(), "CLARITY", "Độ rõ ràng", "Nội dung nhận định B", 2)
+        };
+        var bytes = excel.ExportCriteria(list);
+        Assert.NotNull(bytes);
+        Assert.NotEmpty(bytes);
+
+        using var ms = new MemoryStream(bytes);
+        var imported = excel.ReadCriteriaFromExcel(ms);
+        Assert.Equal(2, imported.Count);
+        Assert.Equal("ACCURACY", imported[0].Code);
+        Assert.Equal("Độ chính xác", imported[0].Name);
+        Assert.Equal("Nội dung nhận định A", imported[0].Statement);
+        Assert.Equal(1, imported[0].DisplayOrder);
+        Assert.Equal("CLARITY", imported[1].Code);
+        Assert.Equal(2, imported[1].DisplayOrder);
+    }
 }

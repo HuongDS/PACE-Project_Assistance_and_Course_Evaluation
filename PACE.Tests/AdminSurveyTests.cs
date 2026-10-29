@@ -4,6 +4,7 @@ using PACE.Application.Dtos;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Services.Implementations;
 using PACE.Domain.Entities;
+using PACE.Domain.Enums;
 using Xunit;
 
 namespace PACE.Tests;
@@ -100,12 +101,30 @@ public class AdminSurveyTests
         Assert.Equal("—", sheet.Cell(2, headers["Điểm TB câu"]).GetString());
     }
 
+    [Theory]
+    [InlineData(ContextType.Raw, "Codebase")]
+    [InlineData(ContextType.Graph, "Graph")]
+    [InlineData(null, "Không xác định")]
+    [InlineData((ContextType)99, "Không xác định")]
+    public void ExcelExportsQuestionSourceAlongsideItsAnswer(ContextType? source, string label)
+    {
+        var row = Row() with { QuestionContextType = source };
+        var summary = new SurveySummaryResponseDto(1, 1, 1, 4, "", "", [], [row]);
+        using var stream = new MemoryStream(new PACE.Infrastructure.Excel.ClosedXmlSurveyExcelService().ExportSurveyResults(summary));
+        using var workbook = new ClosedXML.Excel.XLWorkbook(stream);
+        var sheet = workbook.Worksheet("Chi tiết khảo sát sinh viên");
+        var headers = sheet.Row(1).CellsUsed().ToDictionary(c => c.GetString(), c => c.Address.ColumnNumber);
+        Assert.Equal(label, sheet.Cell(2, headers["Nguồn sinh câu hỏi"]).GetString());
+        Assert.Equal(row.StudentAnswerId.ToString(), sheet.Cell(2, headers["Student Answer ID"]).GetString());
+        Assert.Equal("Rubric", sheet.Cell(2, headers["Loại feedback"]).GetString());
+    }
+
     [Fact] public async Task SummaryIncludesMoreThanTwoHundredSubmissionsAndExportUsesIdenticalFilters()
     {
         var criterion = new RubricCriterion {Id = Criterion, Code = "A", Name = "Accuracy", Statement = "Accurate"};
         var run = new AnalysisRun {Id = Guid.NewGuid(), RepoName = "Repository"};
         var business = new Business {Id = Guid.NewGuid(), AnalysisRunId = run.Id, BusinessName = "Chat"};
-        var question = new GeneratedQuestion {Id = Guid.NewGuid(), BusinessId = business.Id, Business = business, QuestionText = "Question"};
+        var question = new GeneratedQuestion {Id = Guid.NewGuid(), BusinessId = business.Id, Business = business, QuestionText = "Question", ContextType = ContextType.Graph};
         var user = new User {Id = Guid.NewGuid(), Email = "student@example.com", StudentCode = "SE100"};
         var rows = Enumerable.Range(0, 250).Select(i => {
             var submission = new StudentSubmission {Id = Guid.NewGuid(), AnalysisRunId = run.Id, AnalysisRun = run, SubmittedAt = DateTime.UtcNow};
@@ -121,6 +140,7 @@ public class AdminSurveyTests
         var service = new RubricCriterionService(uow, excel);
         var all = await service.GetSurveyResultsAsync();
         Assert.Equal(250, all.TotalSubmissions);
+        Assert.All(all.Submissions, row => Assert.Equal(ContextType.Graph, row.QuestionContextType));
         var query = new SurveyResultQuery {CriterionId = Criterion, MinScore = 1, MaxScore = 1, QuestionId = question.Id};
         var filtered = await service.GetSurveyResultsAsync(query);
         Assert.Single(filtered.Submissions);
@@ -128,5 +148,9 @@ public class AdminSurveyTests
         Assert.Equal(1, filtered.OverallAverageScore);
         await service.ExportSurveyResultsToExcelAsync(query);
         Assert.Equal(filtered.Submissions.Select(x => x.StudentAnswerId), exported!.Submissions.Select(x => x.StudentAnswerId));
+        Assert.Equal(ContextType.Graph, Assert.Single(exported.Submissions).QuestionContextType);
+        question.ContextType = ContextType.Raw;
+        await service.ExportSurveyResultsToExcelAsync(query);
+        Assert.Equal(ContextType.Raw, Assert.Single(exported.Submissions).QuestionContextType);
     }
 }

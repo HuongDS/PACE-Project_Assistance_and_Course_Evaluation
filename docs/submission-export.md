@@ -14,6 +14,13 @@ không xuất hiện trong file.
 File gồm sheet tổng quan và sheet chi tiết: MSSV, email, repository, nghiệp vụ,
 câu hỏi, câu trả lời, feedback AI, phản hồi sinh viên, điểm từng tiêu chí,
 điểm trung bình, thời gian nộp UTC và các ID để đối chiếu.
+Sheet chi tiết có thêm cột **Nguồn sinh câu hỏi** ở cuối: `Codebase` khi
+`GeneratedQuestion.ContextType = Raw`, `Graph` khi `ContextType = Graph`.
+Nguồn được lấy từ từng câu hỏi đã lưu, kể cả khi chạy Hybrid (xuất nhánh
+Raw/Graph thực tế đã chọn), không suy đoán từ nội dung feedback hoặc repo.
+Nếu nguồn không được cung cấp hoặc không được hỗ trợ, ô ghi `Không xác định`.
+Để phân tích RQ3, nhóm các dòng theo cột này rồi so sánh điểm tiêu chí
+`ACCEPTANCE`; có thể chia tiếp theo `Loại feedback` để đối chiếu từng kiểu.
 Nếu không có dữ liệu phù hợp, API vẫn trả file Excel với tiêu đề và thống kê rỗng.
 
 ```bash

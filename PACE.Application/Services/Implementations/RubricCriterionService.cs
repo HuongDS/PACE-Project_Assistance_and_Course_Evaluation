@@ -170,7 +170,8 @@ public class RubricCriterionService(IUnitOfWork uow, ISurveyExcelService excelSe
                 scores.Count > 0 ? scores.Average(s => s.Score) : 0, sub.SubmittedAt, scores)
             {
                 AnalysisRunId = sub.AnalysisRunId, BusinessId = answer.Question.BusinessId,
-                QuestionId = answer.QuestionId, FeedbackFormat = answer.FeedbackFormat
+                QuestionId = answer.QuestionId, FeedbackFormat = answer.FeedbackFormat,
+                QuestionContextType = answer.Question.ContextType
             };
             if (!SurveyResultFiltering.Matches(item, query)) continue;
             items.Add(item);

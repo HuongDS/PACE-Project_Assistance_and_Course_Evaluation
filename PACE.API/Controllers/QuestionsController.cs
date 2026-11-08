@@ -9,7 +9,7 @@ using PACE.Application.Services.Interfaces;
 namespace PACE.API.Controllers;
 
 [ApiController]
-[Authorize(Roles = Roles.Admin)]
+// [Authorize(Roles = Roles.Admin)]
 public class QuestionsController(
     IQuestionGenerationService questionService,
     IDrawioSpecificationStorage specStorage) : ControllerBase

@@ -1,19 +1,25 @@
 [
   {
-    "business_name": "Quy Trinh Goi Mon Va Thanh Toan",
-    "description": "Quy trình gọi món và thanh toán tại nhà hàng (Bao gồm cả luồng chuẩn và luồng nghịch đảo để kiểm thử)",
+    "business_name": "Quy Trinh Goi Mon Va Thanh Toan 01",
+    "description": "Quy trình gọi món và thanh toán chuẩn: Khách chọn món -> Kiểm tra bếp -> Bếp xác nhận -> Khách thanh toán -> Hoàn tất đơn hàng",
     "apis": [
       {
-        "controller": "OrderController",
+        "controller": "StandardOrderController",
         "http_method": "POST",
         "function": "ProcessOrderAsync",
-        "path": "/api/order/process"
-      },
+        "path": "/api/standard-order/process"
+      }
+    ]
+  },
+  {
+    "business_name": "Quy Trinh Goi Mon Va Thanh Toan 02",
+    "description": "Quy trình gọi món bị sai/nghịch đảo thứ tự: Thu tiền trước -> Mới tạo đơn gọi món -> Kiểm tra bếp",
+    "apis": [
       {
-        "controller": "OrderController",
+        "controller": "FlawedOrderController",
         "http_method": "POST",
-        "function": "ProcessFlawedOrderAsync",
-        "path": "/api/order/process-flawed"
+        "function": "ProcessOrderAsync",
+        "path": "/api/flawed-order/process"
       }
     ]
   }

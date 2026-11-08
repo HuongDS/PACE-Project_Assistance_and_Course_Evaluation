@@ -4,22 +4,24 @@ using MockProject.Business.Interfaces;
 
 namespace MockProject.API.Controllers;
 
+/// <summary>
+/// Nghiệp vụ 01: Quy Trình Gọi Món Và Thanh Toán Chuẩn (Happy / Standard Flow)
+/// Thứ tự thực hiện: Khách chọn món -> Bếp kiểm tra nguyên liệu -> Xác nhận nhận đơn -> Khách thanh toán -> Hoàn tất.
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
-public class OrderController : ControllerBase
+[Route("api/standard-order")]
+public class StandardOrderController : ControllerBase
 {
     private readonly IOrderService _orderService;
 
-    public OrderController(IOrderService orderService)
+    public StandardOrderController(IOrderService orderService)
     {
         _orderService = orderService;
     }
 
     /// <summary>
-    /// API thực thi toàn bộ luồng quy trình: Khách gọi món -> Bếp kiểm tra nguyên liệu -> Xác nhận nhận đơn -> Thanh toán -> Hoàn tất.
+    /// Thực thi luồng chuẩn: Khách chọn món -> Bếp kiểm tra nguyên liệu -> Xác nhận -> Thanh toán -> Hoàn tất.
     /// </summary>
-    /// <param name="request">Thông tin khách hàng, danh sách món chọn, và phương thức thanh toán</param>
-    /// <returns>Kết quả xử lý đơn hàng theo quy trình</returns>
     [HttpPost("process")]
     public async Task<IActionResult> ProcessOrderAsync([FromBody] ProcessOrderRequest request)
     {
@@ -29,28 +31,6 @@ public class OrderController : ControllerBase
         }
 
         var response = await _orderService.ProcessOrderAsync(request);
-
-        if (!response.IsSuccess)
-        {
-            return BadRequest(response);
-        }
-
-        return Ok(response);
-    }
-
-    /// <summary>
-    /// API LUỒNG SAI / NGHỊCH ĐẢO: Thu tiền trước rồi mới tạo đơn và kiểm tra bếp.
-    /// Dùng để kiểm thử chức năng phát hiện nghịch đảo luồng (Sequence Conformance) của PACE so với Ground Truth Draw.io.
-    /// </summary>
-    [HttpPost("process-flawed")]
-    public async Task<IActionResult> ProcessFlawedOrderAsync([FromBody] ProcessOrderRequest request)
-    {
-        if (request == null || request.Items == null || request.Items.Count == 0)
-        {
-            return BadRequest(new { Message = "Danh sách món ăn không được để trống." });
-        }
-
-        var response = await _orderService.ProcessFlawedOrderAsync(request);
 
         if (!response.IsSuccess)
         {
@@ -75,7 +55,7 @@ public class OrderController : ControllerBase
     }
 
     /// <summary>
-    /// Tra cứu thực đơn và tồn kho nguyên liệu bếp hiện có (hỗ trợ kiểm thử happy path / exception path)
+    /// Tra cứu thực đơn và tồn kho nguyên liệu bếp hiện có
     /// </summary>
     [HttpGet("menu")]
     public async Task<IActionResult> GetMenuAsync([FromServices] IKitchenService kitchenService)

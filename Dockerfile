@@ -20,7 +20,10 @@ WORKDIR /app
 COPY --from=build /app/publish .
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     ASPNETCORE_ENVIRONMENT=Production \
-    Analysis__CloneRoot=/tmp/pace_repos
+    Analysis__CloneRoot=/tmp/pace_repos \
+    QuestionGeneration__SpecificationStoragePath=/tmp/pace_specifications
+RUN mkdir -p /tmp/pace_specifications /tmp/pace_repos /app/App_Data/specifications \
+    && chown -R app:app /tmp/pace_specifications /tmp/pace_repos /app/App_Data
 EXPOSE 8080
 USER app
 ENTRYPOINT ["dotnet", "PACE.API.dll"]

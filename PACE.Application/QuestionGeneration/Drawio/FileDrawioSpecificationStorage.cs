@@ -20,11 +20,24 @@ public class FileDrawioSpecificationStorage(
 
     private string GetFilePath(Guid businessId)
     {
-        if (!Directory.Exists(_storageDir))
+        string dir = _storageDir;
+        try
         {
-            Directory.CreateDirectory(_storageDir);
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
         }
-        return Path.Combine(_storageDir, $"{businessId}.json");
+        catch (UnauthorizedAccessException)
+        {
+            // Fallback to writable OS temp directory if configured directory has no write permission (e.g. non-root container)
+            dir = Path.Combine(Path.GetTempPath(), "pace_specifications");
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+        }
+        return Path.Combine(dir, $"{businessId}.json");
     }
 
     public async Task SaveSpecificationAsync(Guid businessId, DrawioProcessDiagram diagram, CancellationToken ct = default)

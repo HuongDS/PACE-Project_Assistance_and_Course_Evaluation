@@ -1,0 +1,15 @@
+[
+  {
+    "business_name": "Quy Trinh Goi Mon Va Thanh Toan",
+    "description": "Quy trình gọi món và thanh toán tại nhà hàng: Khách chọn món -> Kiểm tra bếp -> Bếp xác nhận -> Khách thanh toán -> Hoàn tất đơn hàng",
+    "apis": [
+      {
+        "controller": "OrderController",
+        "http_method": "POST",
+        "function": "ProcessOrderAsync",
+        "path": "/api/order/process"
+      }
+    ]
+  }
+]
+

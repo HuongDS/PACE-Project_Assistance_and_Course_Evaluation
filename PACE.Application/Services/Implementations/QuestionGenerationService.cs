@@ -7,6 +7,7 @@ using PACE.Application.Dtos;
 using PACE.Application.Interfaces.Repositories;
 using PACE.Application.Mappings;
 using PACE.Application.QuestionGeneration;
+using PACE.Application.QuestionGeneration.Drawio;
 using PACE.Application.Services.Interfaces;
 using PACE.Domain.Entities;
 using PACE.Domain.Enums;
@@ -25,7 +26,8 @@ public class QuestionGenerationService(
     IUnitOfWork uow,
     IQuestionLlmClient llm,
     IOptions<QuestionGenerationOptions> options,
-    ILogger<QuestionGenerationService> logger) : IQuestionGenerationService
+    ILogger<QuestionGenerationService> logger,
+    IDrawioSpecificationStorage? specStorage = null) : IQuestionGenerationService
 {
     // Chuỗi thay thế khe ngữ cảnh bị ẩn — giữ nguyên văn như Repo_Into_Graph (QuestionGenerate.cs).
     private const string RawModeContextPlaceholder =
@@ -73,18 +75,32 @@ public class QuestionGenerationService(
         if (route.ContextType == ContextType.Raw) contextBuilder = RawModeContextPlaceholder;
         else codeBuilder = GraphModeCodePlaceholder;
 
-        logger.LogInformation(
-            "Sinh {Count} câu hỏi cho nghiệp vụ {BusinessId} ({BusinessName}): mode={Mode}, N_w={NodeCount}, ngưỡng={Threshold} → {Context}",
-            request.NumberOfQuestions, business.Id, business.BusinessName, request.Mode, nodeCount, threshold, route.ContextType);
+        // 3.5. Kiểm tra và nạp Sơ đồ nghiệp vụ chuẩn (Ground Truth từ Draw.io) nếu có.
+        string? groundTruthSpec = null;
+        if (specStorage != null)
+        {
+            var specDiagram = await specStorage.GetSpecificationAsync(businessId, ct);
+            if (specDiagram != null && !string.IsNullOrWhiteSpace(specDiagram.NormalizedFlowText))
+            {
+                groundTruthSpec = specDiagram.NormalizedFlowText;
+                logger.LogInformation("Áp dụng Sơ đồ nghiệp vụ chuẩn Ground Truth ({DiagramName}) cho Business {BusinessId}",
+                    specDiagram.DiagramName, business.Id);
+            }
+        }
 
-        // 4. Gọi OpenAI với prompt nguyên văn.
+        logger.LogInformation(
+            "Sinh {Count} câu hỏi cho nghiệp vụ {BusinessId} ({BusinessName}): mode={Mode}, N_w={NodeCount}, ngưỡng={Threshold}, GroundTruth={HasGroundTruth} → {Context}",
+            request.NumberOfQuestions, business.Id, business.BusinessName, request.Mode, nodeCount, threshold, groundTruthSpec != null, route.ContextType);
+
+        // 4. Gọi OpenAI với prompt có neo tri thức.
         var prompt = QuestionPromptBuilder.Build(
             businessName: business.BusinessName,
             codeBuilder: codeBuilder,
             contextBuilder: contextBuilder,
             numberOfQuestions: request.NumberOfQuestions,
             difficulty: difficulty,
-            additionalContext: request.Description);
+            additionalContext: request.Description,
+            groundTruthSpecification: groundTruthSpec);
 
         var result = await llm.GenerateJsonAsync(prompt.SystemInstruction, prompt.UserPrompt, _options.Temperature, ct);
         var generated = LlmQuestionParser.Parse(result.Text).Take(request.NumberOfQuestions).ToList();
@@ -116,6 +132,8 @@ public class QuestionGenerationService(
             .Select((e, i) => e.ToDto(answerCount: 0, targetedEntryPoints: generated[i].TargetedEntryPoints ?? []))
             .ToList();
 
+        var fullPromptText = $"=== SYSTEM INSTRUCTION ===\n{prompt.SystemInstruction}\n\n=== USER PROMPT ===\n{prompt.UserPrompt}";
+
         return new GenerateQuestionsResponse(
             business.Id,
             business.BusinessName,
@@ -131,7 +149,9 @@ public class QuestionGenerationService(
             result.OutputTokens,
             result.LatencyMs,
             deleted,
-            questionDtos);
+            questionDtos,
+            HasGroundTruth: groundTruthSpec != null,
+            PromptText: fullPromptText);
     }
 
     public async Task<IReadOnlyList<GeneratedQuestionDto>> GetByBusinessAsync(Guid businessId, CancellationToken ct = default)

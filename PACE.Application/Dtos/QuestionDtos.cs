@@ -49,4 +49,9 @@ public record GenerateQuestionsResponse(
     int OutputTokens,
     long LatencyMs,
     int DeletedCount,
-    IReadOnlyList<GeneratedQuestionDto> Questions);
+    IReadOnlyList<GeneratedQuestionDto> Questions,
+    bool HasGroundTruth = false,
+    string? PromptText = null)
+{
+    public string? FullPrompt => PromptText;
+}

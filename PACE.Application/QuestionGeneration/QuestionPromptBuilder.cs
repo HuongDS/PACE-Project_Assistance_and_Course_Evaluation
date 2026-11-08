@@ -22,7 +22,8 @@ public static class QuestionPromptBuilder
         int numberOfQuestions,
         string difficulty,
         string? additionalContext = null,
-        IEnumerable<FewShotExample>? fewShotExamples = null)
+        IEnumerable<FewShotExample>? fewShotExamples = null,
+        string? groundTruthSpecification = null)
     {
         string difficultyInstruction = difficulty.ToLower() switch
         {
@@ -32,8 +33,27 @@ public static class QuestionPromptBuilder
             _ => $"- Mức độ: {difficulty}."
         };
 
-        var systemInstruction = $@"Bạn là một Giảng viên đại học chấm thi vấn đáp đồ án phần mềm. Nhiệm vụ tối cao của bạn là phân tích Mã nguồn (Source Code) và Sơ đồ luồng (Mermaid Graph) được cung cấp để bóc tách ra các Quy tắc nghiệp vụ (Business Rules) cốt lõi của dự án, từ đó đặt câu hỏi tình huống để kiểm tra xem sinh viên có thực sự hiểu luồng đi của nghiệp vụ trên thực tế hay không.
+        var groundTruthInstruction = string.IsNullOrWhiteSpace(groundTruthSpecification)
+            ? string.Empty
+            : @"
+ĐIỂM NEO TRI THỨC NGHIỆP VỤ CHUẨN (GROUND TRUTH SPECIFICATION):
+Bạn được cung cấp một Sơ đồ quy trình chuẩn đã được Giảng viên và Sinh viên thống nhất (từ Draw.io). Đây là CHÂN LÝ NGHIỆP VỤ để bạn đối chiếu:
+1. ĐỐI CHIẾU THỨ TỰ THỰC THI (SEQUENCE CONFORMANCE): So sánh thứ tự các bước trong Quy trình chuẩn với luồng thực tế trong Mã nguồn (Source Code) và Mermaid Graph.
+2. PHÁT HIỆN LỖ HỔNG / NGHỊCH ĐẢO LUỒNG:
+   - Nếu sinh viên thực hiện SAI THỨ TỰ (Ví dụ: Thanh toán trước khi Gọi món, hoặc Cập nhật trạng thái trước khi Kiểm tra điều kiện): Bạn BẮT BUỘC phải ưu tiên đặt câu hỏi tình huống chất vấn trực tiếp vào lỗi ngược luồng này, yêu cầu sinh viên giải thích hậu quả khi chạy ngược quy trình.
+   - Nếu sinh viên THIẾU BƯỚC BẮT BUỘC (Ví dụ: Quy trình chuẩn có bước kiểm tra số dư/tồn kho nhưng code nhảy cóc): Hãy đặt câu hỏi vào rủi ro khi thiếu bước kiểm tra đó.
+3. QUY ĐỊNH TARGETED ENTRY POINTS KHI CODE SAI/THIẾU:
+   - Trỏ mảng targetedEntryPoints vào các hàm/action trong code đang thực thi sai thứ tự đó (hoặc hàm gần nhất chịu trách nhiệm về luồng bị thiếu).
+";
 
+        var antiHallucinationInstruction = string.IsNullOrWhiteSpace(groundTruthSpecification)
+            ? @"Bạn TUYỆT ĐỐI KHÔNG ĐƯỢC tự phát minh hoặc suy diễn ra các tính năng, quy trình, rủi ro (như thanh toán, giao dịch chéo...) nếu nó không ĐƯỢC THỂ HIỆN RÕ RÀNG trong Mermaid Graph hoặc Source Code.
+Nếu Mermaid Graph hoặc Source Code chỉ là một luồng đơn giản (không có if/else phức tạp), bạn BẮT BUỘC phải đặt câu hỏi đơn giản tương ứng, KHÔNG ĐƯỢC cố tình tạo tình huống phức tạp nằm ngoài phạm vi tài liệu được cung cấp. Câu hỏi phải chỉ đích danh được dựa vào bước nào trong sơ đồ hoặc dòng code nào."
+            : @"Bạn căn cứ vào Quy trình chuẩn (Ground Truth) để xác định các quy tắc nghiệp vụ hợp lệ. TUYỆT ĐỐI KHÔNG tự phát minh ra các nghiệp vụ nằm ngoài cả Quy trình chuẩn lẫn Source Code.
+Nếu phát hiện sự sai lệch giữa Quy trình chuẩn và Source Code, hãy chất vấn dựa trên điểm sai lệch đó.";
+
+        var systemInstruction = $@"Bạn là một Giảng viên đại học chấm thi vấn đáp đồ án phần mềm. Nhiệm vụ tối cao của bạn là phân tích Mã nguồn (Source Code) và Sơ đồ luồng (Mermaid Graph) được cung cấp để bóc tách ra các Quy tắc nghiệp vụ (Business Rules) cốt lõi của dự án, từ đó đặt câu hỏi tình huống để kiểm tra xem sinh viên có thực sự hiểu luồng đi của nghiệp vụ trên thực tế hay không.
+{groundTruthInstruction}
 YÊU CẦU BẮT BUỘC VỀ SỐ LƯỢNG VÀ ĐỘ KHÓ:
 - Bạn PHẢI tạo ra chính xác ĐÚNG {numberOfQuestions} câu hỏi. Không được tạo nhiều hơn hoặc ít hơn.
 - Tất cả các câu hỏi phải được thiết kế tuân thủ nghiêm ngặt quy định độ khó sau:
@@ -53,8 +73,7 @@ QUY TẮC BẮT BUỘC VỀ TRUY VẾT LUỒNG CODE (TARGETED ENTRY POINTS):
   [ ""AuctionController.CreateAuction"", ""IAuctionService.CreateAuctionAsync"", ""AuctionServiceImpl.CreateAuctionAsync"", ""IAuctionRepository.AddAsync"" ]
 - TUYỆT ĐỐI KHÔNG ĐƯỢC bỏ sót việc bắt cặp giữa [Interface] và [Class triển khai]. Nếu thiếu bất kỳ tầng nào, kết quả sẽ bị coi là bất hợp lệ.
 - CHỈ THỊ CHỐNG SUY DIỄN (ANTI-HALLUCINATION):
-Bạn TUYỆT ĐỐI KHÔNG ĐƯỢC tự phát minh hoặc suy diễn ra các tính năng, quy trình, rủi ro (như thanh toán, giao dịch chéo...) nếu nó không ĐƯỢC THỂ HIỆN RÕ RÀNG trong Mermaid Graph hoặc Source Code.
-Nếu Mermaid Graph hoặc Source Code chỉ là một luồng đơn giản (không có if/else phức tạp), bạn BẮT BUỘC phải đặt câu hỏi đơn giản tương ứng, KHÔNG ĐƯỢC cố tình tạo tình huống phức tạp nằm ngoài phạm vi tài liệu được cung cấp. Câu hỏi phải chỉ đích danh được dựa vào bước nào trong sơ đồ hoặc dòng code nào.
+{antiHallucinationInstruction}
 
 ĐỊNH DẠNG ĐẦU RA BẮT BUỘC:
 - Trả về một mảng JSON chứa các đối tượng có cấu trúc chính xác như sau (Tuyệt đối không bọc mảng trong ký tự ```json, chỉ trả về JSON trần):
@@ -72,6 +91,13 @@ Nếu Mermaid Graph hoặc Source Code chỉ là một luồng đơn giản (kh�
 ]";
 
         var prompt = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(groundTruthSpecification))
+        {
+            prompt.AppendLine("--- QUY TRÌNH NGHIỆP VỤ CHUẨN ĐÃ CHỐT VỚI GIẢNG VIÊN (GROUND TRUTH SPECIFICATION) ---");
+            prompt.AppendLine(groundTruthSpecification);
+            prompt.AppendLine();
+        }
 
         prompt.AppendLine("--- THÔNG TIN CHUNG ---");
         prompt.AppendLine($"Tên Business: {businessName}");

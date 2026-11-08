@@ -165,3 +165,60 @@ Truy cập Swagger UI tại: `http://localhost:5042/swagger` hoặc `https://loc
 }
 ```
 
+---
+
+## 5. Luồng Lỗi / Nghịch Đảo Quy Trình (`POST /api/order/process-flawed`)
+
+Được thiết kế nhằm phục vụ việc kiểm thử khả năng **phát hiện nghịch đảo luồng (Sequence Conformance)** của hệ thống PACE khi đối chiếu mã nguồn của sinh viên với sơ đồ nghiệp vụ chuẩn (Ground Truth từ Draw.io).
+
+### Sơ đồ luồng bị sai (Nghịch đảo):
+```mermaid
+flowchart TD
+    Start(["Bắt đầu"]) --> Pay["[SAI] Khách hàng thanh toán tiền trước!"]
+    Pay --> Order["[SAI] Sau khi trừ tiền mới tạo đơn gọi món"]
+    Order --> Check{"[SAI] Chuyển xuống bếp kiểm tra nguyên liệu"}
+    Check -- "Còn món" --> Confirm["Bếp xác nhận -> Hoàn tất đơn"]
+    Check -- "Hết nguyên liệu" --> Cancel["[RỦI RO CAO] Bếp hủy đơn hàng!<br/>(Khách đã mất tiền nhưng không nhận được món)"]
+```
+
+### Call Stack luồng sai:
+1. `OrderController.ProcessFlawedOrderAsync`
+2. `IOrderService.ProcessFlawedOrderAsync` -> `OrderService.ProcessFlawedOrderAsync`
+3. `IPaymentService.ProcessPaymentAsync` -> `PaymentService.ProcessPaymentAsync` **(Bị đảo lên đầu!)**
+4. `IOrderRepository.CreateOrderAsync` -> `OrderRepository.CreateOrderAsync`
+5. `IKitchenService.CheckIngredientsAvailabilityAsync` -> `KitchenService.CheckIngredientsAvailabilityAsync`
+6. `IOrderRepository.UpdateOrderStatusAsync` (Hủy đơn hoặc Hoàn tất)
+
+### Kịch bản kiểm thử luồng sai khi Bếp hết món:
+* **Endpoint:** `POST /api/order/process-flawed`
+* **Payload:** Đặt món `Tôm Hùm Alaska` (tồn kho = 0):
+```json
+{
+  "customerName": "Nguyen Van MatTien",
+  "tableNumber": "Ban 09",
+  "paymentMethod": "Vi dien tu",
+  "items": [
+    { "itemName": "Tôm Hùm Alaska", "quantity": 1, "unitPrice": 500000 }
+  ]
+}
+```
+* **Kết quả trả về (`400 Bad Request`):**
+```json
+{
+  "orderId": "0fcd9a90-5757-409e-b633-987c7f507da8",
+  "isSuccess": false,
+  "status": "Cancelled",
+  "totalAmount": 500000,
+  "paymentMethod": "Vi dien tu",
+  "message": "CẢNH BÁO LỖI NGHIỆP VỤ: Đã thu tiền thành công (Mã GD: TXN-917833FA), nhưng bếp báo hết nguyên liệu nên đơn hàng bị hủy!",
+  "flowStepsExecuted": [
+    "Bước 1 (NGHỊCH ĐẢO): Khách hàng thanh toán trước 500,000 VNĐ qua phương thức 'Vi dien tu'",
+    "Bước 2: Sau khi trừ tiền mới tạo đơn gọi món & lưu vào hệ thống",
+    "Bước 3: Chuyển xuống bếp kiểm tra nguyên liệu xem còn đủ không?",
+    "Nhánh rẽ NGUY HIỂM: Bếp hết nguyên liệu -> Hủy đơn hàng (nhưng tiền đã bị thu từ Bước 1!)"
+  ]
+}
+```
+Khi đưa endpoint này vào kiểm thử sinh câu hỏi với PACE, LLM sẽ nhận diện thứ tự thanh toán diễn ra trước khi gọi món và kiểm tra bếp, từ đó sinh ra các câu hỏi xoáy sâu vào rủi ro mất tiền của khách hàng và lỗi đảo ngược quy trình.
+
+

@@ -6,6 +6,7 @@ namespace MockProject.Business.Interfaces;
 public interface IOrderService
 {
     Task<ProcessOrderResponse> ProcessOrderAsync(ProcessOrderRequest request);
+    Task<ProcessOrderResponse> ProcessFlawedOrderAsync(ProcessOrderRequest request);
     Task<Order?> GetOrderByIdAsync(Guid orderId);
     Task<List<Order>> GetAllOrdersAsync();
 }

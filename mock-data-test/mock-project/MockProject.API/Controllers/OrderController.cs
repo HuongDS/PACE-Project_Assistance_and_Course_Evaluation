@@ -39,6 +39,28 @@ public class OrderController : ControllerBase
     }
 
     /// <summary>
+    /// API LUỒNG SAI / NGHỊCH ĐẢO: Thu tiền trước rồi mới tạo đơn và kiểm tra bếp.
+    /// Dùng để kiểm thử chức năng phát hiện nghịch đảo luồng (Sequence Conformance) của PACE so với Ground Truth Draw.io.
+    /// </summary>
+    [HttpPost("process-flawed")]
+    public async Task<IActionResult> ProcessFlawedOrderAsync([FromBody] ProcessOrderRequest request)
+    {
+        if (request == null || request.Items == null || request.Items.Count == 0)
+        {
+            return BadRequest(new { Message = "Danh sách món ăn không được để trống." });
+        }
+
+        var response = await _orderService.ProcessFlawedOrderAsync(request);
+
+        if (!response.IsSuccess)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Tra cứu thông tin đơn hàng theo Id
     /// </summary>
     [HttpGet("{id:guid}")]

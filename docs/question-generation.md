@@ -7,6 +7,10 @@
 | POST | `/api/businesses/{businessId}/questions/generate` | Sinh câu hỏi bằng GPT-6 Luna và lưu vào `generated_questions` |
 | GET | `/api/businesses/{businessId}/questions` | Danh sách câu hỏi đã lưu của nghiệp vụ |
 | DELETE | `/api/questions/{id}` | Xoá câu hỏi (chặn nếu đã có sinh viên trả lời) |
+| POST | `/api/businesses/{businessId}/specification/drawio` | Upload XML Draw.io dạng text JSON để làm điểm neo tri thức |
+| POST | `/api/businesses/{businessId}/specification/drawio/file` | Upload file `.xml` hoặc `.drawio` quy trình chuẩn |
+| GET | `/api/businesses/{businessId}/specification/drawio` | Xem thông tin sơ đồ quy trình chuẩn đã lưu của nghiệp vụ |
+| DELETE | `/api/businesses/{businessId}/specification/drawio` | Xoá sơ đồ quy trình chuẩn tạm của nghiệp vụ |
 
 Body của `generate`:
 
@@ -38,6 +42,15 @@ danh sách câu hỏi kèm `targetedEntryPoints` (chỉ trả về, không lưu 
 N_w = số hàm phân biệt trong các luồng của nghiệp vụ (entry + hai đầu mỗi cạnh), tính trước khi gọi LLM.
 Ngưỡng mặc định 10 lấy từ kết quả phân tầng của bài báo 1: dưới 10 node, nén CFG làm mất 0.224 accuracy;
 trên ngưỡng, mức mất giảm một bậc độ lớn. `ContextType` lưu trong DB là biểu diễn đã dùng thực tế (`Raw`/`Graph`).
+
+## Điểm neo tri thức từ Sơ đồ chuẩn Draw.io (Ground Truth Specification)
+
+Khi giảng viên upload sơ đồ quy trình chuẩn (`.xml` hoặc `.drawio`), module Drawio:
+1. Parse XML (hỗ trợ cả uncompressed lẫn compressed Deflate Base64 của Draw.io).
+2. Lọc sạch thẻ HTML rác, trích xuất danh sách thực thể (Actors, Tasks), các cổng rẽ nhánh (Gateways) và các đường đi thực thi hoàn chỉnh (Execution Paths).
+3. Lưu tạm dạng JSON vào thư mục cấu hình (`App_Data/specifications/{businessId}.json`).
+4. Khi gọi `/generate`: Hệ thống tự động nạp chuỗi quy trình chuẩn làm **Điểm neo tri thức (Ground Truth)** vào System Instruction và Prompt của LLM.
+5. Nếu sinh viên viết code bị **nghịch đảo thứ tự** (ví dụ: Thanh toán trước khi Gọi món) hoặc **thiếu bước bắt buộc**: LLM sẽ nhận diện được lỗi và ưu tiên đặt câu hỏi chất vấn sinh viên về sự sai lệch này.
 
 ## Prompt
 

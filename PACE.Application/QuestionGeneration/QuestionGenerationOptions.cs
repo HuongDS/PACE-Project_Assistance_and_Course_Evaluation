@@ -18,4 +18,7 @@ public class QuestionGenerationOptions
 
     /// <summary>Giống Repo_Into_Graph (GenerateUnifiedQuestionsAsync): 0.3.</summary>
     public float Temperature { get; set; } = 0.3f;
+
+    /// <summary>Thư mục lưu trữ tạm các sơ đồ XML Draw.io đã xử lý (App_Data/specifications).</summary>
+    public string SpecificationStoragePath { get; set; } = "App_Data/specifications";
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PACE.Application.Analysis;
+using PACE.Application.QuestionGeneration.Drawio;
 using PACE.Application.Services.Implementations;
 using PACE.Application.Services.Interfaces;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
         services.AddScoped<IBatchTemplateService, BatchTemplateService>();
+        services.AddSingleton<IDrawioSpecificationStorage, FileDrawioSpecificationStorage>();
         return services;
     }
 }

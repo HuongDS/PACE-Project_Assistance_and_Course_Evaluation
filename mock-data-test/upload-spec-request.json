@@ -1,0 +1,5 @@
+{
+  "diagramName": "Quy trình Đặt món và Thanh toán (Chuẩn)",
+  "rawXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><mxfile host=\"app.diagrams.net\"><diagram name=\"Order and Pay\"><mxGraphModel><root><mxCell id=\"0\"/><mxCell id=\"1\" parent=\"0\"/><mxCell id=\"step1\" value=\"Khách hàng chọn món ăn\" vertex=\"1\" parent=\"1\"/><mxCell id=\"step2\" value=\"Nhà bếp xác nhận đơn\" vertex=\"1\" parent=\"1\"/><mxCell id=\"e1\" edge=\"1\" source=\"step1\" target=\"step2\" parent=\"1\"/><mxCell id=\"step3\" value=\"Khách hàng thanh toán hóa đơn\" vertex=\"1\" parent=\"1\"/><mxCell id=\"e2\" edge=\"1\" source=\"step2\" target=\"step3\" parent=\"1\"/></root></mxGraphModel></diagram></mxfile>"
+}
+

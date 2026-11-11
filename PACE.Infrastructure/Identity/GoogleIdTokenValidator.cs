@@ -22,7 +22,7 @@ public sealed class GoogleIdTokenValidator(IOptions<GoogleAuthOptions> options) 
                 new GoogleJsonWebSignature.ValidationSettings
                 {
                     Audience = [options.Value.ClientId],
-                    ExpirationTimeClockTolerance = TimeSpan.Zero
+                    ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5)
                 }).WaitAsync(ct);
             if (!payload.EmailVerified || string.IsNullOrWhiteSpace(payload.Email))
                 throw new UnauthorizedException("Email Google chưa được xác minh.");

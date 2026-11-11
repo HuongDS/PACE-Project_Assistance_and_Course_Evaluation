@@ -15,7 +15,6 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     private IBusinessMethodRepository? _businessMethods;
     private IBusinessFlowRepository? _businessFlows;
     private IDataFlowEdgeRepository? _dataFlowEdges;
-    private IRubricCriterionRepository? _rubricCriteria;
     private IStudentAnswerRepository? _studentAnswers;
     private IGeneratedQuestionRepository? _generatedQuestions;
 
@@ -27,7 +26,6 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     public IBusinessMethodRepository BusinessMethods => _businessMethods ??= new BusinessMethodRepository(context);
     public IBusinessFlowRepository BusinessFlows => _businessFlows ??= new BusinessFlowRepository(context);
     public IDataFlowEdgeRepository DataFlowEdges => _dataFlowEdges ??= new DataFlowEdgeRepository(context);
-    public IRubricCriterionRepository RubricCriteria => _rubricCriteria ??= new RubricCriterionRepository(context);
     public IStudentAnswerRepository StudentAnswers => _studentAnswers ??= new StudentAnswerRepository(context);
     public IGeneratedQuestionRepository GeneratedQuestions => _generatedQuestions ??= new GeneratedQuestionRepository(context);
 

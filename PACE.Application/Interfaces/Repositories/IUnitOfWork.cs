@@ -12,7 +12,6 @@ public interface IUnitOfWork
     IBusinessMethodRepository BusinessMethods { get; }
     IBusinessFlowRepository BusinessFlows { get; }
     IDataFlowEdgeRepository DataFlowEdges { get; }
-    IRubricCriterionRepository RubricCriteria { get; }
     IStudentAnswerRepository StudentAnswers { get; }
     IGeneratedQuestionRepository GeneratedQuestions { get; }
 

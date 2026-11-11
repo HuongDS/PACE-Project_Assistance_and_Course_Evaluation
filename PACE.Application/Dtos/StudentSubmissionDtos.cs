@@ -81,7 +81,7 @@ public record SubmissionRubricScoreDto(Guid Id, Guid CriterionId, string Code, s
 public record StudentSubmissionDetailDto(Guid SubmissionId, DateTime CreatedAt, DateTime? SubmittedAt, SubmissionRepositoryDto Repository, IReadOnlyList<SubmittedAnswerDto> Answers)
 {
     public SubmissionStudentDto Student { get; init; } = null!;
-    public bool SurveyCompleted => Answers.Any(a => a.RubricScores.Count > 0);
+    public bool SurveyCompleted => SubmittedAt != null;
 }
 public record SubmissionStudentDto(Guid UserId, string? StudentCode, string Email);
 
@@ -108,7 +108,7 @@ public class StudentSubmissionResultDto
     public DateTime? SubmittedAt { get; set; }
     public SubmissionRepositoryDto Repository { get; set; } = null!;
     public List<EvaluatedAnswerDto> EvaluatedAnswers { get; set; } = new();
-    public bool SurveyCompleted => EvaluatedAnswers.Any(a => a.RubricScores.Count > 0);
+    public bool SurveyCompleted => SubmittedAt != null;
 }
 
 public class StudentSubmissionQuery : PACE.Application.Common.Models.PageQuery

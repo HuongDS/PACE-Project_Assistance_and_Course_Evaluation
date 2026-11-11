@@ -118,6 +118,44 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Attendance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("text")
+                        .HasColumnName("comments");
+
+                    b.Property<DateTime?>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("StudentCode");
+
+                    b.ToTable("attendance", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AuditEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -223,6 +261,155 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("business_methods", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Class", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("ActualStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("actual_start_date");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("SemesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("semester_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("SemesterId");
+
+                    b.ToTable("classes", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer")
+                        .HasColumnName("day_of_week");
+
+                    b.Property<string>("LecturerCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("lecturer_code");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<Guid>("TimeSlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("time_slot_id");
+
+                    b.Property<DateOnly>("ValidFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_from");
+
+                    b.Property<DateOnly>("ValidTo")
+                        .HasColumnType("date")
+                        .HasColumnName("valid_to");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("LecturerCode");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("TimeSlotId");
+
+                    b.ToTable("class_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<bool>("IsCancelled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_cancelled");
+
+                    b.Property<DateOnly>("LearnDate")
+                        .HasColumnType("date")
+                        .HasColumnName("learn_date");
+
+                    b.Property<string>("LecturerCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("lecturer_code");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<Guid?>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<Guid>("TimeSlotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("time_slot_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("LecturerCode");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("ScheduleId");
+
+                    b.HasIndex("TimeSlotId");
+
+                    b.ToTable("class_sessions", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.Course", b =>
                 {
                     b.Property<Guid>("Id")
@@ -233,6 +420,12 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Credits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("credits");
 
                     b.Property<Guid>("LecturerId")
                         .HasColumnType("uuid");
@@ -362,6 +555,111 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("generated_questions", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AnalysisRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("analysis_run_id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("TopicName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("topic_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalysisRunId")
+                        .IsUnique();
+
+                    b.HasIndex("ClassId");
+
+                    b.ToTable("groups", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupMember", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("StudentCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Member")
+                        .HasColumnName("role");
+
+                    b.HasKey("GroupId", "StudentCode");
+
+                    b.HasIndex("StudentCode");
+
+                    b.ToTable("group_members", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>
+                {
+                    b.Property<string>("LecturerCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("lecturer_code");
+
+                    b.Property<string>("AcademicTitle")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("academic_title");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("LecturerCode");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("lecturer_profiles", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.MethodSource", b =>
                 {
                     b.Property<Guid>("Id")
@@ -414,137 +712,137 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("method_sources", (string)null);
                 });
 
-            modelBuilder.Entity("PACE.Domain.Entities.RubricCriterion", b =>
+            modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId");
+
+                    b.ToTable("oral_exams", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.OralQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<string>("ExpectedKeywords")
+                        .HasColumnType("text")
+                        .HasColumnName("expected_keywords");
+
+                    b.Property<Guid?>("GeneratedQuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("generated_question_id");
+
+                    b.Property<Guid>("OralExamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("oral_exam_id");
+
+                    b.Property<string>("ReferenceContext")
+                        .HasColumnType("text")
+                        .HasColumnName("reference_context");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GeneratedQuestionId");
+
+                    b.HasIndex("OralExamId");
+
+                    b.ToTable("oral_questions", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Building")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("building");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("Statement")
-                        .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("rubric_criteria", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000001"),
-                            Code = "ACCURACY",
-                            DisplayOrder = 1,
-                            Name = "Độ chính xác kỹ thuật",
-                            Statement = "Nhận xét đúng về mặt kỹ thuật so với code thực tế trong repo của nhóm tôi."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000002"),
-                            Code = "FAIRNESS",
-                            DisplayOrder = 2,
-                            Name = "Công bằng",
-                            Statement = "Điểm số và nhận xét phản ánh công bằng chất lượng câu trả lời của tôi."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000003"),
-                            Code = "SPECIFICITY",
-                            DisplayOrder = 3,
-                            Name = "Cụ thể",
-                            Statement = "Nhận xét chỉ rõ phần nào trong câu trả lời của tôi đúng, phần nào sai hoặc còn thiếu."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000004"),
-                            Code = "ACTIONABILITY",
-                            DisplayOrder = 4,
-                            Name = "Có thể hành động",
-                            Statement = "Sau khi đọc, tôi biết cụ thể cần làm gì để cải thiện câu trả lời."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000005"),
-                            Code = "USEFULNESS",
-                            DisplayOrder = 5,
-                            Name = "Hữu ích",
-                            Statement = "Nhận xét này giúp tôi hiểu rõ hơn luồng xử lý trong project của mình."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000006"),
-                            Code = "CLARITY",
-                            DisplayOrder = 6,
-                            Name = "Rõ ràng",
-                            Statement = "Nhận xét được trình bày rõ ràng, dễ hiểu."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000007"),
-                            Code = "ACCEPTANCE",
-                            DisplayOrder = 7,
-                            Name = "Chấp nhận",
-                            Statement = "Tôi đồng ý và chấp nhận nhận xét này."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000008"),
-                            Code = "WILLINGNESS",
-                            DisplayOrder = 8,
-                            Name = "Sẵn sàng cải thiện",
-                            Statement = "Tôi sẵn sàng sửa lại câu trả lời dựa trên nhận xét này."
-                        },
-                        new
-                        {
-                            Id = new Guid("b2e1d3c5-0001-4d7f-8c2b-000000000009"),
-                            Code = "AFFECT",
-                            DisplayOrder = 9,
-                            Name = "Cảm xúc",
-                            Statement = "Đọc nhận xét này khiến tôi thấy được động viên, không bị nản."
-                        });
+                    b.ToTable("rooms", (string)null);
                 });
 
-            modelBuilder.Entity("PACE.Domain.Entities.RubricScore", b =>
+            modelBuilder.Entity("PACE.Domain.Entities.Semester", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
-                    b.Property<Guid>("CriterionId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("AcademicYear")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("academic_year");
 
-                    b.Property<int>("Score")
-                        .HasColumnType("integer");
+                    b.Property<DateOnly>("ActualStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("actual_start_date");
 
-                    b.Property<Guid>("StudentAnswerId")
-                        .HasColumnType("uuid");
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CriterionId");
-
-                    b.HasIndex("StudentAnswerId", "CriterionId")
-                        .IsUnique();
-
-                    b.ToTable("rubric_scores", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_rubric_scores_Score", "\"Score\" BETWEEN 1 AND 5");
-                        });
+                    b.ToTable("semesters", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.SessionStudent", b =>
@@ -617,6 +915,148 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("student_answers", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.StudentClass", b =>
+                {
+                    b.Property<string>("StudentCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.HasKey("StudentCode", "ClassId");
+
+                    b.HasIndex("ClassId");
+
+                    b.ToTable("student_classes", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentOralAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Feedback")
+                        .HasColumnType("text")
+                        .HasColumnName("feedback");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("StudentAnswer")
+                        .HasColumnType("text")
+                        .HasColumnName("student_answer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("student_oral_answers", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentOralSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AiEvaluationSummary")
+                        .HasColumnType("text")
+                        .HasColumnName("ai_evaluation_summary");
+
+                    b.Property<string>("AudioRecordUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("audio_record_url");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<string>("ExaminerCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("examiner_code");
+
+                    b.Property<string>("FinalFeedback")
+                        .HasColumnType("text")
+                        .HasColumnName("final_feedback");
+
+                    b.Property<Guid>("OralExamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("oral_exam_id");
+
+                    b.Property<string>("ScreenRecordUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("screen_record_url");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<string>("StudentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExaminerCode");
+
+                    b.HasIndex("OralExamId");
+
+                    b.HasIndex("StudentCode");
+
+                    b.ToTable("student_oral_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentProfile", b =>
+                {
+                    b.Property<string>("StudentCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("EnrollmentYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("enrollment_year");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("StudentCode");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("student_profiles", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.StudentSubmission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -646,11 +1086,39 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("student_submissions", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.TimeSlot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<int>("PeriodNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("period_number");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_time");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("time_slots", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text")
+                        .HasColumnName("address");
 
                     b.Property<Guid?>("AnalysisRunId")
                         .HasColumnType("uuid");
@@ -664,6 +1132,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -697,6 +1176,25 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Attendance", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.ClassSession", "Session")
+                        .WithMany("Attendances")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "StudentProfile")
+                        .WithMany("Attendances")
+                        .HasForeignKey("StudentCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+
+                    b.Navigation("StudentProfile");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.Business", b =>
@@ -746,6 +1244,101 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Business");
 
                     b.Navigation("MethodSource");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Class", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Course", "Course")
+                        .WithMany("Classes")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.Semester", "Semester")
+                        .WithMany("Classes")
+                        .HasForeignKey("SemesterId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Semester");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("Schedules")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.LecturerProfile", "LecturerProfile")
+                        .WithMany("ClassSchedules")
+                        .HasForeignKey("LecturerCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.Room", "Room")
+                        .WithMany("Schedules")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.TimeSlot", "TimeSlot")
+                        .WithMany("Schedules")
+                        .HasForeignKey("TimeSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+
+                    b.Navigation("LecturerProfile");
+
+                    b.Navigation("Room");
+
+                    b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.LecturerProfile", "LecturerProfile")
+                        .WithMany("ClassSessions")
+                        .HasForeignKey("LecturerCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.Room", "Room")
+                        .WithMany("Sessions")
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.ClassSchedule", "Schedule")
+                        .WithMany("Sessions")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PACE.Domain.Entities.TimeSlot", "TimeSlot")
+                        .WithMany("Sessions")
+                        .HasForeignKey("TimeSlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+
+                    b.Navigation("LecturerProfile");
+
+                    b.Navigation("Room");
+
+                    b.Navigation("Schedule");
+
+                    b.Navigation("TimeSlot");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.Course", b =>
@@ -816,6 +1409,54 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Business");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.AnalysisRun", "AnalysisRun")
+                        .WithOne("Group")
+                        .HasForeignKey("PACE.Domain.Entities.Group", "AnalysisRunId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("Groups")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AnalysisRun");
+
+                    b.Navigation("Class");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupMember", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "StudentProfile")
+                        .WithMany("GroupMembers")
+                        .HasForeignKey("StudentCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("StudentProfile");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.User", "User")
+                        .WithOne("LecturerProfile")
+                        .HasForeignKey("PACE.Domain.Entities.LecturerProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.MethodSource", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.AnalysisRun", "AnalysisRun")
@@ -827,23 +1468,33 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("AnalysisRun");
                 });
 
-            modelBuilder.Entity("PACE.Domain.Entities.RubricScore", b =>
+            modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
                 {
-                    b.HasOne("PACE.Domain.Entities.RubricCriterion", "Criterion")
-                        .WithMany()
-                        .HasForeignKey("CriterionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PACE.Domain.Entities.StudentAnswer", "StudentAnswer")
-                        .WithMany("RubricScores")
-                        .HasForeignKey("StudentAnswerId")
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("OralExams")
+                        .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Criterion");
+                    b.Navigation("Class");
+                });
 
-                    b.Navigation("StudentAnswer");
+            modelBuilder.Entity("PACE.Domain.Entities.OralQuestion", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.GeneratedQuestion", "GeneratedQuestion")
+                        .WithMany()
+                        .HasForeignKey("GeneratedQuestionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PACE.Domain.Entities.OralExam", "OralExam")
+                        .WithMany("Questions")
+                        .HasForeignKey("OralExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GeneratedQuestion");
+
+                    b.Navigation("OralExam");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.SessionStudent", b =>
@@ -891,6 +1542,81 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.StudentClass", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("StudentClasses")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "StudentProfile")
+                        .WithMany("StudentClasses")
+                        .HasForeignKey("StudentCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+
+                    b.Navigation("StudentProfile");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentOralAnswer", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.OralQuestion", "Question")
+                        .WithMany("Answers")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentOralSession", "Session")
+                        .WithMany("Answers")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentOralSession", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.LecturerProfile", "Examiner")
+                        .WithMany("ExaminedOralSessions")
+                        .HasForeignKey("ExaminerCode")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PACE.Domain.Entities.OralExam", "OralExam")
+                        .WithMany("StudentOralSessions")
+                        .HasForeignKey("OralExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "StudentProfile")
+                        .WithMany("OralSessions")
+                        .HasForeignKey("StudentCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Examiner");
+
+                    b.Navigation("OralExam");
+
+                    b.Navigation("StudentProfile");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentProfile", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.User", "User")
+                        .WithOne("StudentProfile")
+                        .HasForeignKey("PACE.Domain.Entities.StudentProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.StudentSubmission", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.AnalysisRun", "AnalysisRun")
@@ -924,6 +1650,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Businesses");
 
+                    b.Navigation("Group");
+
                     b.Navigation("MethodSources");
 
                     b.Navigation("Submissions");
@@ -950,14 +1678,53 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Edges");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Class", b =>
+                {
+                    b.Navigation("Groups");
+
+                    b.Navigation("OralExams");
+
+                    b.Navigation("Schedules");
+
+                    b.Navigation("Sessions");
+
+                    b.Navigation("StudentClasses");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
+                {
+                    b.Navigation("Attendances");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.Course", b =>
                 {
+                    b.Navigation("Classes");
+
                     b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.GeneratedQuestion", b =>
                 {
                     b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
+                {
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>
+                {
+                    b.Navigation("ClassSchedules");
+
+                    b.Navigation("ClassSessions");
+
+                    b.Navigation("ExaminedOralSessions");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.MethodSource", b =>
@@ -969,9 +1736,44 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("OutgoingEdges");
                 });
 
-            modelBuilder.Entity("PACE.Domain.Entities.StudentAnswer", b =>
+            modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
                 {
-                    b.Navigation("RubricScores");
+                    b.Navigation("Questions");
+
+                    b.Navigation("StudentOralSessions");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.OralQuestion", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Room", b =>
+                {
+                    b.Navigation("Schedules");
+
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Semester", b =>
+                {
+                    b.Navigation("Classes");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentOralSession", b =>
+                {
+                    b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentProfile", b =>
+                {
+                    b.Navigation("Attendances");
+
+                    b.Navigation("GroupMembers");
+
+                    b.Navigation("OralSessions");
+
+                    b.Navigation("StudentClasses");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.StudentSubmission", b =>
@@ -979,9 +1781,20 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Answers");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.TimeSlot", b =>
+                {
+                    b.Navigation("Schedules");
+
+                    b.Navigation("Sessions");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.User", b =>
                 {
                     b.Navigation("Answers");
+
+                    b.Navigation("LecturerProfile");
+
+                    b.Navigation("StudentProfile");
 
                     b.Navigation("Submissions");
                 });

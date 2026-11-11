@@ -17,7 +17,6 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
             .Where(a => a.Submission != null && a.Submission.SubmittedAt != null)
             .Include(a => a.Submission).ThenInclude(s => s!.AnalysisRun)
             .Include(a => a.User).Include(a => a.Question).ThenInclude(q => q.Business)
-            .Include(a => a.RubricScores).ThenInclude(r => r.Criterion)
             .OrderByDescending(a => a.Submission!.SubmittedAt).ThenBy(a => a.Id).ToListAsync(ct);
 
     public async Task LockUserAsync(Guid userId, CancellationToken ct = default)
@@ -45,15 +44,12 @@ public class StudentSubmissionRepository(AppDbContext context) : IStudentSubmiss
     private IQueryable<StudentSubmission> Details()
         => context.StudentSubmissions.AsNoTracking().AsSplitQuery()
             .Include(s => s.User).Include(s => s.AnalysisRun)
-            .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business)
-            .Include(s => s.Answers).ThenInclude(a => a.RubricScores).ThenInclude(r => r.Criterion);
+            .Include(s => s.Answers).ThenInclude(a => a.Question).ThenInclude(q => q.Business);
 
     public Task<StudentSubmission?> GetForSurveyUpdateAsync(Guid id, CancellationToken ct = default)
         => context.StudentSubmissions.AsTracking().AsSplitQuery()
-            .Include(s => s.Answers).ThenInclude(a => a.RubricScores)
+            .Include(s => s.Answers)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
-
-    public void AddSurveyScore(RubricScore score) => context.RubricScores.Add(score);
 
     public Task<StudentSubmission?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => Details().FirstOrDefaultAsync(s => s.Id == id, ct);

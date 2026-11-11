@@ -1,4 +1,4 @@
-﻿using PACE.Domain.Enums;
+using PACE.Domain.Enums;
 
 namespace PACE.Domain.Entities;
 
@@ -19,5 +19,4 @@ public class StudentAnswer
     public StudentSubmission? Submission { get; set; }
     public User User { get; set; } = null!;
     public GeneratedQuestion Question { get; set; } = null!;
-    public ICollection<RubricScore> RubricScores { get; set; } = new List<RubricScore>();
 }

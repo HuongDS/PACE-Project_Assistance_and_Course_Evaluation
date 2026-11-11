@@ -16,8 +16,6 @@ public static class DtoMappings
         user.AnalysisRun?.RepoUrl,
         user.CreatedAt);
 
-    public static RubricCriterionDto ToDto(this RubricCriterion c) => new(c.Id, c.Code, c.Name, c.Statement, c.DisplayOrder);
-
     public static AnalysisRunDto ToDto(this AnalysisRunSummary r, bool isAnalyzing) => new(
         r.Id, r.RepoUrl, r.RepoName, isAnalyzing, r.CreatedAt, r.StudentCount, r.BusinessCount, r.MethodCount);
 

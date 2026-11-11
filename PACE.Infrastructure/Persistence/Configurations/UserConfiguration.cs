@@ -15,6 +15,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         e.Property(x => x.Email).IsRequired().HasMaxLength(255);
         e.HasIndex(x => x.Email).IsUnique();
 
+        e.Property(x => x.FullName).HasColumnName("full_name").IsRequired().HasMaxLength(255);
+        e.Property(x => x.Address).HasColumnName("address");
+        e.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(20);
+
         e.Property(x => x.StudentCode).HasMaxLength(20);
         e.HasIndex(x => x.StudentCode).IsUnique()
             .HasFilter("\"StudentCode\" IS NOT NULL");
@@ -25,6 +29,16 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         e.HasOne(x => x.AnalysisRun)
             .WithMany(r => r.Users)
             .HasForeignKey(x => x.AnalysisRunId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasOne(x => x.StudentProfile)
+            .WithOne(s => s.User)
+            .HasForeignKey<StudentProfile>(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasOne(x => x.LecturerProfile)
+            .WithOne(l => l.User)
+            .HasForeignKey<LecturerProfile>(l => l.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

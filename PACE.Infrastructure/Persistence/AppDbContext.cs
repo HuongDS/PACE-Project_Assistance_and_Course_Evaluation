@@ -13,8 +13,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<GeneratedQuestion> GeneratedQuestions => Set<GeneratedQuestion>();
     public DbSet<StudentSubmission> StudentSubmissions => Set<StudentSubmission>();
     public DbSet<StudentAnswer> StudentAnswers => Set<StudentAnswer>();
-    public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
-    public DbSet<RubricScore> RubricScores => Set<RubricScore>();
     public DbSet<MethodSource> MethodSources => Set<MethodSource>();
     public DbSet<BusinessMethod> BusinessMethods => Set<BusinessMethod>();
     public DbSet<BusinessFlow> BusinessFlows => Set<BusinessFlow>();
@@ -26,12 +24,29 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<SessionStudent> SessionStudents => Set<SessionStudent>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
+    public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
+    public DbSet<LecturerProfile> LecturerProfiles => Set<LecturerProfile>();
+    public DbSet<Semester> Semesters => Set<Semester>();
+    public DbSet<Class> Classes => Set<Class>();
+    public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
+    public DbSet<ClassSchedule> ClassSchedules => Set<ClassSchedule>();
+    public DbSet<ClassSession> ClassSessions => Set<ClassSession>();
+    public DbSet<Attendance> Attendances => Set<Attendance>();
+    public DbSet<OralExam> OralExams => Set<OralExam>();
+    public DbSet<OralQuestion> OralQuestions => Set<OralQuestion>();
+    public DbSet<StudentOralSession> StudentOralSessions => Set<StudentOralSession>();
+    public DbSet<StudentOralAnswer> StudentOralAnswers => Set<StudentOralAnswer>();
+
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         if (currentUser?.IsAuthenticated == true)
         {
             ChangeTracker.DetectChanges();
-            var entries = ChangeTracker.Entries().Where(e => e.Entity is User or AnalysisRun or RubricCriterion or Business or GeneratedQuestion or StudentSubmission or StudentAnswer
+            var entries = ChangeTracker.Entries().Where(e => e.Entity is User or AnalysisRun or Business or GeneratedQuestion or StudentSubmission or StudentAnswer
                 && e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).ToList();
             foreach (var entry in entries)
             {

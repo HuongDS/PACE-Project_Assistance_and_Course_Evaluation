@@ -17,7 +17,6 @@ public static class DependencyInjection
         services.AddScoped<IBusinessService, BusinessService>();
         services.AddScoped<IBusinessFlowService, BusinessFlowService>();
         services.AddScoped<IMethodSourceService, MethodSourceService>();
-        services.AddScoped<IRubricCriterionService, RubricCriterionService>();
         services.AddScoped<IRepoAnalysisService, RepoAnalysisService>();
         services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();

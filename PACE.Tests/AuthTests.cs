@@ -72,7 +72,16 @@ public class AuthTests
             tokens++;
             return new JwtTokenService(Options.Create(options)).CreateToken((User)a[0]!);
         });
-        return new AuthService(uow, jwt, Stub<ICurrentUserService>.Create((_, _) => throw new NotSupportedException()), google, Stub<IAdminCredentialValidator>.Create((_, a) => (string)a[0]! == "correct-test-password"));
+        var hasher = Stub<IPasswordHasher>.Create((m, a) =>
+        {
+            if (m.Name == "HashPassword") return $"hashed_{(string)a[0]!}";
+            if (m.Name == "VerifyPassword") return (string)a[0]! == "correct-password";
+            return false;
+        });
+        var otpCache = Stub<IOtpCacheService>.Create((_, _) => Task.CompletedTask);
+        var emailService = Stub<IEmailService>.Create((_, _) => Task.CompletedTask);
+
+        return new AuthService(uow, jwt, Stub<ICurrentUserService>.Create((_, _) => throw new NotSupportedException()), google, hasher, otpCache, emailService, Stub<IAdminCredentialValidator>.Create((_, a) => (string)a[0]! == "correct-test-password"));
     }
 
     [Fact]

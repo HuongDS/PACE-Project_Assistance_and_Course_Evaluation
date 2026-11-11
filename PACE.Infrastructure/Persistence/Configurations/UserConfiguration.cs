@@ -16,6 +16,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         e.HasIndex(x => x.Email).IsUnique();
 
         e.Property(x => x.FullName).HasColumnName("full_name").IsRequired().HasMaxLength(255);
+        e.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(255);
+        e.Property(x => x.RefreshToken).HasColumnName("refresh_token").HasMaxLength(500);
+        e.Property(x => x.RefreshTokenExpiryTime).HasColumnName("refresh_token_expiry_time");
         e.Property(x => x.Address).HasColumnName("address");
         e.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(20);
 

@@ -29,6 +29,24 @@ public class AuthController(IAuthService authService) : ControllerBase
     public async Task<ActionResult<UserDto>> Me(CancellationToken ct)
         => Ok(await authService.GetMeAsync(ct));
 
+    [HttpPost("send-otp")]
+    [AllowAnonymous]
+    public async Task<ActionResult> SendOtp(SendOtpRequest request, CancellationToken ct)
+    {
+        await authService.SendOtpAsync(request, ct);
+        return Ok(new { message = "Mã OTP đã được gửi đến email của bạn." });
+    }
+
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginResponse>> Register(RegisterRequest request, CancellationToken ct)
+        => Ok(await authService.RegisterAsync(request, ct));
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginResponse>> RefreshToken(RefreshTokenRequest request, CancellationToken ct)
+        => Ok(await authService.RefreshTokenAsync(request, ct));
+
     [HttpPost("logout")]
     [Authorize]
     public ActionResult Logout()

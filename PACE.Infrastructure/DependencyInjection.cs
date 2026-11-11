@@ -48,6 +48,11 @@ public static class DependencyInjection
         services.AddSingleton<IRepoLinkReader, ClosedXmlRepoLinkReader>();
         services.AddSingleton<ISurveyExcelService, ClosedXmlSurveyExcelService>();
 
+        // BCrypt Password Hasher, Upstash Redis OTP Cache, MailKit Email Service
+        services.AddSingleton<IPasswordHasher, Services.BCryptPasswordHasher>();
+        services.AddSingleton<IOtpCacheService, Services.UpstashRedisOtpCacheService>();
+        services.AddScoped<IEmailService, Services.MailKitEmailService>();
+
         // LLM Service & HttpClient
         services.AddHttpClient();
         services.AddScoped<ILlmService, DeepSeekService>();

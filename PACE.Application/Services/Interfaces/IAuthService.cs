@@ -15,4 +15,7 @@ public interface IAuthService
     Task<GoogleStudentLoginResponse> GoogleStudentLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);
     Task<LoginResponse> GoogleStaffLoginAsync(GoogleStudentLoginRequest request, CancellationToken ct = default);
     Task<UserDto> GetMeAsync(CancellationToken ct = default);
+    Task SendOtpAsync(SendOtpRequest request, CancellationToken ct = default);
+    Task<LoginResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default);
+    Task<LoginResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken ct = default);
 }

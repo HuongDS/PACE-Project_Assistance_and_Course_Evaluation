@@ -5,10 +5,12 @@ public class Course
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public int Credits { get; set; } = 3;
     public string Semester { get; set; } = "";
     public Guid LecturerId { get; set; }
     public User Lecturer { get; set; } = null!;
     public ICollection<CourseProject> Projects { get; set; } = new List<CourseProject>();
+    public ICollection<Class> Classes { get; set; } = new List<Class>();
 }
 public class CourseProject
 {

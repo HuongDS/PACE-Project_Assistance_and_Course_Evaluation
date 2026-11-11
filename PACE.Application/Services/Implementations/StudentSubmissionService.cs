@@ -354,7 +354,7 @@ public class StudentSubmissionService(
         var allSubmitted = await uow.StudentSubmissions.GetAllSubmittedForStatsAsync(ct);
 
         static bool IsSurveyCompleted(StudentSubmission s) =>
-            s.Answers.Count > 0 && s.Answers.All(a => a.RubricScores.Count > 0);
+            s.Answers.Count > 0 && s.Answers.All(a => !string.IsNullOrEmpty(a.AnswerText));
 
         var successfulSubmissions = allSubmitted.Where(IsSurveyCompleted).ToList();
         var pendingEvaluationSubmissions = allSubmitted.Where(s => !IsSurveyCompleted(s)).ToList();
@@ -383,7 +383,7 @@ public class StudentSubmissionService(
                 RepoUrl = s.AnalysisRun?.RepoUrl,
                 SubmittedAt = s.SubmittedAt,
                 TotalQuestions = s.Answers.Count,
-                SurveyCompletedQuestions = s.Answers.Count(a => a.RubricScores.Count > 0)
+                SurveyCompletedQuestions = s.Answers.Count(a => !string.IsNullOrEmpty(a.AnswerText))
             })
             .ToList();
 
@@ -508,8 +508,7 @@ public class StudentSubmissionService(
                     QuestionId = a.QuestionId, QuestionText = a.Question.QuestionText, AnswerText = a.AnswerText ?? "",
                     StudentAnswerId = a.Id,
                     StudentReply = a.StudentReply,
-                    RubricScores = a.RubricScores.Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId,
-                        r.Criterion.Code, r.Criterion.Name, r.Criterion.Statement, r.Score)).ToList(),
+                    RubricScores = new List<SubmissionRubricScoreDto>(),
                     AiEvaluation = ParseSavedFeedback(a.AiFeedback)
                 }).ToList()
         };
@@ -539,9 +538,7 @@ public class StudentSubmissionService(
                     AnswerCreatedAt = a.CreatedAt,
                     FeedbackFormat = a.FeedbackFormat,
                     StudentReply = a.StudentReply,
-                    RubricScores = a.RubricScores.OrderBy(r => r.Criterion.DisplayOrder).ThenBy(r => r.CriterionId)
-                        .Select(r => new SubmissionRubricScoreDto(r.Id, r.CriterionId, r.Criterion.Code,
-                            r.Criterion.Name, r.Criterion.Statement, r.Score)).ToList()
+                    RubricScores = new List<SubmissionRubricScoreDto>()
                 }).ToList())
         {
             Student = new(submission.UserId, submission.User.StudentCode, submission.User.Email)

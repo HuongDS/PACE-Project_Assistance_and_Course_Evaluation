@@ -22,4 +22,5 @@ public class AnalysisRun
     public ICollection<StudentSubmission> Submissions { get; set; } = new List<StudentSubmission>();
     public ICollection<User> Users { get; set; } = new List<User>();
     public ICollection<MethodSource> MethodSources { get; set; } = new List<MethodSource>();
+    public Group? Group { get; set; }
 }

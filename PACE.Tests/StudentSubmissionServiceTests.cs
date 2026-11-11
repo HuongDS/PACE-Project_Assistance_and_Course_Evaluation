@@ -509,11 +509,6 @@ public class StudentSubmissionServiceTests
         answer.StudentReply = "Thanks";
         answer.Question.SuggestedAnswer = "Reference answer";
         answer.Question.Difficulty = "Hard";
-        answer.RubricScores.Add(new RubricScore
-        {
-            Id = Guid.NewGuid(), CriterionId = Guid.NewGuid(), Score = 4,
-            Criterion = new RubricCriterion { Code = "C1", Name = "Logic", Statement = "Explain logic" }
-        });
         claimedRole = UserRole.Admin;
         claimedId = Guid.NewGuid();
         var detail = await service.GetByIdAsync(submitted.SubmissionId);
@@ -524,7 +519,7 @@ public class StudentSubmissionServiceTests
         Assert.Equal("Hard", mapped.Difficulty);
         Assert.Equal("Explainable", mapped.FeedbackFormat);
         Assert.Equal("Thanks", mapped.StudentReply);
-        Assert.Equal(4, Assert.Single(mapped.RubricScores).Score);
+        Assert.Empty(mapped.RubricScores);
     }
 
     [Fact] public async Task SubmissionReadsRequireAuthenticationAndSupportedRole()
@@ -620,8 +615,7 @@ public class StudentSubmissionServiceTests
                     Id = Guid.NewGuid(),
                     QuestionId = q.Id,
                     Question = q,
-                    AnswerText = "Test answer",
-                    RubricScores = new List<RubricScore> { new() { Id = Guid.NewGuid(), Score = 5 } }
+                    AnswerText = "Test answer"
                 }
             }
         };
@@ -643,8 +637,7 @@ public class StudentSubmissionServiceTests
                     Id = Guid.NewGuid(),
                     QuestionId = q.Id,
                     Question = q,
-                    AnswerText = "Test answer 2",
-                    RubricScores = new List<RubricScore>() // No survey completed yet
+                    AnswerText = ""
                 }
             }
         };

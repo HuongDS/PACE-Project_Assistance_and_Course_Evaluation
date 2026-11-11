@@ -13,16 +13,6 @@ public class LoginRequest
 
 public record LoginResponse(string AccessToken, DateTime ExpiresAt, UserDto User);
 
-// Temporary form entry while student Google sign-in is disabled.
-public class StudentQuickLoginRequest
-{
-    [EmailAddress, MaxLength(255)]
-    public string? Email { get; set; }
-
-    [Required, MaxLength(50)]
-    public string StudentCode { get; set; } = null!;
-}
-
 public class GoogleStudentLoginRequest
 {
     [Required, MaxLength(16384)]

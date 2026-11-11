@@ -21,7 +21,9 @@ namespace PACE.Application.Services.Implementations;
 public class StudentSubmissionService(
     IUnitOfWork uow,
     ICurrentUserService currentUser,
-    IStudentAnswerService studentAnswerService, ILogger<StudentSubmissionService>? logger = null) : IStudentSubmissionService
+    IStudentAnswerService studentAnswerService,
+    ISurveyExcelService? excelService = null,
+    ILogger<StudentSubmissionService>? logger = null) : IStudentSubmissionService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -396,6 +398,36 @@ public class StudentSubmissionService(
             DailySuccessfulSubmissions = dailyStats,
             PendingEvaluationSubmissions = pendingList
         };
+    }
+
+    public async Task<byte[]> ExportReviewedSubmissionsAsync(CancellationToken ct = default)
+    {
+        RequireRole(UserRole.Admin);
+        var answers = await uow.StudentSubmissions.GetSurveyAnswersAsync(ct);
+        var items = answers.Select(a => new SurveySubmissionItemDto(
+            a.Submission!.Id, a.Id, a.User?.Email ?? "—", a.User?.StudentCode,
+            a.Submission.AnalysisRun?.RepoName, a.Question?.Business?.BusinessName ?? "—", a.Question?.QuestionText ?? "",
+            a.AnswerText ?? "", a.AiFeedback, a.StudentReply,
+            0, a.Submission.SubmittedAt, [])
+        {
+            AnalysisRunId = a.Submission.AnalysisRunId,
+            BusinessId = a.Question?.BusinessId ?? Guid.Empty,
+            QuestionId = a.QuestionId,
+            FeedbackFormat = a.FeedbackFormat,
+            QuestionContextType = a.Question?.ContextType
+        }).ToList();
+
+        var summary = new SurveySummaryResponseDto(
+            items.Select(i => i.SubmissionId).Distinct().Count(),
+            items.Count,
+            0,
+            0,
+            "Chưa có",
+            "Chưa có",
+            [],
+            items);
+
+        return excelService?.ExportSurveyResults(summary) ?? [];
     }
 
     public async Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default)

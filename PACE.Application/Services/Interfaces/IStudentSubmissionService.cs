@@ -14,4 +14,5 @@ public interface IStudentSubmissionService
     Task<PagedResult<AdminStudentSubmissionDto>> GetAllAsync(StudentSubmissionQuery query, CancellationToken ct = default);
     Task<AdminStudentSubmissionDto> QuickCreateAsync(QuickCreateStudentSubmissionRequest request, CancellationToken ct = default);
     Task<ManagerStatisticsDto> GetManagerStatisticsAsync(CancellationToken ct = default);
+    Task<byte[]> ExportReviewedSubmissionsAsync(CancellationToken ct = default);
 }

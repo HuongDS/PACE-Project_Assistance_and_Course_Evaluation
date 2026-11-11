@@ -154,6 +154,7 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
         headers2.Add("Điểm TB câu");
         headers2.Add("Thời gian nộp bài (UTC)");
         headers2.AddRange(new[] { "Loại feedback", "Repository ID", "Business ID", "Question ID", "Submission ID", "Student Answer ID" });
+        headers2.Add("Nguồn sinh câu hỏi");
 
         int r2 = 1;
         for (int c = 0; c < headers2.Count; c++)
@@ -216,6 +217,12 @@ public class ClosedXmlSurveyExcelService : ISurveyExcelService
             ws2.Cell(rowStart2, col++).Value = item.QuestionId.ToString();
             ws2.Cell(rowStart2, col++).Value = item.SubmissionId.ToString();
             ws2.Cell(rowStart2, col++).Value = item.StudentAnswerId.ToString();
+            ws2.Cell(rowStart2, col++).Value = item.QuestionContextType switch
+            {
+                PACE.Domain.Enums.ContextType.Raw => "Codebase",
+                PACE.Domain.Enums.ContextType.Graph => "Graph",
+                _ => "Không xác định"
+            };
             rowStart2++;
         }
 

@@ -52,6 +52,7 @@ public record SurveySubmissionItemDto(
     public Guid BusinessId { get; init; }
     public Guid QuestionId { get; init; }
     public string? FeedbackFormat { get; init; }
+    public PACE.Domain.Enums.ContextType? QuestionContextType { get; init; }
 }
 
 public record SurveySummaryResponseDto(

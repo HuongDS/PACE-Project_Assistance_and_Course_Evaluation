@@ -44,3 +44,4 @@ public class ExcelExportTests
         Assert.Equal(PACE.API.Controllers.Roles.Admin, ((Microsoft.AspNetCore.Authorization.AuthorizeAttribute)authorization).Roles);
     }
 }
+

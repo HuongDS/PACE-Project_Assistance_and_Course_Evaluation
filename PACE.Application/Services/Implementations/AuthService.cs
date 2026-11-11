@@ -15,6 +15,33 @@ public class AuthService(IUnitOfWork uow, IJwtTokenService jwt, ICurrentUserServ
     {
         var inputEmail = request.Email.Trim().ToLowerInvariant();
         var isManager = inputEmail == "manager" || inputEmail == "manager@pace.edu.vn";
+        var isStudentDev = inputEmail == "student" || inputEmail == "student@pace.edu.vn";
+
+        if (isStudentDev)
+        {
+            if (request.Password != "student@123")
+                throw new UnauthorizedException("Tài khoản hoặc mật khẩu không chính xác.");
+
+            var studentUser = await uow.Users.GetByEmailAsync("student@pace.edu.vn", ct)
+                           ?? await uow.Users.GetByEmailAsync("student", ct);
+            if (studentUser is null)
+            {
+                studentUser = new PACE.Domain.Entities.User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "student@pace.edu.vn",
+                    FullName = "Sinh viên thử nghiệm",
+                    StudentCode = "SE999999",
+                    Role = PACE.Domain.Enums.UserRole.Student,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await uow.Users.AddAsync(studentUser, ct);
+                await uow.SaveChangesAsync(ct);
+            }
+
+            var (stdToken, stdExpiresAt) = jwt.CreateToken(studentUser);
+            return new LoginResponse(stdToken, stdExpiresAt, studentUser.ToDto());
+        }
 
         if (isManager)
         {

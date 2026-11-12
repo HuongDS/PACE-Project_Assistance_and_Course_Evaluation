@@ -7,7 +7,14 @@ namespace PACE.Application.Interfaces.Repositories;
 
 public interface IAnalysisRunRepository : IGenericRepository<AnalysisRun>
 {
-    Task<PagedResult<AnalysisRunSummary>> SearchSummariesAsync(string? search, int page, int pageSize, CancellationToken ct = default);
+    Task<PagedResult<AnalysisRunSummary>> SearchSummariesAsync(
+        string? search,
+        int page,
+        int pageSize,
+        Guid? classId = null,
+        IReadOnlyList<Guid>? allowedClassIds = null,
+        Guid? singleRepoId = null,
+        CancellationToken ct = default);
     Task<AnalysisRunSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default);
     Task<bool> RepoUrlExistsAsync(string repoUrl, Guid? exceptId = null, CancellationToken ct = default);
@@ -15,4 +22,9 @@ public interface IAnalysisRunRepository : IGenericRepository<AnalysisRun>
     Task<List<string>> GetAllRepoNamesAsync(CancellationToken ct = default);
     Task ArchiveCurrentAsync(Guid analysisRunId, CancellationToken ct = default);
     Task<bool> HasQuestionsAsync(Guid analysisRunId, CancellationToken ct = default);
+    Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default);
+    Task<bool> IsLecturerOfRepoClassAsync(Guid repoId, Guid lecturerUserId, CancellationToken ct = default);
+    Task<List<Guid>> GetLecturerClassIdsAsync(Guid lecturerUserId, CancellationToken ct = default);
+    Task<bool> IsStudentOfRepoAsync(Guid repoId, Guid studentUserId, CancellationToken ct = default);
+    Task<Guid?> GetStudentRepoIdAsync(Guid studentUserId, CancellationToken ct = default);
 }

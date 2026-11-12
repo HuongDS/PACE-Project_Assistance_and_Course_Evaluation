@@ -10,7 +10,11 @@ public record AnalysisRunSummary(
     DateTime CreatedAt,
     int StudentCount,
     int BusinessCount,
-    int MethodCount);
+    int MethodCount,
+    string? GroupName = null,
+    string? TopicName = null,
+    Guid? ClassId = null,
+    string? ClassName = null);
 
 public record BusinessSummary(
     Guid Id,

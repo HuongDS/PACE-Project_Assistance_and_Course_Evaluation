@@ -88,7 +88,13 @@ public class RepositoryLinkTests
                 "get_DataFlowEdges" => Stub<IDataFlowEdgeRepository>.Create((m,a) => Task.CompletedTask),
                 "ExecuteInTransactionAsync" => ((Func<CancellationToken,Task>)a[0]!)(default), "SaveChangesAsync" => Task.FromResult(1),
                 _ => throw new InvalidOperationException(m.Name) });
-            Edit = new(uow, Stub<ICurrentUserService>.Create((m,a) => throw new NotImplementedException()),
+            var currentUser = Stub<ICurrentUserService>.Create((m, _) => m.Name switch
+            {
+                "get_IsAuthenticated" => true,
+                "get_Role" => UserRole.Admin,
+                _ => throw new NotImplementedException(m.Name)
+            });
+            Edit = new(uow, currentUser,
                 Stub<IBusinessService>.Create((m,a) => Task.FromResult<IReadOnlyList<BusinessDto>>([])));
             var clone = Stub<IClonedRepository>.Create((m,a) => m.Name switch { "get_CommitSha" => "new-commit", "get_RootPath" or "get_WorkingPath" => "/tmp/fake", "Dispose" => null, _ => null });
             var git = Stub<IGitCloneService>.Create((m,a) => { CloneCalls++; if (FailClone) throw new InvalidOperationException("Clone failed"); return Task.FromResult(clone); });

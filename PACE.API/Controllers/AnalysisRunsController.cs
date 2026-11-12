@@ -12,32 +12,30 @@ namespace PACE.API.Controllers;
 public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysisService analysisService) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<PagedResult<AnalysisRunDto>>> GetAll([FromQuery] AnalysisRunQuery query, CancellationToken ct)
         => Ok(await runService.GetPagedAsync(query, ct));
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<AnalysisRunDetailDto>> GetById(Guid id, CancellationToken ct)
         => Ok(await runService.GetDetailAsync(id, ct));
 
     [HttpGet("{id:guid}/students")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> Students(Guid id, [FromQuery] PageQuery query, CancellationToken ct)
         => Ok(await runService.GetStudentsAsync(id, false, query, ct));
 
     [HttpGet("{id:guid}/students/available")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<PagedResult<RepositoryStudentDto>>> AvailableStudents(Guid id, [FromQuery] PageQuery query, CancellationToken ct)
         => Ok(await runService.GetStudentsAsync(id, true, query, ct));
 
     [HttpPost("{id:guid}/students")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<AssignRepositoryStudentsResult>> AssignStudents(Guid id, AssignRepositoryStudentsRequest request, CancellationToken ct)
         => Ok(await runService.AssignStudentsAsync(id, request, ct));
 
     [HttpDelete("{id:guid}/students/{studentId:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<IActionResult> RemoveStudent(Guid id, Guid studentId, CancellationToken ct)
     {
         await runService.RemoveStudentAsync(id, studentId, ct);
@@ -48,36 +46,36 @@ public class AnalysisRunsController(IAnalysisRunService runService, IRepoAnalysi
     public async Task<ActionResult<AnalysisRunDetailDto>> GetMine(CancellationToken ct)
         => Ok(await runService.GetMineAsync(ct));
 
-    /// <summary>Gợi ý tên bản sao kế tiếp (1), (2)... khi admin chỉnh sửa link repository.</summary>
+    /// <summary>Gợi ý tên bản sao kế tiếp (1), (2)... khi admin hoặc giảng viên chỉnh sửa link repository.</summary>
     [HttpGet("{id:guid}/next-copy-name")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<object>> GetNextCopyName(Guid id, CancellationToken ct)
         => Ok(new { nextName = await runService.GetNextCopyNameAsync(id, ct) });
 
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<AnalyzeResultDto>> CreateAndAnalyze(CreateAnalysisRunRequest request)
         => Ok(await analysisService.CreateAndAnalyzeAsync(request, CancellationToken.None));
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<AnalysisRunDto>> Update(Guid id, UpdateAnalysisRunRequest request, CancellationToken ct)
         => Ok(await runService.UpdateAsync(id, request, ct));
 
     /// <summary>Template nghiệp vụ đang lưu của repo (đã chốt hoặc lấy từ repo ở lần phân tích gần nhất).</summary>
     [HttpGet("{id:guid}/template")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<AnalysisRunTemplateDto>> GetTemplate(Guid id, CancellationToken ct)
         => Ok(await runService.GetTemplateAsync(id, ct));
 
     /// <summary>Chốt template nghiệp vụ cho repo; lần phân tích sau dùng template này thay cho file trong repo.</summary>
     [HttpPut("{id:guid}/template")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<ActionResult<AnalysisRunTemplateDto>> SaveTemplate(Guid id, BusinessTemplateRequest request, CancellationToken ct)
         => Ok(await runService.SaveTemplateAsync(id, request, ct));
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Staff)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await runService.DeleteAsync(id, ct);

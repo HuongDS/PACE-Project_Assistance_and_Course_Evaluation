@@ -17,6 +17,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     private IDataFlowEdgeRepository? _dataFlowEdges;
     private IStudentAnswerRepository? _studentAnswers;
     private IGeneratedQuestionRepository? _generatedQuestions;
+    private IClassRepository? _classes;
 
     public IAnalysisRunRepository AnalysisRuns => _analysisRuns ??= new AnalysisRunRepository(context);
     public IBusinessRepository Businesses => _businesses ??= new BusinessRepository(context);
@@ -28,6 +29,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     public IDataFlowEdgeRepository DataFlowEdges => _dataFlowEdges ??= new DataFlowEdgeRepository(context);
     public IStudentAnswerRepository StudentAnswers => _studentAnswers ??= new StudentAnswerRepository(context);
     public IGeneratedQuestionRepository GeneratedQuestions => _generatedQuestions ??= new GeneratedQuestionRepository(context);
+    public IClassRepository Classes => _classes ??= new ClassRepository(context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
         => context.SaveChangesAsync(ct);

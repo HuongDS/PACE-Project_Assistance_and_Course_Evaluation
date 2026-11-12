@@ -20,7 +20,12 @@ public record AnalysisRunDto(
     string? GroupName = null,
     string? TopicName = null,
     Guid? ClassId = null,
-    string? ClassName = null);
+    string? ClassName = null,
+    string? LecturerName = null,
+    string? LecturerEmail = null,
+    string? CourseCode = null,
+    string? CourseName = null,
+    string? Semester = null);
 
 public record AnalysisRunDetailDto(
     AnalysisRunDto Run,

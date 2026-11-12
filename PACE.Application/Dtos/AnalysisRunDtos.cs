@@ -16,7 +16,11 @@ public record AnalysisRunDto(
     DateTime CreatedAt,
     int StudentCount,
     int BusinessCount,
-    int MethodCount);
+    int MethodCount,
+    string? GroupName = null,
+    string? TopicName = null,
+    Guid? ClassId = null,
+    string? ClassName = null);
 
 public record AnalysisRunDetailDto(
     AnalysisRunDto Run,
@@ -57,6 +61,7 @@ public class UpdateAnalysisRunRequest
 
 public class AnalysisRunQuery : PageQuery
 {
+    public Guid? ClassId { get; set; }
 }
 
 public record AnalyzeResultDto(

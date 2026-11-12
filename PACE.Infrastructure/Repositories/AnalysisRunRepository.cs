@@ -11,14 +11,42 @@ namespace PACE.Infrastructure.Repositories;
 
 public class AnalysisRunRepository(AppDbContext context) : GenericRepository<AnalysisRun>(context), IAnalysisRunRepository
 {
-    public Task<PagedResult<AnalysisRunSummary>> SearchSummariesAsync(string? search, int page, int pageSize, CancellationToken ct = default)
+    public Task<PagedResult<AnalysisRunSummary>> SearchSummariesAsync(
+        string? search,
+        int page,
+        int pageSize,
+        Guid? classId = null,
+        IReadOnlyList<Guid>? allowedClassIds = null,
+        Guid? singleRepoId = null,
+        CancellationToken ct = default)
     {
         var query = DbSet.AsNoTracking().Where(r => !r.IsArchived);
+
+        if (singleRepoId.HasValue)
+        {
+            query = query.Where(r => r.Id == singleRepoId.Value);
+        }
+        else if (classId.HasValue)
+        {
+            query = query.Where(r => r.Group != null && r.Group.ClassId == classId.Value);
+        }
+        else if (allowedClassIds != null)
+        {
+            query = query.Where(r => r.Group != null && allowedClassIds.Contains(r.Group.ClassId));
+        }
+
         var keyword = NormalizeSearch(search);
         if (keyword is not null)
-            query = query.Where(r => (r.RepoName != null && r.RepoName.ToLower().Contains(keyword))
-                                     || (r.RepoUrl != null && r.RepoUrl.ToLower().Contains(keyword))
-                                     || r.Users.Any(u => u.Email.ToLower().Contains(keyword)));
+        {
+            query = query.Where(r =>
+                (r.RepoName != null && r.RepoName.ToLower().Contains(keyword)) ||
+                (r.RepoUrl != null && r.RepoUrl.ToLower().Contains(keyword)) ||
+                r.Users.Any(u => u.Email.ToLower().Contains(keyword) || (u.StudentCode != null && u.StudentCode.ToLower().Contains(keyword))) ||
+                (r.Group != null && (
+                    r.Group.Name.ToLower().Contains(keyword) ||
+                    (r.Group.TopicName != null && r.Group.TopicName.ToLower().Contains(keyword))
+                )));
+        }
 
         return ToPagedAsync(ToSummary(query.OrderByDescending(r => r.CreatedAt)), page, pageSize, ct);
     }
@@ -82,5 +110,102 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             r.Id, r.RepoUrl, r.RepoName, r.CreatedAt,
             r.Users.Count(u => u.Role == UserRole.Student),
             r.Businesses.Count,
-            r.MethodSources.Count));
+            r.MethodSources.Count,
+            r.Group != null ? r.Group.Name : null,
+            r.Group != null ? r.Group.TopicName : null,
+            r.Group != null ? (Guid?)r.Group.ClassId : null,
+            r.Group != null && r.Group.Class != null ? r.Group.Class.Name : null));
+
+    public async Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default)
+    {
+        var lecturerCode = await Context.LecturerProfiles
+            .Where(l => l.UserId == lecturerUserId)
+            .Select(l => l.LecturerCode)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(lecturerCode)) return false;
+
+        return await Context.Classes
+            .Where(c => c.Id == classId)
+            .AnyAsync(c => c.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                        || c.Sessions.Any(s => s.LecturerCode == lecturerCode), ct);
+    }
+
+    public async Task<bool> IsLecturerOfRepoClassAsync(Guid repoId, Guid lecturerUserId, CancellationToken ct = default)
+    {
+        var lecturerCode = await Context.LecturerProfiles
+            .Where(l => l.UserId == lecturerUserId)
+            .Select(l => l.LecturerCode)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(lecturerCode)) return false;
+
+        return await Context.Groups
+            .Where(g => g.AnalysisRunId == repoId)
+            .AnyAsync(g => g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                        || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode), ct);
+    }
+
+    public async Task<List<Guid>> GetLecturerClassIdsAsync(Guid lecturerUserId, CancellationToken ct = default)
+    {
+        var lecturerCode = await Context.LecturerProfiles
+            .Where(l => l.UserId == lecturerUserId)
+            .Select(l => l.LecturerCode)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(lecturerCode)) return [];
+
+        var scheduleClassIds = await Context.ClassSchedules
+            .Where(s => s.LecturerCode == lecturerCode)
+            .Select(s => s.ClassId)
+            .ToListAsync(ct);
+
+        var sessionClassIds = await Context.ClassSessions
+            .Where(s => s.LecturerCode == lecturerCode)
+            .Select(s => s.ClassId)
+            .ToListAsync(ct);
+
+        return scheduleClassIds.Union(sessionClassIds).Distinct().ToList();
+    }
+
+    public async Task<bool> IsStudentOfRepoAsync(Guid repoId, Guid studentUserId, CancellationToken ct = default)
+    {
+        // 1. Kiểm tra trực tiếp trên User.AnalysisRunId
+        var isDirectMember = await Context.Users
+            .AnyAsync(u => u.Id == studentUserId && u.AnalysisRunId == repoId, ct);
+        if (isDirectMember) return true;
+
+        // 2. Kiểm tra qua GroupMember của nhóm sở hữu repo
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(studentCode)) return false;
+
+        return await Context.Groups
+            .Where(g => g.AnalysisRunId == repoId)
+            .AnyAsync(g => g.Members.Any(m => m.StudentCode == studentCode), ct);
+    }
+
+    public async Task<Guid?> GetStudentRepoIdAsync(Guid studentUserId, CancellationToken ct = default)
+    {
+        var directRunId = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.AnalysisRunId)
+            .FirstOrDefaultAsync(ct);
+        if (directRunId.HasValue) return directRunId.Value;
+
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrEmpty(studentCode)) return null;
+
+        return await Context.GroupMembers
+            .Where(m => m.StudentCode == studentCode && m.Group.AnalysisRunId.HasValue)
+            .Select(m => m.Group.AnalysisRunId)
+            .FirstOrDefaultAsync(ct);
+    }
 }

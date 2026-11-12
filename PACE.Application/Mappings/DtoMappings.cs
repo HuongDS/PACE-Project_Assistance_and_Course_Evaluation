@@ -17,7 +17,8 @@ public static class DtoMappings
         user.CreatedAt);
 
     public static AnalysisRunDto ToDto(this AnalysisRunSummary r, bool isAnalyzing) => new(
-        r.Id, r.RepoUrl, r.RepoName, isAnalyzing, r.CreatedAt, r.StudentCount, r.BusinessCount, r.MethodCount);
+        r.Id, r.RepoUrl, r.RepoName, isAnalyzing, r.CreatedAt, r.StudentCount, r.BusinessCount, r.MethodCount,
+        r.GroupName, r.TopicName, r.ClassId, r.ClassName);
 
     public static BusinessDto ToDto(this BusinessSummary b) => new(b.Id, b.AnalysisRunId, b.BusinessName, b.MethodCount, b.FlowCount);
 

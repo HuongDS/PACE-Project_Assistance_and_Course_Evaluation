@@ -95,8 +95,14 @@ public class StoredBusinessTemplateTests
     {
         var run = new AnalysisRun { Id = Guid.NewGuid(), RepoUrl = RepoUrl };
         var saved = 0;
+        var currentUser = Stub<ICurrentUserService>.Create((m, _) => m.Name switch
+        {
+            "get_IsAuthenticated" => true,
+            "get_Role" => UserRole.Admin,
+            _ => throw new NotSupportedException(m.Name)
+        });
         var service = new AnalysisRunService(UnitOfWork(run, () => saved++),
-            Stub<ICurrentUserService>.Create((m, _) => throw new NotSupportedException(m.Name)),
+            currentUser,
             Stub<IBusinessService>.Create((m, _) => throw new NotSupportedException(m.Name)));
 
         var result = await service.SaveTemplateAsync(run.Id, new BusinessTemplateRequest

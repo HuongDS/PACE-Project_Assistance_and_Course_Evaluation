@@ -18,6 +18,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         Guid? classId = null,
         IReadOnlyList<Guid>? allowedClassIds = null,
         Guid? singleRepoId = null,
+        IReadOnlyList<Guid>? allowedRepoIds = null,
         CancellationToken ct = default)
     {
         var query = DbSet.AsNoTracking().Where(r => !r.IsArchived);
@@ -25,6 +26,10 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         if (singleRepoId.HasValue)
         {
             query = query.Where(r => r.Id == singleRepoId.Value);
+        }
+        else if (allowedRepoIds != null)
+        {
+            query = query.Where(r => allowedRepoIds.Contains(r.Id));
         }
         else if (classId.HasValue)
         {
@@ -65,7 +70,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
                         .ThenInclude(co => co.Lecturer)
                 .Include(g => g.Class)
                     .ThenInclude(c => c.Semester)
-                .FirstOrDefaultAsync(g => g.AnalysisRunId == id, ct);
+                .FirstOrDefaultAsync(g => g.AnalysisRuns.Any(r => r.Id == id), ct);
 
             if (grp == null)
             {
@@ -76,15 +81,13 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
 
                 if (userIds.Count > 0)
                 {
-                    grp = await Context.GroupMembers.AsNoTracking()
-                        .Where(gm => gm.StudentProfile != null && userIds.Contains(gm.StudentProfile.UserId))
-                        .Select(gm => gm.Group)
+                    grp = await Context.Groups.AsNoTracking()
                         .Include(g => g.Class)
                             .ThenInclude(c => c.Course)
                                 .ThenInclude(co => co.Lecturer)
                         .Include(g => g.Class)
                             .ThenInclude(c => c.Semester)
-                        .FirstOrDefaultAsync(ct);
+                        .FirstOrDefaultAsync(g => g.Members.Any(gm => gm.StudentProfile != null && userIds.Contains(gm.StudentProfile.UserId)), ct);
                 }
             }
 
@@ -235,7 +238,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .FirstOrDefaultAsync(ct);
 
         return await Context.Groups
-            .Where(g => g.AnalysisRunId == repoId)
+            .Where(g => g.AnalysisRuns.Any(r => r.Id == repoId))
             .AnyAsync(g => g.Class.Course.LecturerId == lecturerUserId
                         || (lecturerCode != null && (g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
                                                  || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct)
@@ -288,28 +291,87 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         if (string.IsNullOrEmpty(studentCode)) return false;
 
         return await Context.Groups
-            .Where(g => g.AnalysisRunId == repoId)
+            .Where(g => g.AnalysisRuns.Any(r => r.Id == repoId))
             .AnyAsync(g => g.Members.Any(m => m.StudentCode == studentCode), ct);
     }
 
     public async Task<Guid?> GetStudentRepoIdAsync(Guid studentUserId, CancellationToken ct = default)
     {
+        var ids = await GetStudentRepoIdsAsync(studentUserId, ct);
+        return ids.Count > 0 ? ids[0] : null;
+    }
+
+    public async Task<List<Guid>> GetStudentRepoIdsAsync(Guid studentUserId, CancellationToken ct = default)
+    {
+        var result = new HashSet<Guid>();
+
+        // 1. Trực tiếp từ User.AnalysisRunId
         var directRunId = await Context.Users
             .Where(u => u.Id == studentUserId)
             .Select(u => u.AnalysisRunId)
             .FirstOrDefaultAsync(ct);
-        if (directRunId.HasValue) return directRunId.Value;
+        if (directRunId.HasValue) result.Add(directRunId.Value);
 
+        // 2. Qua Group.AnalysisRuns của các nhóm mà sinh viên tham gia
         var studentCode = await Context.Users
             .Where(u => u.Id == studentUserId)
             .Select(u => u.StudentCode)
             .FirstOrDefaultAsync(ct);
 
-        if (string.IsNullOrEmpty(studentCode)) return null;
+        var groupRepoIds = await Context.GroupMembers
+            .Where(m => (m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                        (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => r.Id))
+            .ToListAsync(ct);
+
+        foreach (var id in groupRepoIds) result.Add(id);
+
+        return result.ToList();
+    }
+
+    public async Task<Guid?> GetStudentRepoIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
 
         return await Context.GroupMembers
-            .Where(m => m.StudentCode == studentCode && m.Group.AnalysisRunId.HasValue)
-            .Select(m => m.Group.AnalysisRunId)
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => (Guid?)r.Id))
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<List<Guid>> GetStudentRepoIdsInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        return await Context.GroupMembers
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => r.Id))
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<Guid?> GetStudentGroupIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        return await Context.GroupMembers
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .Select(m => (Guid?)m.GroupId)
             .FirstOrDefaultAsync(ct);
     }
 }

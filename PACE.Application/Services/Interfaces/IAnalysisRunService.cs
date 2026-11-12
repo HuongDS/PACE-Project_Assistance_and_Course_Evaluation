@@ -10,7 +10,7 @@ public interface IAnalysisRunService
     Task RemoveStudentAsync(Guid id, Guid studentId, CancellationToken ct = default);
     Task<PagedResult<AnalysisRunDto>> GetPagedAsync(AnalysisRunQuery query, CancellationToken ct = default);
     Task<AnalysisRunDetailDto> GetDetailAsync(Guid id, CancellationToken ct = default);
-    Task<AnalysisRunDetailDto> GetMineAsync(CancellationToken ct = default);
+    Task<AnalysisRunDetailDto> GetMineAsync(Guid? classId = null, Guid? repoId = null, CancellationToken ct = default);
     Task<AnalysisRunDto> UpdateAsync(Guid id, UpdateAnalysisRunRequest request, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRunTemplateDto> GetTemplateAsync(Guid id, CancellationToken ct = default);

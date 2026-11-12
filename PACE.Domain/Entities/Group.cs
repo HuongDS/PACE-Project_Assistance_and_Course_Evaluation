@@ -6,11 +6,10 @@ public class Group
     public Guid ClassId { get; set; }
     public string Name { get; set; } = null!;
     public string? TopicName { get; set; }
-    public Guid? AnalysisRunId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Class Class { get; set; } = null!;
-    public AnalysisRun? AnalysisRun { get; set; }
+    public ICollection<AnalysisRun> AnalysisRuns { get; set; } = new List<AnalysisRun>();
     public ICollection<GroupMember> Members { get; set; } = new List<GroupMember>();
 }
 

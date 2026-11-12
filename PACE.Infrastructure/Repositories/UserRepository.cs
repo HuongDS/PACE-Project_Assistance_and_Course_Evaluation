@@ -63,4 +63,42 @@ public class UserRepository(AppDbContext context) : GenericRepository<User>(cont
             .OrderBy(u => u.Email)
             .Select(u => u.Email)
             .ToListAsync(ct);
+
+    public async Task<List<PACE.Application.Dtos.StudentMemberDto>> GetMembersByRepoAsync(Guid analysisRunId, CancellationToken ct = default)
+    {
+        var result = new Dictionary<string, PACE.Application.Dtos.StudentMemberDto>(StringComparer.OrdinalIgnoreCase);
+
+        // 1. Thành viên trực tiếp từ User.AnalysisRunId
+        var directUsers = await DbSet.AsNoTracking()
+            .Where(u => u.AnalysisRunId == analysisRunId)
+            .OrderBy(u => u.StudentCode ?? u.Email)
+            .ToListAsync(ct);
+
+        foreach (var u in directUsers)
+        {
+            var key = u.Email.ToLowerInvariant();
+            result[key] = new PACE.Application.Dtos.StudentMemberDto(u.Id, u.StudentCode, u.FullName, u.Email, "Member");
+        }
+
+        // 2. Thành viên qua Group và GroupMember của repo
+        var groupMembers = await Context.GroupMembers.AsNoTracking()
+            .Where(m => m.Group.AnalysisRuns.Any(r => r.Id == analysisRunId))
+            .Include(m => m.StudentProfile)
+                .ThenInclude(p => p.User)
+            .ToListAsync(ct);
+
+        foreach (var gm in groupMembers)
+        {
+            var user = gm.StudentProfile?.User;
+            var email = user?.Email ?? (gm.StudentCode.ToLowerInvariant() + "@fpt.edu.vn");
+            var key = email.ToLowerInvariant();
+            var id = user?.Id ?? Guid.NewGuid();
+            var fullName = user?.FullName ?? ("Sinh viên " + gm.StudentCode);
+            var role = !string.IsNullOrEmpty(gm.Role) ? gm.Role : "Member";
+
+            result[key] = new PACE.Application.Dtos.StudentMemberDto(id, gm.StudentCode, fullName, email, role);
+        }
+
+        return result.Values.OrderBy(m => m.Role == "Leader" ? 0 : 1).ThenBy(m => m.StudentCode).ToList();
+    }
 }

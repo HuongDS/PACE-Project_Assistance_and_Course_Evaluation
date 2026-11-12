@@ -15,20 +15,12 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         e.Property(x => x.ClassId).HasColumnName("class_id").IsRequired();
         e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
         e.Property(x => x.TopicName).HasColumnName("topic_name").HasMaxLength(255);
-        e.Property(x => x.AnalysisRunId).HasColumnName("analysis_run_id");
         e.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-
-        e.HasIndex(x => x.AnalysisRunId).IsUnique();
 
         e.HasOne(x => x.Class)
             .WithMany(c => c.Groups)
             .HasForeignKey(x => x.ClassId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        e.HasOne(x => x.AnalysisRun)
-            .WithOne(a => a.Group)
-            .HasForeignKey<Group>(x => x.AnalysisRunId)
-            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

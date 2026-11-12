@@ -41,6 +41,8 @@ public class AnalysisRunAuthorizationTests
                 "GetLecturerClassIdsAsync" => Task.FromResult<IReadOnlyList<Guid>>(isLecturerOfClass ? [_myClassId] : []),
                 "IsStudentOfRepoAsync" => Task.FromResult((Guid)a[0]! == _myRepoId && isStudentOfRepo),
                 "GetStudentRepoIdAsync" => Task.FromResult(studentRepoId),
+                "GetStudentRepoIdsAsync" => Task.FromResult(studentRepoId.HasValue ? new List<Guid> { studentRepoId.Value } : new List<Guid>()),
+                "GetStudentRepoIdInClassAsync" => Task.FromResult(studentRepoId),
                 "GetByIdAsync" => Task.FromResult<AnalysisRun?>(new AnalysisRun
                 {
                     Id = (Guid)a[0]!,
@@ -66,6 +68,7 @@ public class AnalysisRunAuthorizationTests
         var users = Stub<IUserRepository>.Create((m, a) => m.Name switch
         {
             "GetEmailsByRepoAsync" => Task.FromResult(new List<string>()),
+            "GetMembersByRepoAsync" => Task.FromResult(new List<StudentMemberDto>()),
             _ => throw new InvalidOperationException($"User method {m.Name} not mocked")
         });
 

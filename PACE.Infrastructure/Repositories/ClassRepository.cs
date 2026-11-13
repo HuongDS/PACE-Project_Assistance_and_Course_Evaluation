@@ -120,9 +120,9 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
                 g.Id,
                 g.Name,
                 g.TopicName,
-                g.AnalysisRunId,
-                g.AnalysisRun != null ? g.AnalysisRun.RepoName : null,
-                g.AnalysisRun != null ? g.AnalysisRun.RepoUrl : null,
+                g.AnalysisRuns.Select(r => (Guid?)r.Id).FirstOrDefault(),
+                g.AnalysisRuns.Select(r => r.RepoName).FirstOrDefault(),
+                g.AnalysisRuns.Select(r => r.RepoUrl).FirstOrDefault(),
                 g.Members.Count))
             .OrderBy(g => g.Name)
             .ToListAsync(ct);

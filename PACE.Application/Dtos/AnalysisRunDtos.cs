@@ -20,12 +20,26 @@ public record AnalysisRunDto(
     string? GroupName = null,
     string? TopicName = null,
     Guid? ClassId = null,
-    string? ClassName = null);
+    string? ClassName = null,
+    string? LecturerName = null,
+    string? LecturerEmail = null,
+    string? CourseCode = null,
+    string? CourseName = null,
+    string? Semester = null);
+
+public record StudentMemberDto(
+    Guid Id,
+    string? StudentCode,
+    string? FullName,
+    string Email,
+    string? Role = "Member");
 
 public record AnalysisRunDetailDto(
     AnalysisRunDto Run,
     IReadOnlyList<BusinessDto> Businesses,
-    IReadOnlyList<string> StudentEmails);
+    IReadOnlyList<string> StudentEmails,
+    IReadOnlyList<StudentMemberDto>? Students = null,
+    IReadOnlyList<AnalysisRunDto>? GroupRepos = null);
 
 public class CreateAnalysisRunRequest
 {
@@ -36,6 +50,9 @@ public class CreateAnalysisRunRequest
 
     [MaxLength(255)]
     public string? RepoName { get; set; }
+
+    public Guid? ClassId { get; set; }
+    public Guid? GroupId { get; set; }
 
     /// <summary>Template đã chốt (từ POST /api/templates/generate); bỏ trống thì đọc template_business.json trong repo.</summary>
     public List<BusinessTemplate>? Businesses { get; set; }

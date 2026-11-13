@@ -10,7 +10,7 @@ namespace PACE.API.Controllers;
 
 [ApiController]
 [Route("api/templates")]
-[Authorize(Roles = Roles.Admin)]
+[Authorize]
 public class TemplatesController(ITemplateGenerationService service, IBatchTemplateService batchService) : ControllerBase
 {
     /// <summary>Quét repo và trả về bản nháp template nghiệp vụ để admin xem, chỉnh sửa trước khi chốt.</summary>

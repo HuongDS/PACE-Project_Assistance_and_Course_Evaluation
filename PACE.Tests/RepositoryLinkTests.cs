@@ -76,7 +76,10 @@ public class RepositoryLinkTests
                 "ArchiveCurrentAsync" => Event("archive"),
                 "GetSummaryAsync" => Task.FromResult<AnalysisRunSummary?>(new(Run.Id,Run.RepoUrl,Run.RepoName,Run.CreatedAt,1,1,1)),
                 _ => throw new InvalidOperationException(m.Name) });
-            var users = Stub<IUserRepository>.Create((m,a) => Task.FromResult(new List<string>()));
+            var users = Stub<IUserRepository>.Create((m,a) => m.Name switch {
+                "GetMembersByRepoAsync" => Task.FromResult(new List<StudentMemberDto>()),
+                _ => Task.FromResult(new List<string>())
+            });
             var businesses = Stub<IBusinessRepository>.Create((m,a) => m.Name switch {
                 "DeleteByRepoAsync" => Delete("delete-businesses"), "AddRangeAsync" => Event("insert-businesses"), _ => throw new InvalidOperationException(m.Name) });
             var methods = Stub<IMethodSourceRepository>.Create((m,a) => m.Name switch {

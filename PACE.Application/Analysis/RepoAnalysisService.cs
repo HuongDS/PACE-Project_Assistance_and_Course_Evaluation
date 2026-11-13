@@ -23,7 +23,9 @@ public sealed class RepoAnalysisService(
     IRepositoryScanner scanner,
     IEnumerable<ILanguageParser> parsers,
     IOptions<AnalysisOptions> options,
-    ILogger<RepoAnalysisService> logger) : IRepoAnalysisService
+    ILogger<RepoAnalysisService> logger,
+    ICurrentUserService? currentUser = null,
+    ITemplateGenerationService? templateGen = null) : IRepoAnalysisService
 {
     private sealed record AnalysisModel(
         List<MethodSource> Methods,
@@ -65,18 +67,46 @@ public sealed class RepoAnalysisService(
                 repoName = RepoUrlHelper.DeriveName(url);
             }
 
+            Guid? targetGroupId = request.GroupId;
+            if (!targetGroupId.HasValue && request.ClassId.HasValue && currentUser?.IsAuthenticated == true)
+            {
+                if (currentUser.Role == UserRole.Student)
+                {
+                    targetGroupId = await uow.AnalysisRuns.GetStudentGroupIdInClassAsync(currentUser.UserId, request.ClassId.Value, ct);
+                }
+            }
+
             run = new AnalysisRun
             {
                 Id = Guid.NewGuid(),
                 RepoUrl = url,
-                RepoName = repoName
+                RepoName = repoName,
+                GroupId = targetGroupId
             };
             await uow.AnalysisRuns.AddAsync(run, ct);
             await uow.SaveChangesAsync(ct);
         }
-        else if (!string.IsNullOrWhiteSpace(request.RepoName))
+        else
         {
-            run.RepoName = request.RepoName.Trim();
+            if (!string.IsNullOrWhiteSpace(request.RepoName))
+            {
+                run.RepoName = request.RepoName.Trim();
+            }
+
+            Guid? targetGroupId = request.GroupId;
+            if (!targetGroupId.HasValue && request.ClassId.HasValue && currentUser?.IsAuthenticated == true)
+            {
+                if (currentUser.Role == UserRole.Student)
+                {
+                    targetGroupId = await uow.AnalysisRuns.GetStudentGroupIdInClassAsync(currentUser.UserId, request.ClassId.Value, ct);
+                }
+            }
+
+            if (targetGroupId.HasValue && !run.GroupId.HasValue)
+            {
+                run.GroupId = targetGroupId;
+            }
+
             await uow.SaveChangesAsync(ct);
         }
 
@@ -147,10 +177,23 @@ public sealed class RepoAnalysisService(
                 templates = BusinessTemplateLoader.Parse(run.BusinessTemplateJson);
             if (templates is null)
             {
-                var templateJson = await scanner.ReadBusinessTemplateAsync([clone.WorkingPath, clone.RootPath], ct)
-                                   ?? throw new BadRequestException($"Repo không có file {BusinessTemplateLoader.FileName}. Gọi POST /api/templates/generate để tạo, chỉnh rồi gửi kèm businesses.");
-                templates = BusinessTemplateLoader.Parse(templateJson);
-                templateSource = BusinessTemplateSource.Repository;
+                var templateJson = await scanner.ReadBusinessTemplateAsync([clone.WorkingPath, clone.RootPath], ct);
+                if (templateJson != null)
+                {
+                    templates = BusinessTemplateLoader.Parse(templateJson);
+                    templateSource = BusinessTemplateSource.Repository;
+                }
+                else if (templateGen != null)
+                {
+                    // Tự động quét và tạo template nghiệp vụ nếu repo chưa có template_business.json
+                    var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = run.RepoUrl, UseAi = true }, ct);
+                    templates = gen.Businesses.ToList();
+                    templateSource = gen.Source;
+                }
+                else
+                {
+                    throw new BadRequestException($"Repo không có file {BusinessTemplateLoader.FileName}. Gọi POST /api/templates/generate để tạo, chỉnh rồi gửi kèm businesses.");
+                }
             }
 
             var scan = scanner.Scan(clone.WorkingPath, ct);

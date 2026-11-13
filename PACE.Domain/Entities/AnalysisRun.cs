@@ -18,9 +18,11 @@ public class AnalysisRun
     public BusinessTemplateSource? TemplateSource { get; set; }
     public DateTime? TemplateUpdatedAt { get; set; }
 
+    public Guid? GroupId { get; set; }
+    public Group? Group { get; set; }
+
     public ICollection<Business> Businesses { get; set; } = new List<Business>();
     public ICollection<StudentSubmission> Submissions { get; set; } = new List<StudentSubmission>();
     public ICollection<User> Users { get; set; } = new List<User>();
     public ICollection<MethodSource> MethodSources { get; set; } = new List<MethodSource>();
-    public Group? Group { get; set; }
 }

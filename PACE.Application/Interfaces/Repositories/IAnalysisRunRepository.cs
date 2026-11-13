@@ -14,6 +14,7 @@ public interface IAnalysisRunRepository : IGenericRepository<AnalysisRun>
         Guid? classId = null,
         IReadOnlyList<Guid>? allowedClassIds = null,
         Guid? singleRepoId = null,
+        IReadOnlyList<Guid>? allowedRepoIds = null,
         CancellationToken ct = default);
     Task<AnalysisRunSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default);
     Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default);
@@ -27,4 +28,8 @@ public interface IAnalysisRunRepository : IGenericRepository<AnalysisRun>
     Task<List<Guid>> GetLecturerClassIdsAsync(Guid lecturerUserId, CancellationToken ct = default);
     Task<bool> IsStudentOfRepoAsync(Guid repoId, Guid studentUserId, CancellationToken ct = default);
     Task<Guid?> GetStudentRepoIdAsync(Guid studentUserId, CancellationToken ct = default);
+    Task<List<Guid>> GetStudentRepoIdsAsync(Guid studentUserId, CancellationToken ct = default);
+    Task<Guid?> GetStudentRepoIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default);
+    Task<List<Guid>> GetStudentRepoIdsInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default);
+    Task<Guid?> GetStudentGroupIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default);
 }

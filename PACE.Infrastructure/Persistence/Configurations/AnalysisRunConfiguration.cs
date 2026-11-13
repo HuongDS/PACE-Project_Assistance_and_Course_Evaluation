@@ -17,5 +17,11 @@ public class AnalysisRunConfiguration : IEntityTypeConfiguration<AnalysisRun>
         e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         e.Property(x => x.BusinessTemplateJson).HasColumnType("jsonb");
         e.Property(x => x.TemplateSource).HasConversion<string>().HasMaxLength(20);
+
+        e.Property(x => x.GroupId).HasColumnName("group_id");
+        e.HasOne(x => x.Group)
+            .WithMany(g => g.AnalysisRuns)
+            .HasForeignKey(x => x.GroupId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

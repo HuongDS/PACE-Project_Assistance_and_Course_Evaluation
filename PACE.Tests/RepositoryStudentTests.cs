@@ -98,7 +98,12 @@ public class RepositoryStudentTests
                 "EmailExistsAsync" => Task.FromResult(Users.Any(u => u.Email.Equals((string)a[0]!, StringComparison.OrdinalIgnoreCase))),
                 "AddAsync" => Add((User)a[0]!),
                 _ => throw new InvalidOperationException(m.Name) });
-            var runs = Stub<IAnalysisRunRepository>.Create((m,a) => m.Name == "GetByIdAsync" ? Task.FromResult((Guid)a[0]! == Run.Id ? Run : null) : throw new InvalidOperationException(m.Name));
+            var runs = Stub<IAnalysisRunRepository>.Create((m,a) => m.Name switch {
+                "GetByIdAsync" => Task.FromResult((Guid)a[0]! == Run.Id ? Run : null),
+                "GetStudentRepoIdsAsync" => Task.FromResult(new List<Guid>()),
+                "GetStudentRepoIdInClassAsync" => Task.FromResult<Guid?>(null),
+                _ => throw new InvalidOperationException(m.Name)
+            });
             var locks = Stub<IStudentSubmissionRepository>.Create((m,a) => m.Name is "LockUserAsync" or "LockQuickCreateKeyAsync" ? Task.CompletedTask : throw new InvalidOperationException(m.Name));
             var uow = Stub<IUnitOfWork>.Create((m,a) => m.Name switch {
                 "get_Users" => users, "get_AnalysisRuns" => runs, "get_StudentSubmissions" => locks,

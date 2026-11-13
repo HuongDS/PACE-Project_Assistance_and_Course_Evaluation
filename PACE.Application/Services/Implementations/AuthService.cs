@@ -24,6 +24,42 @@ public class AuthService(
         var inputEmail = request.Email.Trim().ToLowerInvariant();
         var isManager = inputEmail == "manager" || inputEmail == "manager@pace.edu.vn";
         var isStudentDev = inputEmail == "student" || inputEmail == "student@pace.edu.vn";
+        var isLecturerDev = inputEmail == "lecturer" || inputEmail == "lecturer@pace.edu.vn";
+
+        if (isLecturerDev)
+        {
+            if (request.Password != "lecturer@123")
+                throw new UnauthorizedException("Tài khoản hoặc mật khẩu không chính xác.");
+
+            var lecturerUser = await uow.Users.GetByEmailAsync("lecturer@pace.edu.vn", ct)
+                           ?? await uow.Users.GetByEmailAsync("lecturer", ct);
+            if (lecturerUser is null)
+            {
+                lecturerUser = new PACE.Domain.Entities.User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "lecturer@pace.edu.vn",
+                    FullName = "Thầy Nguyễn Văn Giảng",
+                    Role = PACE.Domain.Enums.UserRole.Lecturer,
+                    PasswordHash = passwordHasher.HashPassword("lecturer@123"),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await uow.Users.AddAsync(lecturerUser, ct);
+                await uow.SaveChangesAsync(ct);
+            }
+            else if (lecturerUser.Role != PACE.Domain.Enums.UserRole.Lecturer)
+            {
+                lecturerUser.Role = PACE.Domain.Enums.UserRole.Lecturer;
+                await uow.SaveChangesAsync(ct);
+            }
+
+            lecturerUser.RefreshToken = GenerateRefreshToken();
+            lecturerUser.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            await uow.SaveChangesAsync(ct);
+
+            var (lecToken, lecExpiresAt) = jwt.CreateToken(lecturerUser);
+            return new LoginResponse(lecToken, lecExpiresAt, lecturerUser.ToDto(), lecturerUser.RefreshToken);
+        }
 
         if (isStudentDev)
         {

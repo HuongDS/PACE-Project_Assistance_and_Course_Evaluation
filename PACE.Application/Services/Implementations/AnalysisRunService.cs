@@ -53,12 +53,36 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
             return;
         }
 
+        if (currentUser.Role == UserRole.Student)
+        {
+            var isStudentOfRepo = await uow.AnalysisRuns.IsStudentOfRepoAsync(id, currentUser.UserId, ct);
+            if (!isStudentOfRepo)
+                throw new ForbiddenException("Sinh viên chỉ có quyền quản lý repository thuộc nhóm của mình.");
+            return;
+        }
+
         throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này.");
+    }
+
+    private async Task EnsureStaffCanManageRepoAsync(Guid id, CancellationToken ct)
+    {
+        if (!currentUser.IsAuthenticated) throw new UnauthorizedException("Bạn chưa đăng nhập.");
+        if (currentUser.Role == UserRole.Admin) return;
+
+        if (currentUser.Role == UserRole.Lecturer)
+        {
+            var isLecturerOfRepo = await uow.AnalysisRuns.IsLecturerOfRepoClassAsync(id, currentUser.UserId, ct);
+            if (!isLecturerOfRepo)
+                throw new ForbiddenException("Giảng viên chỉ có quyền quản lý các repository thuộc lớp mình phụ trách.");
+            return;
+        }
+
+        throw new ForbiddenException("Chỉ giảng viên và quản trị viên mới có quyền thực hiện thao tác này.");
     }
 
     public async Task<PagedResult<RepositoryStudentDto>> GetStudentsAsync(Guid id, bool available, PageQuery query, CancellationToken ct = default)
     {
-        await EnsureCanManageRepoAsync(id, ct);
+        await EnsureStaffCanManageRepoAsync(id, ct);
         _ = await uow.AnalysisRuns.GetByIdAsync(id, ct) ?? throw new NotFoundException("repo", id);
         var page = await uow.Users.SearchAsync(UserRole.Student, available ? null : id, query.Search, query.Page, query.PageSize, ct);
         return page.Map(u => new RepositoryStudentDto(u.Id, u.StudentCode, u.Email, u.AnalysisRunId, u.AnalysisRun?.RepoName));
@@ -68,7 +92,7 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
     {
         return uow.ExecuteInTransactionAsync(async token =>
         {
-            await EnsureCanManageRepoAsync(id, token);
+            await EnsureStaffCanManageRepoAsync(id, token);
             var codes = (request.StudentCodes ?? []).Select(c => c?.Trim().ToUpperInvariant() ?? "").Distinct().Order().ToList();
             if (codes.Count == 0 || codes.Count > 100 || codes.Any(c => !System.Text.RegularExpressions.Regex.IsMatch(c, "^[A-Z0-9][A-Z0-9_-]{1,19}$")))
                 throw new BadRequestException("Nhập từ 1 đến 100 MSSV hợp lệ (2–20 ký tự chữ, số, _ hoặc -).");
@@ -111,7 +135,7 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
     {
         return uow.ExecuteInTransactionAsync(async token =>
         {
-            await EnsureCanManageRepoAsync(id, token);
+            await EnsureStaffCanManageRepoAsync(id, token);
             _ = await uow.AnalysisRuns.GetByIdAsync(id, token) ?? throw new NotFoundException("repo", id);
             await uow.StudentSubmissions.LockUserAsync(studentId, token);
             var student = await uow.Users.GetWithRepoAsync(studentId, asNoTracking: false, ct: token)
@@ -155,20 +179,39 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
         }
         else if (currentUser.Role == UserRole.Student)
         {
-            var studentRepoId = await uow.AnalysisRuns.GetStudentRepoIdAsync(currentUser.UserId, ct);
-            if (!studentRepoId.HasValue)
+            if (query.ClassId.HasValue)
             {
-                return new PagedResult<AnalysisRunDto>
+                var repoInClass = await uow.AnalysisRuns.GetStudentRepoIdInClassAsync(currentUser.UserId, query.ClassId.Value, ct);
+                if (!repoInClass.HasValue)
                 {
-                    Items = [],
-                    TotalCount = 0,
-                    Page = query.Page,
-                    PageSize = query.PageSize
-                };
+                    return new PagedResult<AnalysisRunDto>
+                    {
+                        Items = [],
+                        TotalCount = 0,
+                        Page = query.Page,
+                        PageSize = query.PageSize
+                    };
+                }
+                page = await uow.AnalysisRuns.SearchSummariesAsync(
+                    query.Search, query.Page, query.PageSize, singleRepoId: repoInClass.Value, ct: ct);
             }
+            else
+            {
+                var studentRepoIds = await uow.AnalysisRuns.GetStudentRepoIdsAsync(currentUser.UserId, ct);
+                if (studentRepoIds.Count == 0)
+                {
+                    return new PagedResult<AnalysisRunDto>
+                    {
+                        Items = [],
+                        TotalCount = 0,
+                        Page = query.Page,
+                        PageSize = query.PageSize
+                    };
+                }
 
-            page = await uow.AnalysisRuns.SearchSummariesAsync(
-                query.Search, query.Page, query.PageSize, singleRepoId: studentRepoId.Value, ct: ct);
+                page = await uow.AnalysisRuns.SearchSummariesAsync(
+                    query.Search, query.Page, query.PageSize, allowedRepoIds: studentRepoIds, ct: ct);
+            }
         }
         else
         {
@@ -183,16 +226,60 @@ public class AnalysisRunService(IUnitOfWork uow, ICurrentUserService currentUser
         await EnsureCanViewRepoAsync(id, ct);
         var summary = await uow.AnalysisRuns.GetSummaryAsync(id, ct) ?? throw new NotFoundException("repo", id);
         var businesses = await businessService.GetByRunAsync(id, ct);
-        var emails = await uow.Users.GetEmailsByRepoAsync(id, ct);
-        return new AnalysisRunDetailDto(summary.ToDto(AnalysisRunLock.IsRunning(id)), businesses, emails);
+        var members = await uow.Users.GetMembersByRepoAsync(id, ct);
+        var emails = members.Select(m => m.Email).Distinct().ToList();
+        if (emails.Count == 0)
+        {
+            emails = await uow.Users.GetEmailsByRepoAsync(id, ct);
+        }
+
+        List<AnalysisRunDto>? groupRepos = null;
+        var runEntity = await uow.AnalysisRuns.GetByIdAsync(id, ct);
+        if (runEntity?.GroupId.HasValue == true)
+        {
+            var siblingRuns = await uow.AnalysisRuns.FindAsync(r => r.GroupId == runEntity.GroupId.Value, ct: ct);
+            var siblingDtos = new List<AnalysisRunDto>();
+            foreach (var sr in siblingRuns)
+            {
+                var sSummary = await uow.AnalysisRuns.GetSummaryAsync(sr.Id, ct);
+                if (sSummary != null)
+                {
+                    siblingDtos.Add(sSummary.ToDto(AnalysisRunLock.IsRunning(sr.Id)));
+                }
+            }
+            if (siblingDtos.Count > 0) groupRepos = siblingDtos;
+        }
+
+        return new AnalysisRunDetailDto(summary.ToDto(AnalysisRunLock.IsRunning(id)), businesses, emails, members, groupRepos);
     }
 
-    public async Task<AnalysisRunDetailDto> GetMineAsync(CancellationToken ct = default)
+    public async Task<AnalysisRunDetailDto> GetMineAsync(Guid? classId = null, Guid? repoId = null, CancellationToken ct = default)
     {
+        if (repoId.HasValue)
+        {
+            return await GetDetailAsync(repoId.Value, ct);
+        }
+
+        if (classId.HasValue)
+        {
+            var repoInClass = await uow.AnalysisRuns.GetStudentRepoIdInClassAsync(currentUser.UserId, classId.Value, ct);
+            if (repoInClass.HasValue)
+            {
+                return await GetDetailAsync(repoInClass.Value, ct);
+            }
+        }
+
+        var repoIds = await uow.AnalysisRuns.GetStudentRepoIdsAsync(currentUser.UserId, ct);
+        if (repoIds.Count > 0)
+        {
+            return await GetDetailAsync(repoIds[0], ct);
+        }
+
         var user = await uow.Users.GetWithRepoAsync(currentUser.UserId, ct: ct);
-        if (user?.AnalysisRunId is not { } runId)
-            throw new NotFoundException("Tài khoản của bạn chưa được gán repo nào.");
-        return await GetDetailAsync(runId, ct);
+        if (user?.AnalysisRunId is { } runId)
+            return await GetDetailAsync(runId, ct);
+
+        throw new NotFoundException("Tài khoản của bạn chưa được gán repo nào.");
     }
 
     public async Task<AnalysisRunDto> UpdateAsync(Guid id, UpdateAnalysisRunRequest request, CancellationToken ct = default)

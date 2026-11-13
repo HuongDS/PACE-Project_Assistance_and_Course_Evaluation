@@ -18,6 +18,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         Guid? classId = null,
         IReadOnlyList<Guid>? allowedClassIds = null,
         Guid? singleRepoId = null,
+        IReadOnlyList<Guid>? allowedRepoIds = null,
         CancellationToken ct = default)
     {
         var query = DbSet.AsNoTracking().Where(r => !r.IsArchived);
@@ -25,6 +26,10 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         if (singleRepoId.HasValue)
         {
             query = query.Where(r => r.Id == singleRepoId.Value);
+        }
+        else if (allowedRepoIds != null)
+        {
+            query = query.Where(r => allowedRepoIds.Contains(r.Id));
         }
         else if (classId.HasValue)
         {
@@ -51,8 +56,88 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         return ToPagedAsync(ToSummary(query.OrderByDescending(r => r.CreatedAt)), page, pageSize, ct);
     }
 
-    public Task<AnalysisRunSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default)
-        => ToSummary(DbSet.AsNoTracking().Where(r => r.Id == id)).FirstOrDefaultAsync(ct);
+    public async Task<AnalysisRunSummary?> GetSummaryAsync(Guid id, CancellationToken ct = default)
+    {
+        var summary = await ToSummary(DbSet.AsNoTracking().Where(r => r.Id == id)).FirstOrDefaultAsync(ct);
+        if (summary == null) return null;
+
+        // Nếu thiếu Group/Class/Lecturer, thử tra cứu bổ sung qua Group, GroupMember hoặc CourseProject
+        if (summary.ClassName == null || summary.LecturerName == null || summary.GroupName == null)
+        {
+            var grp = await Context.Groups.AsNoTracking()
+                .Include(g => g.Class)
+                    .ThenInclude(c => c.Course)
+                        .ThenInclude(co => co.Lecturer)
+                .Include(g => g.Class)
+                    .ThenInclude(c => c.Semester)
+                .FirstOrDefaultAsync(g => g.AnalysisRuns.Any(r => r.Id == id), ct);
+
+            if (grp == null)
+            {
+                var userIds = await Context.Users
+                    .Where(u => u.AnalysisRunId == id && u.Role == UserRole.Student)
+                    .Select(u => u.Id)
+                    .ToListAsync(ct);
+
+                if (userIds.Count > 0)
+                {
+                    grp = await Context.Groups.AsNoTracking()
+                        .Include(g => g.Class)
+                            .ThenInclude(c => c.Course)
+                                .ThenInclude(co => co.Lecturer)
+                        .Include(g => g.Class)
+                            .ThenInclude(c => c.Semester)
+                        .FirstOrDefaultAsync(g => g.Members.Any(gm => gm.StudentProfile != null && userIds.Contains(gm.StudentProfile.UserId)), ct);
+                }
+            }
+
+            var cp = await Context.CourseProjects.AsNoTracking()
+                .Include(p => p.Course)
+                    .ThenInclude(c => c.Lecturer)
+                .FirstOrDefaultAsync(p => p.AnalysisRunId == id, ct);
+
+            var groupName = summary.GroupName ?? grp?.Name;
+            var topicName = summary.TopicName ?? grp?.TopicName;
+            var classId = summary.ClassId ?? grp?.ClassId;
+            var className = summary.ClassName ?? grp?.Class?.Name;
+
+            var lecturerName = summary.LecturerName
+                ?? (!string.IsNullOrEmpty(grp?.Class?.Course?.Lecturer?.FullName) ? grp.Class.Course.Lecturer.FullName : grp?.Class?.Course?.Lecturer?.Email)
+                ?? (!string.IsNullOrEmpty(cp?.Course?.Lecturer?.FullName) ? cp.Course.Lecturer.FullName : cp?.Course?.Lecturer?.Email);
+
+            var lecturerEmail = summary.LecturerEmail
+                ?? grp?.Class?.Course?.Lecturer?.Email
+                ?? cp?.Course?.Lecturer?.Email;
+
+            var courseCode = summary.CourseCode
+                ?? grp?.Class?.Course?.Code
+                ?? cp?.Course?.Code;
+
+            var courseName = summary.CourseName
+                ?? grp?.Class?.Course?.Name
+                ?? cp?.Course?.Name;
+
+            var semester = summary.Semester
+                ?? grp?.Class?.Course?.Semester
+                ?? grp?.Class?.Semester?.Name
+                ?? cp?.Course?.Semester;
+
+            summary = summary with
+            {
+                GroupName = groupName,
+                TopicName = topicName,
+                ClassId = classId,
+                ClassName = className,
+                LecturerName = lecturerName,
+                LecturerEmail = lecturerEmail,
+                CourseCode = courseCode,
+                CourseName = courseName,
+                Semester = semester
+            };
+        }
+
+        return summary;
+    }
 
     public async Task<AnalysisRun?> GetByRepoUrlAsync(string repoUrl, CancellationToken ct = default)
     {
@@ -114,7 +199,22 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             r.Group != null ? r.Group.Name : null,
             r.Group != null ? r.Group.TopicName : null,
             r.Group != null ? (Guid?)r.Group.ClassId : null,
-            r.Group != null && r.Group.Class != null ? r.Group.Class.Name : null));
+            r.Group != null && r.Group.Class != null ? r.Group.Class.Name : null,
+            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null && r.Group.Class.Course.Lecturer != null
+                ? (!string.IsNullOrEmpty(r.Group.Class.Course.Lecturer.FullName) ? r.Group.Class.Course.Lecturer.FullName : r.Group.Class.Course.Lecturer.Email)
+                : null,
+            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null && r.Group.Class.Course.Lecturer != null
+                ? r.Group.Class.Course.Lecturer.Email
+                : null,
+            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
+                ? r.Group.Class.Course.Code
+                : null,
+            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
+                ? r.Group.Class.Course.Name
+                : null,
+            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
+                ? r.Group.Class.Course.Semester
+                : (r.Group != null && r.Group.Class != null && r.Group.Class.Semester != null ? r.Group.Class.Semester.Name : null)));
 
     public async Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default)
     {
@@ -123,12 +223,11 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .Select(l => l.LecturerCode)
             .FirstOrDefaultAsync(ct);
 
-        if (string.IsNullOrEmpty(lecturerCode)) return false;
-
         return await Context.Classes
             .Where(c => c.Id == classId)
-            .AnyAsync(c => c.Schedules.Any(s => s.LecturerCode == lecturerCode)
-                        || c.Sessions.Any(s => s.LecturerCode == lecturerCode), ct);
+            .AnyAsync(c => c.Course.LecturerId == lecturerUserId
+                        || (lecturerCode != null && (c.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                                                 || c.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct);
     }
 
     public async Task<bool> IsLecturerOfRepoClassAsync(Guid repoId, Guid lecturerUserId, CancellationToken ct = default)
@@ -138,12 +237,13 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .Select(l => l.LecturerCode)
             .FirstOrDefaultAsync(ct);
 
-        if (string.IsNullOrEmpty(lecturerCode)) return false;
-
         return await Context.Groups
-            .Where(g => g.AnalysisRunId == repoId)
-            .AnyAsync(g => g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
-                        || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode), ct);
+            .Where(g => g.AnalysisRuns.Any(r => r.Id == repoId))
+            .AnyAsync(g => g.Class.Course.LecturerId == lecturerUserId
+                        || (lecturerCode != null && (g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                                                 || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct)
+            || await Context.CourseProjects
+                .AnyAsync(cp => cp.AnalysisRunId == repoId && cp.Course.LecturerId == lecturerUserId, ct);
     }
 
     public async Task<List<Guid>> GetLecturerClassIdsAsync(Guid lecturerUserId, CancellationToken ct = default)
@@ -153,19 +253,26 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .Select(l => l.LecturerCode)
             .FirstOrDefaultAsync(ct);
 
-        if (string.IsNullOrEmpty(lecturerCode)) return [];
+        var scheduleClassIds = !string.IsNullOrEmpty(lecturerCode)
+            ? await Context.ClassSchedules
+                .Where(s => s.LecturerCode == lecturerCode)
+                .Select(s => s.ClassId)
+                .ToListAsync(ct)
+            : [];
 
-        var scheduleClassIds = await Context.ClassSchedules
-            .Where(s => s.LecturerCode == lecturerCode)
-            .Select(s => s.ClassId)
+        var sessionClassIds = !string.IsNullOrEmpty(lecturerCode)
+            ? await Context.ClassSessions
+                .Where(s => s.LecturerCode == lecturerCode)
+                .Select(s => s.ClassId)
+                .ToListAsync(ct)
+            : [];
+
+        var courseClassIds = await Context.Classes
+            .Where(c => c.Course.LecturerId == lecturerUserId)
+            .Select(c => c.Id)
             .ToListAsync(ct);
 
-        var sessionClassIds = await Context.ClassSessions
-            .Where(s => s.LecturerCode == lecturerCode)
-            .Select(s => s.ClassId)
-            .ToListAsync(ct);
-
-        return scheduleClassIds.Union(sessionClassIds).Distinct().ToList();
+        return scheduleClassIds.Concat(sessionClassIds).Concat(courseClassIds).Distinct().ToList();
     }
 
     public async Task<bool> IsStudentOfRepoAsync(Guid repoId, Guid studentUserId, CancellationToken ct = default)
@@ -184,28 +291,87 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
         if (string.IsNullOrEmpty(studentCode)) return false;
 
         return await Context.Groups
-            .Where(g => g.AnalysisRunId == repoId)
+            .Where(g => g.AnalysisRuns.Any(r => r.Id == repoId))
             .AnyAsync(g => g.Members.Any(m => m.StudentCode == studentCode), ct);
     }
 
     public async Task<Guid?> GetStudentRepoIdAsync(Guid studentUserId, CancellationToken ct = default)
     {
+        var ids = await GetStudentRepoIdsAsync(studentUserId, ct);
+        return ids.Count > 0 ? ids[0] : null;
+    }
+
+    public async Task<List<Guid>> GetStudentRepoIdsAsync(Guid studentUserId, CancellationToken ct = default)
+    {
+        var result = new HashSet<Guid>();
+
+        // 1. Trực tiếp từ User.AnalysisRunId
         var directRunId = await Context.Users
             .Where(u => u.Id == studentUserId)
             .Select(u => u.AnalysisRunId)
             .FirstOrDefaultAsync(ct);
-        if (directRunId.HasValue) return directRunId.Value;
+        if (directRunId.HasValue) result.Add(directRunId.Value);
 
+        // 2. Qua Group.AnalysisRuns của các nhóm mà sinh viên tham gia
         var studentCode = await Context.Users
             .Where(u => u.Id == studentUserId)
             .Select(u => u.StudentCode)
             .FirstOrDefaultAsync(ct);
 
-        if (string.IsNullOrEmpty(studentCode)) return null;
+        var groupRepoIds = await Context.GroupMembers
+            .Where(m => (m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                        (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => r.Id))
+            .ToListAsync(ct);
+
+        foreach (var id in groupRepoIds) result.Add(id);
+
+        return result.ToList();
+    }
+
+    public async Task<Guid?> GetStudentRepoIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
 
         return await Context.GroupMembers
-            .Where(m => m.StudentCode == studentCode && m.Group.AnalysisRunId.HasValue)
-            .Select(m => m.Group.AnalysisRunId)
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => (Guid?)r.Id))
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<List<Guid>> GetStudentRepoIdsInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        return await Context.GroupMembers
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .SelectMany(m => m.Group.AnalysisRuns.Select(r => r.Id))
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<Guid?> GetStudentGroupIdInClassAsync(Guid studentUserId, Guid classId, CancellationToken ct = default)
+    {
+        var studentCode = await Context.Users
+            .Where(u => u.Id == studentUserId)
+            .Select(u => u.StudentCode)
+            .FirstOrDefaultAsync(ct);
+
+        return await Context.GroupMembers
+            .Where(m => m.Group.ClassId == classId &&
+                        ((m.StudentProfile != null && m.StudentProfile.UserId == studentUserId) ||
+                         (!string.IsNullOrEmpty(studentCode) && m.StudentCode == studentCode)))
+            .Select(m => (Guid?)m.GroupId)
             .FirstOrDefaultAsync(ct);
     }
 }

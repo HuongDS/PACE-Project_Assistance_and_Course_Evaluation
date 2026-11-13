@@ -13,4 +13,5 @@ public interface IUserRepository : IGenericRepository<User>
     Task<PagedResult<User>> SearchAsync(UserRole? role, Guid? analysisRunId, string? search, int page, int pageSize, CancellationToken ct = default);
     Task<HashSet<string>> GetAllEmailsAsync(CancellationToken ct = default);
     Task<List<string>> GetEmailsByRepoAsync(Guid analysisRunId, CancellationToken ct = default);
+    Task<List<PACE.Application.Dtos.StudentMemberDto>> GetMembersByRepoAsync(Guid analysisRunId, CancellationToken ct = default);
 }

@@ -14,6 +14,7 @@ public interface IUnitOfWork
     IDataFlowEdgeRepository DataFlowEdges { get; }
     IStudentAnswerRepository StudentAnswers { get; }
     IGeneratedQuestionRepository GeneratedQuestions { get; }
+    IClassRepository Classes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddSingleton<IUserImportReader, ClosedXmlUserImportReader>();
         services.AddSingleton<IRepoLinkReader, ClosedXmlRepoLinkReader>();
         services.AddSingleton<ISurveyExcelService, ClosedXmlSurveyExcelService>();
+        services.AddSingleton<IClassExcelService, ClosedXmlClassExcelService>();
 
         // BCrypt Password Hasher, Upstash Redis OTP Cache, MailKit Email Service
         services.AddSingleton<IPasswordHasher, Services.BCryptPasswordHasher>();

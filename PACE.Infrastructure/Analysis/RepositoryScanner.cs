@@ -140,7 +140,17 @@ public sealed class RepositoryScanner : IRepositoryScanner
             else if (JsExtensions.Contains(ext))
             {
                 if (IsIgnoredScript(fileName)) continue;
-                if (NearestPackageIsBackend(Path.GetDirectoryName(file)!, root, packageJsonDirs)) AddFile(scan.JsTsFiles, root, file);
+                if (NearestPackageIsBackend(Path.GetDirectoryName(file)!, root, packageJsonDirs))
+                {
+                    AddFile(scan.JsTsFiles, root, file);
+                    if (ext.ToLowerInvariant() is ".jsx" or ".tsx") AddFile(scan.FrontendFiles, root, file);
+                }
+                else
+                    AddFile(scan.FrontendFiles, root, file);
+            }
+            else if (ext.ToLowerInvariant() is ".html" or ".vue" or ".svelte")
+            {
+                AddFile(scan.FrontendFiles, root, file);
             }
         }
 
@@ -148,6 +158,8 @@ public sealed class RepositoryScanner : IRepositoryScanner
         if (hasSpring) scan.Stacks.Add(StackSpring);
         else if (hasJavaBuild || scan.JavaFiles.Count > 0) scan.Stacks.Add(StackJava);
         if (scan.JsTsFiles.Count > 0) scan.Stacks.Add(StackNode);
+
+        if (scan.FrontendFiles.Count > 0) scan.Stacks.Add("Web frontend");
 
         return scan;
     }

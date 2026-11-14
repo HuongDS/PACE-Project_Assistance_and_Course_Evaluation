@@ -1,3 +1,4 @@
+using PACE.Application.Analysis.Models;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -73,7 +74,10 @@ public class QuestionGenerationService(
         var codeBuilder = BuildCode(methods, flows);
         var contextBuilder = BuildFlowContext(flows);
         if (route.ContextType == ContextType.Raw) contextBuilder = RawModeContextPlaceholder;
-        else codeBuilder = GraphModeCodePlaceholder;
+        var frontendMethods = methods.Where(m =>
+            m.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal)).ToList();
+        if (route.ContextType == ContextType.Graph)
+            codeBuilder = frontendMethods.Count == 0 ? GraphModeCodePlaceholder : BuildCode(frontendMethods, flows);
 
         // 3.5. Kiểm tra và nạp Sơ đồ nghiệp vụ chuẩn (Ground Truth từ Draw.io) nếu có.
         string? groundTruthSpec = null;
@@ -100,7 +104,8 @@ public class QuestionGenerationService(
             numberOfQuestions: request.NumberOfQuestions,
             difficulty: difficulty,
             additionalContext: request.Description,
-            groundTruthSpecification: groundTruthSpec);
+            groundTruthSpecification: groundTruthSpec,
+            hasFrontend: frontendMethods.Count > 0);
 
         var result = await llm.GenerateJsonAsync(prompt.SystemInstruction, prompt.UserPrompt, _options.Temperature, ct);
         var generated = LlmQuestionParser.Parse(result.Text).Take(request.NumberOfQuestions).ToList();

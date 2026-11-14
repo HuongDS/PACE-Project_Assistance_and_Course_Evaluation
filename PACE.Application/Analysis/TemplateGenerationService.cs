@@ -54,7 +54,7 @@ public sealed class TemplateGenerationService(
         var scan = scanner.Scan(clone.WorkingPath, ct);
         warnings.AddRange(scan.Warnings);
         if (scan.TotalFiles == 0)
-            throw new UnprocessableException("Không tìm thấy mã nguồn backend C#, Java hoặc JavaScript/TypeScript trong repo.");
+            throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
 
         var parsed = new ParseResult();
         foreach (var parser in parsers)
@@ -62,11 +62,15 @@ public sealed class TemplateGenerationService(
         warnings.AddRange(parsed.Warnings);
 
         var endpoints = BusinessTemplateGenerator.ExtractEndpoints(parsed.Methods);
+        if (endpoints.Count == 0 && scan.FrontendFiles.Count > 0)
+            return Result(url, BusinessTemplateSource.Controller, string.Join(", ", scan.Stacks),
+                BusinessTemplateGenerator.GroupFrontend(scan.FrontendEntries()), warnings);
+
         if (endpoints.Count == 0)
             throw new UnprocessableException("Không tìm thấy controller/endpoint nào trong repo để tạo template.");
 
         var (source, businesses) = await GroupAsync(url, endpoints, request.UseAi, warnings, ct);
-        return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses), warnings);
+        return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses.Concat(BusinessTemplateGenerator.GroupFrontend(scan.FrontendEntries()))), warnings);
     }
 
     private async Task<(BusinessTemplateSource, List<BusinessTemplate>)> GroupAsync(

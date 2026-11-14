@@ -17,6 +17,9 @@ public sealed partial class EntryPointMatcher(IReadOnlyCollection<ParsedMethod> 
     public ParsedMethod? Match(ApiTemplate api, out string? note)
     {
         note = null;
+        if (api.Controller.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal))
+            return methods.FirstOrDefault(m => m.ClassName == api.Controller && m.MethodName == api.ResolveFunctionName());
+
         var function = NormalizeMethod(api.ResolveFunctionName());
         var controller = NormalizeClass(api.Controller);
 

@@ -73,7 +73,7 @@ export interface GenerateQuestionsResponse {
   routingReason: string;            // Lý do chọn Raw hay Graph
   flowCount: number;
   methodCount: number;
-  model: string;                    // "gpt-6-luna"
+  model: string;                    // "gpt-4o-mini" / "gemini-3.1-flash-lite"
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
@@ -263,7 +263,7 @@ export const questionApiService = {
   "routingReason": "Mode Hybrid: luồng có 12 node > 10 nên dùng Graph",
   "flowCount": 2,
   "methodCount": 8,
-  "model": "gpt-6-luna",
+  "model": "gpt-4o-mini",
   "inputTokens": 1450,
   "outputTokens": 320,
   "latencyMs": 2100,

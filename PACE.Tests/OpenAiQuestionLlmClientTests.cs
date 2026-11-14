@@ -28,7 +28,7 @@ public class OpenAiQuestionLlmClientTests
 
     private static string Completed(string content) => JsonSerializer.Serialize(new
     {
-        status = "completed", model = "gpt-6-luna", usage = new { input_tokens = 100, output_tokens = 40 },
+        status = "completed", model = "gpt-4o-mini", usage = new { input_tokens = 100, output_tokens = 40 },
         output = new[] { new { type = "message", content = new[] { new { type = "output_text", text = content } } } }
     });
 
@@ -41,7 +41,7 @@ public class OpenAiQuestionLlmClientTests
             Assert.Equal("Bearer", request.Headers.Authorization!.Scheme);
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync());
             var root = payload.RootElement;
-            Assert.Equal("gpt-6-luna", root.GetProperty("model").GetString());
+            Assert.Equal("gpt-4o-mini", root.GetProperty("model").GetString());
             Assert.Equal("none", root.GetProperty("reasoning").GetProperty("effort").GetString());
             Assert.Equal(0.3f, root.GetProperty("temperature").GetSingle());
             Assert.False(root.GetProperty("store").GetBoolean());
@@ -52,7 +52,7 @@ public class OpenAiQuestionLlmClientTests
         Assert.Single(LlmQuestionParser.Parse(result.Text));
         Assert.Equal(100, result.InputTokens);
         Assert.Equal(40, result.OutputTokens);
-        Assert.Equal("gpt-6-luna", result.Model);
+        Assert.Equal("gpt-4o-mini", result.Model);
     }
 
     [Theory]

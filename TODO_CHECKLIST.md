@@ -30,14 +30,14 @@ Tài liệu này tổng hợp kết quả đối chiếu trực tiếp giữa **
 ## PHẦN 1: CHECKLIST CÁC MỤC CẦN SỬA (BUGS, HARDCODE, LỖ HỔNG & XUNG ĐỘT THIẾT KẾ) 🔧
 
 ### 1.1. Backend (BE) — Cần sửa ngay
-- [ ] **Xóa tài khoản Backdoor hardcode trong `AuthService`**:
-  - Trong [AuthService.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.Application/Services/Implementations/AuthService.cs#L25-L119) đang hardcode các tài khoản (`lecturer`/`lecturer@123`, `student`/`student@123`, `manager`/`manager@123`) tự động tạo user trong DB mà không kiểm tra môi trường Development.
-- [ ] **Gỡ bỏ thông tin nhạy cảm (Secret) bị lộ trong `appsettings.json`**:
-  - Trong [appsettings.json](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/appsettings.json#L28) đang lưu chuỗi kết nối và mật khẩu Upstash Redis dạng plain-text. Cần chuyển sang biến môi trường (`.env` / User Secrets).
-- [ ] **Sửa lỗi cấu hình AI Provider và tên Model không hợp lệ**:
-  - [appsettings.json](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/appsettings.json#L50-L68) đặt `"QuestionGeneration": { "Provider": "Gemini" }` và `"OpenAI": { "Model": "gpt-6-luna" }`, nhưng [DependencyInjection.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.Infrastructure/DependencyInjection.cs#L63) lại hardcode `OpenAiQuestionLlmClient` (bỏ qua cấu hình `Provider`), và `"gpt-6-luna"` không phải tên model hợp lệ của OpenAI.
-- [ ] **Bật lại và cấu hình đúng phân quyền `[Authorize]` cho `QuestionsController`**:
-  - Trong [QuestionsController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/QuestionsController.cs#L12), dòng `// [Authorize(Roles = Roles.Admin)]` đang bị comment, dẫn tới thiếu kiểm tra quyền sở hữu/vai trò khi sinh câu hỏi, xóa câu hỏi hoặc ghi đè file đặc tả Draw.io.
+- [x] **Xóa tài khoản Backdoor hardcode trong `AuthService`**:
+  - Đã xóa toàn bộ logic tài khoản backdoor (lecturer, student, manager) trong `AuthService.cs`, chỉ cho phép xác thực người dùng thật qua DB và BCrypt / Admin Credentials.
+- [x] **Gỡ bỏ thông tin nhạy cảm (Secret) bị lộ trong `appsettings.json`**:
+  - Đã gỡ bỏ chuỗi kết nối và mật khẩu Upstash Redis khỏi `appsettings.json` và xóa hardcode fallback trong `UpstashRedisOtpCacheService.cs`. Ném ngoại lệ khi thiếu cấu hình.
+- [x] **Sửa lỗi cấu hình AI Provider và tên Model không hợp lệ**:
+  - Đã hiện thực `GeminiQuestionLlmClient`, cấu hình DI động theo `QuestionGeneration:Provider` ("Gemini" vs "OpenAI"), và cập nhật tên model hợp lệ `gpt-4o-mini`.
+- [x] **Bật lại và cấu hình đúng phân quyền `[Authorize]` cho `QuestionsController`**:
+  - Đã bật `[Authorize(Roles = Roles.Staff)]` cho `QuestionsController.cs`.
 - [ ] **Sửa lỗi xuất PDF Báo cáo bị mất tiếng Việt (corrupt thành dấu `?`) và thiếu kết luận AI**:
   - Trong [ReportsController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/ReportsController.cs#L17-L40), hàm `ReportPdf.Create` đang lọc bỏ mọi ký tự non-ASCII (`c is >= ' ' and <= '~' ? c : '?'`) làm hỏng toàn bộ tên sinh viên và nhận xét tiếng Việt; đồng thời đang hardcode `gradeLetter = null` và chuỗi `"Grade letters and AI conclusions are unavailable."`.
 - [ ] **Hợp nhất các bảng Database bị trùng lặp và rời rạc**:

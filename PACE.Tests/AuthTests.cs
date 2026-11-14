@@ -197,19 +197,20 @@ public class AuthTests
     }
 
     [Fact]
-    public async Task ManagerLoginSucceedsWithManagerAt123()
+    public async Task UserWithPasswordHashLoginSucceedsWithCorrectPassword()
     {
-        var manager = new User { Id = Guid.NewGuid(), Email = "manager", Role = UserRole.Admin };
-        var response = await Service(manager).LoginAsync(new() { Email = "manager", Password = "manager@123" });
-        Assert.Equal(UserRole.Admin, response.User.Role);
-        Assert.Equal("manager", response.User.Email);
+        var user = new User { Id = Guid.NewGuid(), Email = "user@pace.edu.vn", Role = UserRole.Lecturer, PasswordHash = "hashed_correct-password" };
+        var response = await Service(user).LoginAsync(new() { Email = "user@pace.edu.vn", Password = "correct-password" });
+        Assert.Equal(UserRole.Lecturer, response.User.Role);
+        Assert.Equal("user@pace.edu.vn", response.User.Email);
         Assert.Equal(1, tokens);
     }
 
     [Fact]
-    public async Task ManagerLoginRejectsIncorrectPassword()
+    public async Task UserWithPasswordHashLoginRejectsIncorrectPassword()
     {
-        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(null).LoginAsync(new() { Email = "manager", Password = "wrong-password" }));
+        var user = new User { Id = Guid.NewGuid(), Email = "user@pace.edu.vn", Role = UserRole.Lecturer, PasswordHash = "hashed_correct-password" };
+        await Assert.ThrowsAsync<UnauthorizedException>(() => Service(user).LoginAsync(new() { Email = "user@pace.edu.vn", Password = "wrong-password" }));
         Assert.Equal(0, tokens);
     }
 }

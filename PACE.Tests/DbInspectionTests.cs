@@ -77,7 +77,7 @@ public class DbInspectionTests
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
 
-        var passwordHash = BCrypt.Net.BCrypt.HashPassword("lecturer@123");
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
         var lecturerUserId = Guid.NewGuid();
 
         // 1. Check if lecturer exists
@@ -247,7 +247,7 @@ public class DbInspectionTests
         }
         else
         {
-            var pwHash = BCrypt.Net.BCrypt.HashPassword("student@123");
+            var pwHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
             await using var insStu = new NpgsqlCommand(@"
                 INSERT INTO users (""Id"", ""Email"", ""StudentCode"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
                 VALUES (@id, 'student@pace.edu.vn', 'SE170001', 'Nguyễn Văn Sinh Viên', 'Student', @hash, now())", conn);
@@ -286,7 +286,7 @@ public class DbInspectionTests
             if (exUid != null && exUid != DBNull.Value) uid = (Guid)exUid;
             else
             {
-                var defHash = BCrypt.Net.BCrypt.HashPassword("student@123");
+                var defHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
                 await using var insUser = new NpgsqlCommand(@"
                     INSERT INTO users (""Id"", ""Email"", ""StudentCode"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
                     VALUES (@uid, @email, @code, @name, 'Student', @hash, now())", conn);

@@ -56,7 +56,7 @@ Khi giảng viên upload sơ đồ quy trình chuẩn (`.xml` hoặc `.drawio`),
 
 `PACE.Application/QuestionGeneration/QuestionPromptBuilder.cs` chép **nguyên văn** prompt của
 `AIService.GenerateUnifiedQuestionsAsync` (Repo_Into_Graph) — prompt dùng chung cho cả ba arm của bài báo.
-Model `gpt-6-luna`, Responses API, reasoning `none`, temperature 0.3 và Structured Outputs (JSON schema), retry lùi luỹ thừa khi 429/5xx.
+Model `gpt-4o-mini`, Responses API, reasoning `none`, temperature 0.3 và Structured Outputs (JSON schema), retry lùi luỹ thừa khi 429/5xx.
 Lớp gọi API bọc mảng trong `{ "questions": [...] }` để đáp ứng schema; parser hiện có đọc được định dạng này.
 Prompt nghiệp vụ giữ nguyên; đổi model nên kết quả không còn cùng baseline Gemini của bài báo.
 Không sửa nội dung prompt nếu muốn kết quả còn so sánh được với bài báo.
@@ -66,8 +66,8 @@ Không sửa nội dung prompt nếu muốn kết quả còn so sánh được v
 `appsettings.json`:
 
 ```json
-"QuestionGeneration": { "GraphNodeThreshold": 10, "MaxQuestions": 20, "Temperature": 0.3 },
-"OpenAI": { "ApiKey": "", "Model": "gpt-6-luna", "TimeoutSeconds": 600, "MaxRetries": 5, "InitialRetryDelaySeconds": 5 }
+"QuestionGeneration": { "Provider": "Gemini", "GraphNodeThreshold": 10, "MaxQuestions": 20, "Temperature": 0.3 },
+"OpenAI": { "ApiKey": "", "Model": "gpt-4o-mini", "TimeoutSeconds": 600, "MaxRetries": 5, "InitialRetryDelaySeconds": 5 }
 ```
 
 API key đặt trong `appsettings.Development.json` (đã gitignore): `"OpenAI": { "ApiKey": "..." }` hoặc biến môi trường `OpenAI__ApiKey`.

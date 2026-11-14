@@ -12,7 +12,8 @@ public record ParticipantUserView(Guid Id, string Email, string FullName, string
 public record SessionParticipantView(ParticipantUserView User, string Role, bool IsAudioActive, bool IsVideoActive, bool IsSpeaking, string ConnectionQuality);
 public record SessionView(Guid Id, string Title, string CourseCode, string? GroupName, string Status, DateTime ScheduledStart, DateTime ScheduledEnd, DateTime? ActualStartTime, DateTime? ActualEndTime, SessionRubricView Rubric, IReadOnlyList<SessionParticipantView> Participants, Dictionary<Guid, List<ScoreInput>> StudentEvaluations, Guid? OralExamId = null);
 public record GitCommitView(string Sha, string AuthorEmail, string AuthorName, string Message, string Timestamp, int Additions, int Deletions, int ChangedFilesCount);
-public record EvidenceView(Guid ProjectId, string RepositoryUrl, IReadOnlyList<GitCommitView> Commits, IReadOnlyList<object> Contributions, DateTime AnalyzedAt, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp, string CurrentCommitSha);
+public record GitContributionView(string AuthorName, string AuthorEmail, int CommitCount, int Additions, int Deletions, int ChangedFilesCount, double CommitRatio, double LocRatio);
+public record EvidenceView(Guid ProjectId, string RepositoryUrl, IReadOnlyList<GitCommitView> Commits, IReadOnlyList<GitContributionView> Contributions, DateTime AnalyzedAt, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp, string CurrentCommitSha);
 public record CommitDiffView(string Filename, string Status, int Additions, int Deletions, string Patch);
 public record AstNodeView(string Id, string Label, string Type);
 public record AstEdgeView(string Source, string Target, string Relation);

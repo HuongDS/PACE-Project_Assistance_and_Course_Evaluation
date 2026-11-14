@@ -7,57 +7,133 @@ using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Interfaces;
 using PACE.Domain.Enums;
 using PACE.Infrastructure.Persistence;
+using PdfSharpCore;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Fonts;
+using PdfSharpCore.Utils;
+
 namespace PACE.API.Controllers;
 
 public static class ReportPdf
 {
-    // Text PDF with explicit object byte offsets, page tree, cross-reference table and full UTF-8 text support.
-    public static byte[] Create(IEnumerable<string> lines)
+    private static readonly object SyncLock = new();
+    private static bool _initialized;
+
+    public static void EnsureInitialized()
     {
-        var rawLines = lines.ToList();
-        var pages = rawLines.SelectMany(x => Enumerable.Range(0, Math.Max(1, (x.Length + 87) / 88)).Select(i => x.Substring(i * 88, Math.Min(88, x.Length - i * 88)))).Chunk(48).ToArray();
-        if (pages.Length == 0) pages = [[]];
-        var objects = new List<string> { "<< /Type /Catalog /Pages 2 0 R >>", "", "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>" };
-        var pageIds = new List<int>();
-        foreach (var page in pages)
+        if (_initialized) return;
+        lock (SyncLock)
         {
-            int id = objects.Count + 1;
-            pageIds.Add(id);
-            objects.Add($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents {id + 1} 0 R >>");
-            var stream = "BT /F1 10 Tf 40 752 Td 14 TL\n" + string.Join("\n", page.Select(l => "(" + EscapePdfText(l) + ") Tj T*")) + "\nET";
-            objects.Add($"<< /Length {Encoding.UTF8.GetByteCount(stream)} >>\nstream\n{stream}\nendstream");
+            if (_initialized) return;
+            if (GlobalFontSettings.FontResolver == null)
+            {
+                GlobalFontSettings.FontResolver = new FontResolver();
+            }
+            _initialized = true;
         }
-        objects[1] = $"<< /Type /Pages /Count {pages.Length} /Kids [{string.Join(" ", pageIds.Select(x => $"{x} 0 R"))}] >>";
-
-        var offsets = new List<int> { 0 };
-        var header = "%PDF-1.4\n";
-        var bodyBuilder = new StringBuilder(header);
-        int currentOffset = Encoding.UTF8.GetByteCount(header);
-
-        for (int i = 0; i < objects.Count; i++)
-        {
-            offsets.Add(currentOffset);
-            var objStr = $"{i + 1} 0 obj\n{objects[i]}\nendobj\n";
-            bodyBuilder.Append(objStr);
-            currentOffset += Encoding.UTF8.GetByteCount(objStr);
-        }
-
-        var xrefOffset = currentOffset;
-        var xrefBuilder = new StringBuilder();
-        xrefBuilder.Append($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n");
-        foreach (var n in offsets.Skip(1))
-        {
-            xrefBuilder.Append($"{n:D10} 00000 n \n");
-        }
-        xrefBuilder.Append($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xrefOffset}\n%%EOF\n");
-
-        bodyBuilder.Append(xrefBuilder.ToString());
-        return Encoding.UTF8.GetBytes(bodyBuilder.ToString());
     }
 
-    private static string EscapePdfText(string text)
+    // Standard PDF document with embedded TrueType Unicode font (Arial) supporting full Vietnamese diacritics.
+    public static byte[] Create(IEnumerable<string> lines)
     {
-        return text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+        EnsureInitialized();
+        using var document = new PdfDocument();
+        document.Info.Title = "PACE Assessment Report";
+        document.Info.Author = "PACE System";
+
+        var fontTitle = new XFont("Arial", 14, XFontStyle.Bold);
+        var fontRegular = new XFont("Arial", 9.5, XFontStyle.Regular);
+        var fontBold = new XFont("Arial", 9.5, XFontStyle.Bold);
+
+        const double marginLeft = 40;
+        const double marginTop = 45;
+        const double marginBottom = 45;
+        const double lineHeight = 15;
+        const double printableWidth = 595 - (marginLeft * 2);
+
+        PdfPage page = document.AddPage();
+        page.Size = PageSize.A4;
+        XGraphics gfx = XGraphics.FromPdfPage(page);
+        double y = marginTop;
+
+        void CheckNewPage(double needed = lineHeight)
+        {
+            if (y + needed > page.Height - marginBottom)
+            {
+                gfx.Dispose();
+                page = document.AddPage();
+                page.Size = PageSize.A4;
+                gfx = XGraphics.FromPdfPage(page);
+                y = marginTop;
+            }
+        }
+
+        bool isFirst = true;
+        foreach (var rawLine in lines)
+        {
+            var text = rawLine ?? "";
+            if (isFirst && (text.Contains("Report") || text.Contains("Báo cáo")))
+            {
+                CheckNewPage(28);
+                gfx.DrawString(text, fontTitle, XBrushes.DarkSlateBlue, new XPoint(marginLeft, y));
+                y += 24;
+                isFirst = false;
+                continue;
+            }
+            isFirst = false;
+
+            XFont font = fontRegular;
+            XBrush brush = XBrushes.Black;
+
+            if (text.StartsWith("Student:") || text.StartsWith("Sinh viên:") ||
+                text.StartsWith("Session:") || text.StartsWith("Course:") || text.StartsWith("Khóa học:") ||
+                text.StartsWith("AI Conclusions:") || text.StartsWith("Kết luận AI:"))
+            {
+                font = fontBold;
+                brush = XBrushes.Navy;
+            }
+            else if (text.StartsWith("  "))
+            {
+                font = fontRegular;
+                brush = XBrushes.DarkSlateGray;
+            }
+
+            var words = text.Split(' ');
+            var currentChunk = new StringBuilder();
+
+            foreach (var word in words)
+            {
+                var candidate = currentChunk.Length == 0 ? word : currentChunk + " " + word;
+                var measurement = gfx.MeasureString(candidate, font);
+                if (measurement.Width > printableWidth && currentChunk.Length > 0)
+                {
+                    CheckNewPage(lineHeight);
+                    gfx.DrawString(currentChunk.ToString(), font, brush, new XPoint(marginLeft, y));
+                    y += lineHeight;
+                    currentChunk.Clear();
+                    currentChunk.Append(word);
+                }
+                else
+                {
+                    if (currentChunk.Length > 0) currentChunk.Append(' ');
+                    currentChunk.Append(word);
+                }
+            }
+
+            if (currentChunk.Length > 0)
+            {
+                CheckNewPage(lineHeight);
+                gfx.DrawString(currentChunk.ToString(), font, brush, new XPoint(marginLeft, y));
+                y += lineHeight;
+            }
+        }
+
+        gfx.Dispose();
+
+        using var ms = new MemoryStream();
+        document.Save(ms);
+        return ms.ToArray();
     }
 }
 

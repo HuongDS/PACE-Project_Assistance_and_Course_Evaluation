@@ -46,6 +46,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
 
@@ -66,6 +70,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupId");
+
                     b.ToTable("analysis_runs", (string)null);
                 });
 
@@ -80,6 +86,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("ActualStartTime")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OralExamId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("oral_exam_id");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
@@ -109,6 +119,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OralExamId");
 
                     b.HasIndex("ProjectId", "ScheduledStart");
 
@@ -562,10 +574,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid?>("AnalysisRunId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("analysis_run_id");
-
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid")
                         .HasColumnName("class_id");
@@ -588,9 +596,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnName("topic_name");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AnalysisRunId")
-                        .IsUnique();
 
                     b.HasIndex("ClassId");
 
@@ -1181,13 +1186,30 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.AnalysisRun", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany("AnalysisRuns")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Group");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
+                    b.HasOne("PACE.Domain.Entities.OralExam", "OralExam")
+                        .WithMany("AssessmentSessions")
+                        .HasForeignKey("OralExamId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PACE.Domain.Entities.CourseProject", "Project")
                         .WithMany()
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("OralExam");
 
                     b.Navigation("Project");
                 });
@@ -1425,18 +1447,11 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
                 {
-                    b.HasOne("PACE.Domain.Entities.AnalysisRun", "AnalysisRun")
-                        .WithOne("Group")
-                        .HasForeignKey("PACE.Domain.Entities.Group", "AnalysisRunId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("PACE.Domain.Entities.Class", "Class")
                         .WithMany("Groups")
                         .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("AnalysisRun");
 
                     b.Navigation("Class");
                 });
@@ -1664,8 +1679,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Businesses");
 
-                    b.Navigation("Group");
-
                     b.Navigation("MethodSources");
 
                     b.Navigation("Submissions");
@@ -1729,6 +1742,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
                 {
+                    b.Navigation("AnalysisRuns");
+
                     b.Navigation("Members");
                 });
 
@@ -1752,6 +1767,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
                 {
+                    b.Navigation("AssessmentSessions");
+
                     b.Navigation("Questions");
 
                     b.Navigation("StudentOralSessions");

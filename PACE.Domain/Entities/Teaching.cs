@@ -27,6 +27,8 @@ public class AssessmentSession
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ProjectId { get; set; }
     public CourseProject Project { get; set; } = null!;
+    public Guid? OralExamId { get; set; }
+    public OralExam? OralExam { get; set; }
     public string Title { get; set; } = "";
     public string Status { get; set; } = "CREATED";
     public DateTime ScheduledStart { get; set; }

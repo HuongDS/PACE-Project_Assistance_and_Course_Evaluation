@@ -50,7 +50,7 @@ public sealed partial class GitCloneService(IOptions<AnalysisOptions> options, I
         Directory.CreateDirectory(root);
         var target = Path.Combine(root, $"clone_{Guid.NewGuid():N}");
 
-        var (exitCode, stdErr, _) = await RunGitAsync(["clone", "--depth", "2", .. BranchArgs(branch), "--", cloneUrl, target], ct);
+        var (exitCode, stdErr, _) = await RunGitAsync(["clone", .. BranchArgs(branch), "--", cloneUrl, target], ct);
 
         if (exitCode != 0)
         {

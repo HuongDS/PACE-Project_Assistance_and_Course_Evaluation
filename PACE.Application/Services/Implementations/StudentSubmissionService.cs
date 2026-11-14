@@ -180,14 +180,9 @@ public class StudentSubmissionService(
                 throw new ConflictException("Sinh viên đã nộp bài cho repository này.");
 
             var bizList = await uow.StudentSubmissions.GetBusinessesWithQuestionsAsync(run.Id, token);
-            var totalQuestionsCount = bizList.SelectMany(b => b.Questions).Count();
-            var expectedCount = Math.Min(4, totalQuestionsCount);
-            if (expectedCount > 0 && request.Answers.Count != expectedCount)
+            if (request.Answers.Count == 0)
             {
-                throw new BadRequestException(
-                    expectedCount >= 4
-                        ? "Quy chế bài thi yêu cầu bạn phải chọn và trả lời đúng 4 câu hỏi."
-                        : $"Repository của bạn có tổng cộng {expectedCount} câu hỏi, do đó bài thi yêu cầu bạn phải chọn và trả lời toàn bộ {expectedCount} câu hỏi.");
+                throw new BadRequestException("Bài nộp phải có ít nhất một câu trả lời.");
             }
 
             foreach (var answer in request.Answers)
@@ -240,27 +235,7 @@ public class StudentSubmissionService(
 
         if (alreadySubmitted) return MapSavedResult(submission);
 
-        // 2. Chấm điểm các câu hỏi bằng AI song song qua Task.WhenAll (Ngoài Database Transaction)
-        var allFormats = Enum.GetValues<FeedbackFormat>();
-        FeedbackFormat[] assignedFormats;
-        if (request.Answers.Count == allFormats.Length)
-        {
-            assignedFormats = allFormats.ToArray();
-            Random.Shared.Shuffle(assignedFormats);
-        }
-        else if (request.Answers.Count < allFormats.Length)
-        {
-            var shuffled = allFormats.ToArray();
-            Random.Shared.Shuffle(shuffled);
-            assignedFormats = shuffled.Take(request.Answers.Count).ToArray();
-        }
-        else
-        {
-            assignedFormats = Enumerable.Range(0, request.Answers.Count)
-                .Select(_ => allFormats[Random.Shared.Next(allFormats.Length)])
-                .ToArray();
-        }
-
+        // 2. Chấm điểm các câu hỏi bằng AI với chuẩn Rubric
         var evaluatedAnswers = new List<EvaluatedAnswerDto>();
         for (var index = 0; index < request.Answers.Count; index++)
         {
@@ -272,7 +247,6 @@ public class StudentSubmissionService(
         {
             var business = businesses.First(b => b.Id == a.BusinessId);
             var question = business.Questions.First(q => q.Id == a.QuestionId);
-            var format = assignedFormats[index];
 
             StudentAnswerRes? parsed = null;
             string? evaluationError = null;
@@ -285,7 +259,7 @@ public class StudentSubmissionService(
                     SubmissionId = submission.Id,
                     UserId = student.Id,
                     StudentAnswer = a.AnswerText.Trim(),
-                    FeedbackFormat = format,
+                    FeedbackFormat = FeedbackFormat.Rubric,
                     ContextModel = question.ContextType
                 };
 

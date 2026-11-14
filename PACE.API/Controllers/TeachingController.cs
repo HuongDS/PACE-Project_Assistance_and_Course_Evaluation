@@ -14,7 +14,7 @@ namespace PACE.API.Controllers;
 public record CreateCourseRequest([Required, MaxLength(40)] string Code, [Required, MaxLength(255)] string Name, [Required, MaxLength(40)] string Semester, Guid LecturerId);
 public record TopicDecision(bool IsApproved, [MaxLength(4000)] string? Notes);
 public record SessionCriterion(Guid Id, [Required, MaxLength(255)] string Title, [MaxLength(4000)] string Description, [Range(0.01, 1000)] decimal MaxScore, [Range(0.01, 100)] decimal Weight);
-public record CreateSessionRequest(Guid ProjectId, [Required, MaxLength(255)] string Title, DateTime ScheduledStart, DateTime ScheduledEnd, [Required, MinLength(1), MaxLength(100)] List<Guid> StudentIds, [Required, MinLength(1), MaxLength(100)] List<SessionCriterion> Criteria);
+public record CreateSessionRequest(Guid ProjectId, [Required, MaxLength(255)] string Title, DateTime ScheduledStart, DateTime ScheduledEnd, [Required, MinLength(1), MaxLength(100)] List<Guid> StudentIds, [Required, MinLength(1), MaxLength(100)] List<SessionCriterion> Criteria, Guid? OralExamId = null);
 public record ScoreInput(Guid CriterionId, [Range(0, 1000)] decimal Score, [MaxLength(4000)] string? Feedback);
 public record EvaluateRequest([Required, MinLength(1), MaxLength(100)] List<ScoreInput> Evaluations);
 
@@ -35,9 +35,60 @@ public class TeachingAccess(AppDbContext db, ICurrentUserService current)
     public async Task<User> User(CancellationToken ct) => await db.Users.SingleOrDefaultAsync(x => x.Id == current.UserId, ct) ?? throw new UnauthorizedException("Account unavailable.");
     public async Task<CourseProject> Project(Guid id, CancellationToken ct)
     {
-        var p = await db.CourseProjects.Include(x => x.Course).Include(x => x.AnalysisRun).SingleOrDefaultAsync(x => x.AnalysisRunId == id, ct) ?? throw new NotFoundException("Project not assigned to a course.");
+        var run = await db.AnalysisRuns
+            .Include(r => r.Group)
+                .ThenInclude(g => g!.Class)
+                    .ThenInclude(c => c!.Course)
+            .Include(r => r.Group)
+                .ThenInclude(g => g!.Members)
+            .Include(r => r.Users)
+            .FirstOrDefaultAsync(r => r.Id == id, ct);
+
+        var p = await db.CourseProjects
+            .Include(x => x.Course)
+            .Include(x => x.AnalysisRun)
+            .SingleOrDefaultAsync(x => x.AnalysisRunId == id, ct);
+
+        if (run == null && p == null) throw new NotFoundException("Project not assigned to a course.");
+
+        var course = run?.Group?.Class?.Course ?? p?.Course;
+        if (course == null && p == null) throw new NotFoundException("Project not assigned to a course.");
+
+        if (p == null)
+        {
+            p = new CourseProject
+            {
+                AnalysisRunId = run!.Id,
+                AnalysisRun = run,
+                CourseId = course!.Id,
+                Course = course
+            };
+        }
+        else if (run != null)
+        {
+            p.AnalysisRun = run;
+            if (p.Course == null && course != null)
+            {
+                p.Course = course;
+                p.CourseId = course.Id;
+            }
+        }
+
         var u = await User(ct);
-        if (u.Role != UserRole.Admin && !(u.Role == UserRole.Lecturer && p.Course.LecturerId == u.Id) && !(u.Role == UserRole.Student && u.AnalysisRunId == id)) throw new ForbiddenException();
+        bool isAdmin = u.Role == UserRole.Admin;
+        bool isLecturer = u.Role == UserRole.Lecturer && (
+            (p.Course != null && p.Course.LecturerId == u.Id) ||
+            (run?.Group?.Class?.Course != null && run.Group.Class.Course.LecturerId == u.Id)
+        );
+        bool isStudent = u.Role == UserRole.Student && (
+            u.AnalysisRunId == id ||
+            (run != null && (
+                run.Users.Any(ru => ru.Id == u.Id) ||
+                (run.Group != null && run.Group.Members.Any(m => m.StudentCode == u.StudentCode))
+            ))
+        );
+
+        if (!isAdmin && !isLecturer && !isStudent) throw new ForbiddenException();
         return p;
     }
     public async Task Staff(CourseProject p, CancellationToken ct)
@@ -56,9 +107,49 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
 {
     private async Task<IQueryable<Course>> Visible(CancellationToken ct)
     {
-        var u = await access.User(ct); return db.Courses.AsNoTracking().Where(c => u.Role == UserRole.Admin || (u.Role == UserRole.Lecturer && c.LecturerId == u.Id) || (u.Role == UserRole.Student && c.Projects.Any(p => p.AnalysisRunId == u.AnalysisRunId)));
+        var u = await access.User(ct);
+        return db.Courses.AsNoTracking().Where(c =>
+            u.Role == UserRole.Admin ||
+            (u.Role == UserRole.Lecturer && c.LecturerId == u.Id) ||
+            (u.Role == UserRole.Student && (
+                c.Projects.Any(p => p.AnalysisRunId == u.AnalysisRunId) ||
+                c.Classes.Any(cl => cl.Groups.Any(g =>
+                    g.AnalysisRuns.Any(r => r.Id == u.AnalysisRunId) ||
+                    g.Members.Any(m => m.StudentCode == u.StudentCode))))));
     }
-    private static IQueryable<object> Details(IQueryable<Course> q) => q.Select(c => new { c.Id, c.Code, c.Name, c.Semester, c.LecturerId, lecturerName = c.Lecturer.Email, totalGroups = c.Projects.Count, milestones = new object[0], projects = c.Projects.Select(p => new { id = p.AnalysisRunId, name = p.AnalysisRun.RepoName, p.IsApproved, p.Notes, p.DecidedAt, students = p.AnalysisRun.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email }) }) });
+    private static IQueryable<object> Details(IQueryable<Course> q) => q.Select(c => new
+    {
+        c.Id,
+        c.Code,
+        c.Name,
+        c.Semester,
+        c.LecturerId,
+        lecturerName = c.Lecturer.Email,
+        totalGroups = c.Classes.SelectMany(cl => cl.Groups).Count() > 0
+            ? c.Classes.SelectMany(cl => cl.Groups).Count()
+            : c.Projects.Count,
+        milestones = new object[0],
+        projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any())
+            ? c.Classes.SelectMany(cl => cl.Groups)
+                .SelectMany(g => g.AnalysisRuns.Select(r => new
+                {
+                    id = r.Id,
+                    name = r.RepoName ?? g.Name,
+                    isApproved = (bool?)true,
+                    notes = (string?)null,
+                    decidedAt = (DateTime?)r.CreatedAt,
+                    students = r.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email })
+                }))
+            : c.Projects.Select(p => new
+            {
+                id = p.AnalysisRunId,
+                name = p.AnalysisRun.RepoName ?? "",
+                isApproved = p.IsApproved,
+                notes = p.Notes,
+                decidedAt = p.DecidedAt,
+                students = p.AnalysisRun.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email })
+            })
+    });
     [ProducesResponseType(typeof(CourseView[]), 200)]
     [HttpGet] public async Task<IActionResult> List([FromQuery, Range(1, int.MaxValue)] int page = 1, [FromQuery, Range(1, 100)] int pageSize = 20, CancellationToken ct = default) => Ok(await Details((await Visible(ct)).OrderBy(c => c.Code).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct));
     [ProducesResponseType(typeof(CourseView), 200)]
@@ -72,11 +163,38 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
         var c = new Course { Code = request.Code, Name = request.Name, Semester = request.Semester, LecturerId = request.LecturerId }; db.Courses.Add(c); access.Audit(c.Id, "COURSE_CREATED", c.Code); await access.Save(ct); return CreatedAtAction(nameof(Get), new { id = c.Id }, new { c.Id });
     }
     [HttpPut("{id:guid}/projects/{projectId:guid}"), Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Assign(Guid id, Guid projectId, CancellationToken ct)
+    public async Task<IActionResult> Assign(Guid id, Guid projectId, [FromQuery] Guid? groupId = null, CancellationToken ct = default)
     {
-        if (!await db.Courses.AnyAsync(c => c.Id == id, ct) || !await db.AnalysisRuns.AnyAsync(r => r.Id == projectId, ct)) return NotFound();
-        var p = await db.CourseProjects.FindAsync([projectId], ct); if (p != null) return Conflict(new { error = "Project already assigned; reassignment requires reviewing its existing sessions." });
-        db.CourseProjects.Add(new CourseProject { CourseId = id, AnalysisRunId = projectId }); access.Audit(projectId, "PROJECT_ASSIGNED", id.ToString()); await access.Save(ct); return NoContent();
+        var course = await db.Courses.Include(c => c.Classes).ThenInclude(cl => cl.Groups).FirstOrDefaultAsync(c => c.Id == id, ct);
+        var run = await db.AnalysisRuns.FindAsync([projectId], ct);
+        if (course == null || run == null) return NotFound();
+        var p = await db.CourseProjects.FindAsync([projectId], ct);
+        if (p != null) return Conflict(new { error = "Project already assigned; reassignment requires reviewing its existing sessions." });
+
+        if (groupId.HasValue)
+        {
+            var targetGroup = course.Classes.SelectMany(cl => cl.Groups).FirstOrDefault(g => g.Id == groupId.Value)
+                ?? await db.Groups.FindAsync([groupId.Value], ct);
+            if (targetGroup != null)
+            {
+                run.GroupId = targetGroup.Id;
+            }
+        }
+        else
+        {
+            var matchedGroup = course.Classes.SelectMany(cl => cl.Groups)
+                .FirstOrDefault(g => g.Name == run.RepoName || g.TopicName == run.RepoName)
+                ?? course.Classes.SelectMany(cl => cl.Groups).FirstOrDefault();
+            if (matchedGroup != null)
+            {
+                run.GroupId = matchedGroup.Id;
+            }
+        }
+
+        db.CourseProjects.Add(new CourseProject { CourseId = id, AnalysisRunId = projectId });
+        access.Audit(projectId, "PROJECT_ASSIGNED", id.ToString());
+        await access.Save(ct);
+        return NoContent();
     }
     [HttpPost("projects/{projectId:guid}/topic-approval"), Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> Approve(Guid projectId, TopicDecision request, CancellationToken ct)
@@ -98,18 +216,22 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
     private object View(AssessmentSession s, CourseProject p, bool student)
     {
         var criteria = JsonSerializer.Deserialize<List<SessionCriterion>>(s.RubricJson, Json)!;
+        var groupName = p.AnalysisRun?.Group?.Name ?? p.AnalysisRun?.RepoName ?? "";
+        var courseCode = p.AnalysisRun?.Group?.Class?.Course?.Code ?? p.Course?.Code ?? "";
+        var courseId = p.AnalysisRun?.Group?.Class?.CourseId ?? p.CourseId;
         return new
         {
             s.Id,
             s.Title,
-            courseCode = p.Course.Code,
-            groupName = p.AnalysisRun.RepoName,
+            s.OralExamId,
+            courseCode,
+            groupName,
             s.Status,
             s.ScheduledStart,
             s.ScheduledEnd,
             s.ActualStartTime,
             s.ActualEndTime,
-            rubric = new { id = s.Id, courseId = p.CourseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = new object[0] }), totalScore = 100 },
+            rubric = new { id = s.Id, courseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = new object[0] }), totalScore = 100 },
             participants = s.Students.Select(x => new { user = new { id = x.Student.Id, email = x.Student.Email, fullName = x.Student.Email, role = "STUDENT", createdAt = x.Student.CreatedAt }, role = "CANDIDATE", isAudioActive = false, isVideoActive = false, isSpeaking = false, connectionQuality = "disconnected" }),
             studentEvaluations = s.Students.Where(x => x.EvaluationJson != null && (!student || x.StudentId == current.UserId)).ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<ScoreInput>>(x.EvaluationJson!, Json))
         };
@@ -118,7 +240,16 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
     [HttpGet]
     public async Task<IActionResult> List([FromQuery, Range(1, int.MaxValue)] int page = 1, [FromQuery, Range(1, 100)] int pageSize = 20, CancellationToken ct = default)
     {
-        var u = await access.User(ct); return Ok(await db.AssessmentSessions.AsNoTracking().Where(s => u.Role == UserRole.Admin || (u.Role == UserRole.Lecturer && s.Project.Course.LecturerId == u.Id) || (u.Role == UserRole.Student && s.Students.Any(x => x.StudentId == u.Id))).OrderByDescending(s => s.ScheduledStart).Skip((page - 1) * pageSize).Take(pageSize).Select(s => new { s.Id, s.Title, s.Status, s.ProjectId, s.ScheduledStart, s.ScheduledEnd }).ToListAsync(ct));
+        var u = await access.User(ct);
+        return Ok(await db.AssessmentSessions.AsNoTracking().Where(s =>
+            u.Role == UserRole.Admin ||
+            (u.Role == UserRole.Lecturer && (s.Project.Course.LecturerId == u.Id || (s.Project.AnalysisRun.Group != null && s.Project.AnalysisRun.Group.Class.Course.LecturerId == u.Id))) ||
+            (u.Role == UserRole.Student && s.Students.Any(x => x.StudentId == u.Id)))
+            .OrderByDescending(s => s.ScheduledStart)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new { s.Id, s.Title, s.Status, s.ProjectId, s.ScheduledStart, s.ScheduledEnd, s.OralExamId })
+            .ToListAsync(ct));
     }
     [ProducesResponseType(typeof(SessionView), 200)]
     [HttpGet("{id:guid}")] public async Task<IActionResult> Get(Guid id, CancellationToken ct) { var s = await Load(id, ct); return Ok(View(s, await access.Project(s.ProjectId, ct), (await access.User(ct)).Role == UserRole.Student)); }
@@ -128,9 +259,26 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
     {
         var p = await access.Project(request.ProjectId, ct); await access.Staff(p, ct);
         if (request.ScheduledStart.Kind != DateTimeKind.Utc || request.ScheduledEnd.Kind != DateTimeKind.Utc || request.ScheduledEnd <= request.ScheduledStart) return BadRequest(new { error = "Provide increasing UTC timestamps." });
-        if (request.StudentIds.Distinct().Count() != request.StudentIds.Count || await db.Users.CountAsync(u => request.StudentIds.Contains(u.Id) && u.AnalysisRunId == request.ProjectId && u.Role == UserRole.Student, ct) != request.StudentIds.Count) return BadRequest(new { error = "Students must belong to this project." });
+        if (request.StudentIds.Distinct().Count() != request.StudentIds.Count) return BadRequest(new { error = "Student IDs must be unique." });
+        
+        var validStudentsCount = await db.Users.CountAsync(u => request.StudentIds.Contains(u.Id) &&
+            (u.AnalysisRunId == request.ProjectId ||
+             (p.AnalysisRun.GroupId != null && db.GroupMembers.Any(gm => gm.GroupId == p.AnalysisRun.GroupId && gm.StudentCode == u.StudentCode))) &&
+            u.Role == UserRole.Student, ct);
+        if (validStudentsCount != request.StudentIds.Count)
+            return BadRequest(new { error = "Students must belong to this project." });
+
         if (request.Criteria.Select(c => c.Id).Distinct().Count() != request.Criteria.Count || request.Criteria.Sum(c => c.Weight) != 100) return BadRequest(new { error = "Use distinct criteria with weights totaling 100." });
-        var s = new AssessmentSession { ProjectId = request.ProjectId, Title = request.Title, ScheduledStart = request.ScheduledStart, ScheduledEnd = request.ScheduledEnd, RubricJson = JsonSerializer.Serialize(request.Criteria, Json), Students = request.StudentIds.Select(id => new SessionStudent { StudentId = id }).ToList() };
+        var s = new AssessmentSession
+        {
+            ProjectId = request.ProjectId,
+            OralExamId = request.OralExamId,
+            Title = request.Title,
+            ScheduledStart = request.ScheduledStart,
+            ScheduledEnd = request.ScheduledEnd,
+            RubricJson = JsonSerializer.Serialize(request.Criteria, Json),
+            Students = request.StudentIds.Select(id => new SessionStudent { StudentId = id }).ToList()
+        };
         db.AssessmentSessions.Add(s); access.Audit(s.Id, "SESSION_CREATED", s.Title); await access.Save(ct); return CreatedAtAction(nameof(Get), new { id = s.Id }, new { s.Id });
     }
     [ProducesResponseType(typeof(SessionStartView), 200)]

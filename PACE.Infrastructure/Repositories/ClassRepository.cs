@@ -40,6 +40,31 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             q = q.Where(c => c.CourseId == query.CourseId.Value);
         }
 
+        if (query.SemesterId.HasValue)
+        {
+            var semName = await Context.Semesters
+                .Where(s => s.Id == query.SemesterId.Value)
+                .Select(s => s.Name.ToLower())
+                .FirstOrDefaultAsync(ct);
+
+            if (!string.IsNullOrEmpty(semName))
+            {
+                q = q.Where(c => c.SemesterId == query.SemesterId.Value
+                              || (c.Course.Semester != null && c.Course.Semester.ToLower() == semName)
+                              || (c.Semester != null && c.Semester.Name.ToLower() == semName));
+            }
+            else
+            {
+                q = q.Where(c => c.SemesterId == query.SemesterId.Value);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(query.Semester))
+        {
+            var sem = query.Semester.Trim().ToLower();
+            q = q.Where(c => (c.Semester != null && c.Semester.Name.ToLower() == sem)
+                          || (c.Course.Semester != null && c.Course.Semester.ToLower() == sem));
+        }
+
         var keyword = NormalizeSearch(query.SearchTerm);
         if (keyword != null)
         {
@@ -81,6 +106,9 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
 
         if (c == null) return null;
 
+        var studentCount = await Context.StudentClasses.CountAsync(sc => sc.ClassId == classId, ct);
+        var groupCount = await Context.Groups.CountAsync(g => g.ClassId == classId, ct);
+
         var classDto = new ClassDto(
             c.Id,
             c.Name,
@@ -93,39 +121,57 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             c.Course.Semester ?? c.Semester?.Name,
             c.StartDate,
             c.EndDate,
-            await Context.StudentClasses.CountAsync(sc => sc.ClassId == classId, ct),
-            await Context.Groups.CountAsync(g => g.ClassId == classId, ct));
+            studentCount,
+            groupCount);
 
-        // Get students in this class with their Group name if assigned
-        var students = await Context.StudentClasses.AsNoTracking()
+        // Get students in this class
+        var studentClasses = await Context.StudentClasses.AsNoTracking()
+            .Include(sc => sc.StudentProfile)
+                .ThenInclude(sp => sp.User)
             .Where(sc => sc.ClassId == classId)
-            .Select(sc => new ClassStudentDto(
-                sc.StudentCode,
-                sc.StudentProfile != null ? (Guid?)sc.StudentProfile.UserId : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.FullName : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.Email : null,
-                sc.Status,
-                Context.GroupMembers
-                    .Where(gm => gm.StudentCode == sc.StudentCode && gm.Group.ClassId == classId)
-                    .Select(gm => gm.Group.Name)
-                    .FirstOrDefault(),
-                sc.StudentProfile != null ? (DateTime?)sc.StudentProfile.CreatedAt : null))
-            .OrderBy(s => s.StudentCode)
+            .OrderBy(sc => sc.StudentCode)
             .ToListAsync(ct);
 
+        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+            .Where(gm => gm.Group.ClassId == classId)
+            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
+            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+
+        var students = studentClasses.Select(sc =>
+        {
+            groupMemberMap.TryGetValue(sc.StudentCode, out var groupName);
+            var profile = sc.StudentProfile;
+            var user = profile?.User;
+            return new ClassStudentDto(
+                sc.StudentCode,
+                profile != null ? (Guid?)profile.UserId : null,
+                user?.FullName,
+                user?.Email,
+                sc.Status,
+                groupName,
+                profile?.CreatedAt);
+        }).ToList();
+
         // Get groups in this class
-        var groups = await Context.Groups.AsNoTracking()
+        var rawGroups = await Context.Groups.AsNoTracking()
+            .Include(g => g.Members)
+            .Include(g => g.AnalysisRuns)
             .Where(g => g.ClassId == classId)
-            .Select(g => new ClassGroupDto(
+            .OrderBy(g => g.Name)
+            .ToListAsync(ct);
+
+        var groups = rawGroups.Select(g =>
+        {
+            var firstRun = g.AnalysisRuns.FirstOrDefault();
+            return new ClassGroupDto(
                 g.Id,
                 g.Name,
                 g.TopicName,
-                g.AnalysisRuns.Select(r => (Guid?)r.Id).FirstOrDefault(),
-                g.AnalysisRuns.Select(r => r.RepoName).FirstOrDefault(),
-                g.AnalysisRuns.Select(r => r.RepoUrl).FirstOrDefault(),
-                g.Members.Count))
-            .OrderBy(g => g.Name)
-            .ToListAsync(ct);
+                firstRun?.Id,
+                firstRun?.RepoName,
+                firstRun?.RepoUrl,
+                g.Members.Count);
+        }).ToList();
 
         return new ClassDetailDto(classDto, students, groups);
     }
@@ -136,6 +182,8 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
         CancellationToken ct = default)
     {
         var q = Context.StudentClasses.AsNoTracking()
+            .Include(sc => sc.StudentProfile)
+                .ThenInclude(sp => sp.User)
             .Where(sc => sc.ClassId == classId);
 
         var keyword = NormalizeSearch(query.SearchTerm);
@@ -146,43 +194,77 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
                 (sc.StudentProfile != null && (
                     sc.StudentProfile.User.Email.ToLower().Contains(keyword) ||
                     sc.StudentProfile.User.FullName.ToLower().Contains(keyword)
-                )) ||
-                Context.GroupMembers.Any(gm => gm.StudentCode == sc.StudentCode && gm.Group.ClassId == classId && gm.Group.Name.ToLower().Contains(keyword)));
+                )));
         }
 
-        var projectQuery = q.OrderBy(sc => sc.StudentCode)
-            .Select(sc => new ClassStudentDto(
-                sc.StudentCode,
-                sc.StudentProfile != null ? (Guid?)sc.StudentProfile.UserId : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.FullName : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.Email : null,
-                sc.Status,
-                Context.GroupMembers
-                    .Where(gm => gm.StudentCode == sc.StudentCode && gm.Group.ClassId == classId)
-                    .Select(gm => gm.Group.Name)
-                    .FirstOrDefault(),
-                sc.StudentProfile != null ? (DateTime?)sc.StudentProfile.CreatedAt : null));
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 200);
+        var total = await q.CountAsync(ct);
 
-        return await ToPagedAsync(projectQuery, query.Page, query.PageSize, ct);
+        var pagedItems = await q
+            .OrderBy(sc => sc.StudentCode)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var studentCodes = pagedItems.Select(x => x.StudentCode).ToList();
+        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+            .Where(gm => gm.Group.ClassId == classId && studentCodes.Contains(gm.StudentCode))
+            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
+            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+
+        var items = pagedItems.Select(sc =>
+        {
+            groupMemberMap.TryGetValue(sc.StudentCode, out var groupName);
+            var profile = sc.StudentProfile;
+            var user = profile?.User;
+            return new ClassStudentDto(
+                sc.StudentCode,
+                profile != null ? (Guid?)profile.UserId : null,
+                user?.FullName,
+                user?.Email,
+                sc.Status,
+                groupName,
+                profile?.CreatedAt);
+        }).ToList();
+
+        return new PagedResult<ClassStudentDto>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
+        };
     }
 
-    public Task<List<ClassStudentDto>> GetAllStudentsInClassAsync(Guid classId, CancellationToken ct = default)
+    public async Task<List<ClassStudentDto>> GetAllStudentsInClassAsync(Guid classId, CancellationToken ct = default)
     {
-        return Context.StudentClasses.AsNoTracking()
+        var studentClasses = await Context.StudentClasses.AsNoTracking()
+            .Include(sc => sc.StudentProfile)
+                .ThenInclude(sp => sp.User)
             .Where(sc => sc.ClassId == classId)
-            .Select(sc => new ClassStudentDto(
-                sc.StudentCode,
-                sc.StudentProfile != null ? (Guid?)sc.StudentProfile.UserId : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.FullName : null,
-                sc.StudentProfile != null ? sc.StudentProfile.User.Email : null,
-                sc.Status,
-                Context.GroupMembers
-                    .Where(gm => gm.StudentCode == sc.StudentCode && gm.Group.ClassId == classId)
-                    .Select(gm => gm.Group.Name)
-                    .FirstOrDefault(),
-                sc.StudentProfile != null ? (DateTime?)sc.StudentProfile.CreatedAt : null))
-            .OrderBy(s => s.StudentCode)
+            .OrderBy(sc => sc.StudentCode)
             .ToListAsync(ct);
+
+        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+            .Where(gm => gm.Group.ClassId == classId)
+            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
+            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+
+        return studentClasses.Select(sc =>
+        {
+            groupMemberMap.TryGetValue(sc.StudentCode, out var groupName);
+            var profile = sc.StudentProfile;
+            var user = profile?.User;
+            return new ClassStudentDto(
+                sc.StudentCode,
+                profile != null ? (Guid?)profile.UserId : null,
+                user?.FullName,
+                user?.Email,
+                sc.Status,
+                groupName,
+                profile?.CreatedAt);
+        }).ToList();
     }
 
     public async Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default)

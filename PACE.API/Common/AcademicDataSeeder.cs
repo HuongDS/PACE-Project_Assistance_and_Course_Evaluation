@@ -17,6 +17,46 @@ public static class AcademicDataSeeder
 
         try
         {
+            // 0. Ensure schema migrations and missing columns for teaching workflows
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS oral_exams (
+                    id uuid NOT NULL CONSTRAINT PK_oral_exams PRIMARY KEY,
+                    title character varying(255) NOT NULL,
+                    description text,
+                    course_id uuid NOT NULL,
+                    semester_id uuid NOT NULL,
+                    status integer NOT NULL DEFAULT 0,
+                    start_date timestamp with time zone NOT NULL,
+                    end_date timestamp with time zone,
+                    created_at timestamp with time zone NOT NULL DEFAULT (now()),
+                    created_by_user_id uuid
+                );
+                ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS oral_exam_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_assessment_sessions_oral_exam_id"" ON assessment_sessions(oral_exam_id);
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'FK_assessment_sessions_oral_exams_oral_exam_id'
+                    ) THEN
+                        ALTER TABLE assessment_sessions
+                        ADD CONSTRAINT ""FK_assessment_sessions_oral_exams_oral_exam_id""
+                        FOREIGN KEY (oral_exam_id) REFERENCES oral_exams(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+                ALTER TABLE analysis_runs ADD COLUMN IF NOT EXISTS group_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_analysis_runs_group_id"" ON analysis_runs(group_id);
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'FK_analysis_runs_groups_group_id'
+                    ) THEN
+                        ALTER TABLE analysis_runs
+                        ADD CONSTRAINT ""FK_analysis_runs_groups_group_id""
+                        FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+            ");
+
             // 1. Seed Semesters
             var fall2026 = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Fall 2026" || s.Name == "Fall2026");
             if (fall2026 == null)

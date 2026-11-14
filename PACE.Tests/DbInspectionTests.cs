@@ -529,4 +529,121 @@ public class DbInspectionTests
 
         _output.WriteLine("MigrateToMultipleReposPerGroup completed successfully!");
     }
+
+    [Fact]
+    public async Task MigrateAddOralExamToAssessmentSessions()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .Build();
+
+        var connStr = config.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        // 1. Kiểm tra / tạo bảng oral_exams nếu chưa có
+        await using var createOralExamsCmd = new NpgsqlCommand(@"
+            CREATE TABLE IF NOT EXISTS oral_exams (
+                id uuid NOT NULL CONSTRAINT PK_oral_exams PRIMARY KEY,
+                title character varying(255) NOT NULL,
+                description text,
+                course_id uuid NOT NULL,
+                semester_id uuid NOT NULL,
+                status integer NOT NULL DEFAULT 0,
+                start_date timestamp with time zone NOT NULL,
+                end_date timestamp with time zone,
+                created_at timestamp with time zone NOT NULL DEFAULT (now()),
+                created_by_user_id uuid
+            );", conn);
+        await createOralExamsCmd.ExecuteNonQueryAsync();
+
+        // 2. Thêm cột oral_exam_id vào assessment_sessions
+        await using var addOralExamIdColCmd = new NpgsqlCommand(@"
+            ALTER TABLE assessment_sessions 
+            ADD COLUMN IF NOT EXISTS oral_exam_id uuid;
+
+            CREATE INDEX IF NOT EXISTS ""IX_assessment_sessions_oral_exam_id"" 
+            ON assessment_sessions(oral_exam_id);
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'FK_assessment_sessions_oral_exams_oral_exam_id'
+                ) THEN
+                    ALTER TABLE assessment_sessions
+                    ADD CONSTRAINT ""FK_assessment_sessions_oral_exams_oral_exam_id""
+                    FOREIGN KEY (oral_exam_id) REFERENCES oral_exams(id) ON DELETE SET NULL;
+                END IF;
+            END $$;", conn);
+        await addOralExamIdColCmd.ExecuteNonQueryAsync();
+
+        // 3. Thêm cột group_id vào analysis_runs nếu chưa có
+        await using var addGroupIdCmd = new NpgsqlCommand(@"
+            ALTER TABLE analysis_runs 
+            ADD COLUMN IF NOT EXISTS group_id uuid;
+
+            CREATE INDEX IF NOT EXISTS ""IX_analysis_runs_group_id"" 
+            ON analysis_runs(group_id);
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'FK_analysis_runs_groups_group_id'
+                ) THEN
+                    ALTER TABLE analysis_runs
+                    ADD CONSTRAINT ""FK_analysis_runs_groups_group_id""
+                    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
+                END IF;
+            END $$;", conn);
+        await addGroupIdCmd.ExecuteNonQueryAsync();
+
+        // 4. Kiểm tra các cột trong assessment_sessions
+        await using var checkColsCmd = new NpgsqlCommand(@"
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'assessment_sessions'
+            ORDER BY ordinal_position;", conn);
+        await using var reader = await checkColsCmd.ExecuteReaderAsync();
+        _output.WriteLine("Columns of assessment_sessions:");
+        while (await reader.ReadAsync())
+        {
+            _output.WriteLine($"- {reader.GetString(0)} ({reader.GetString(1)})");
+        }
+
+        _output.WriteLine("MigrateAddOralExamToAssessmentSessions completed successfully!");
+    }
+
+    [Fact]
+    public async Task VerifyAssessmentSessionsQuery()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .Build();
+
+        var connStr = config.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+
+        var options = new DbContextOptionsBuilder<PACE.Infrastructure.Persistence.AppDbContext>()
+            .UseNpgsql(connStr)
+            .Options;
+
+        await using var db = new PACE.Infrastructure.Persistence.AppDbContext(options);
+
+        // Truy vấn assessment_sessions với EF Core
+        var sessions = await db.AssessmentSessions
+            .Include(s => s.Project)
+            .Include(s => s.OralExam)
+            .Take(10)
+            .ToListAsync();
+
+        _output.WriteLine($"Successfully queried {sessions.Count} assessment sessions via EF Core!");
+        foreach (var s in sessions)
+        {
+            _output.WriteLine($"- Session Id: {s.Id}, Title: {s.Title}, Status: {s.Status}, OralExamId: {s.OralExamId}");
+        }
+
+        Assert.NotNull(sessions);
+    }
 }

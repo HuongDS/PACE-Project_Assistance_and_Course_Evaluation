@@ -28,7 +28,9 @@ public class AssessmentSessionConfiguration : IEntityTypeConfiguration<Assessmen
     {
         e.ToTable("assessment_sessions", t => t.HasCheckConstraint("CK_session_status", "\"Status\" IN ('CREATED','IN_PROGRESS','COMPLETED')")); e.HasKey(x => x.Id);
         e.Property(x => x.Title).HasMaxLength(255); e.Property(x => x.Status).HasMaxLength(20); e.Property(x => x.Version).IsConcurrencyToken();
+        e.Property(x => x.OralExamId).HasColumnName("oral_exam_id");
         e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        e.HasOne(x => x.OralExam).WithMany(o => o.AssessmentSessions).HasForeignKey(x => x.OralExamId).OnDelete(DeleteBehavior.SetNull);
         e.HasIndex(x => new { x.ProjectId, x.ScheduledStart });
     }
 }

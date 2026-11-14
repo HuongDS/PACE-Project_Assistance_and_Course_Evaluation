@@ -11,5 +11,6 @@ public class OralExam
     public Class Class { get; set; } = null!;
     public ICollection<OralQuestion> Questions { get; set; } = new List<OralQuestion>();
     public ICollection<StudentOralSession> StudentOralSessions { get; set; } = new List<StudentOralSession>();
+    public ICollection<AssessmentSession> AssessmentSessions { get; set; } = new List<AssessmentSession>();
 }
 

@@ -12,8 +12,11 @@ public class UpstashRedisOtpCacheService : IOtpCacheService
 
     public UpstashRedisOtpCacheService(IConfiguration config)
     {
-        var connectionString = config["Redis:ConnectionString"] 
-            ?? "trusty-ladybug-170669.upstash.io:6379,password=gQAAAAAAApqtAAIgcDEzZDE1MjBiYmM4OWI0MjNhYjQ4NGNlNjFkZDlhMjk2Ng==,ssl=True,abortConnect=False";
+        var connectionString = config["Redis:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Redis:ConnectionString is not configured. Provide it via environment variable (Redis__ConnectionString) or User Secrets.");
+        }
 
         // StackExchange.Redis ConfigurationOptions setup
         var options = ConfigurationOptions.Parse(connectionString);

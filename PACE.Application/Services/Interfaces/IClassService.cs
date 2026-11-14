@@ -18,5 +18,11 @@ public interface IClassService
     Task<ImportClassStudentsResult> ImportStudentsAsync(Guid classId, Stream excelStream, CancellationToken ct = default);
 
     Task<(byte[] FileBytes, string FileName)> ExportStudentsAsync(Guid classId, CancellationToken ct = default);
+
+    Task<ClassDto> CreateClassAsync(CreateClassRequest request, CancellationToken ct = default);
+
+    Task<ImportClassesResult> ImportClassesAsync(Stream excelStream, CancellationToken ct = default);
+
+    Task<(byte[] FileBytes, string FileName)> ExportClassTemplateAsync(CancellationToken ct = default);
 }
 

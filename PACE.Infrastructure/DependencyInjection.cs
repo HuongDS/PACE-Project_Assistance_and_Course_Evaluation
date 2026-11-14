@@ -60,10 +60,22 @@ public static class DependencyInjection
         services.AddScoped<IGroqService, GroqService>();
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));
         services.Configure<OpenAiOptions>(configuration.GetSection(OpenAiOptions.SectionName));
-        services.AddHttpClient<IQuestionLlmClient, OpenAiQuestionLlmClient>((provider, client) =>
+        services.AddHttpClient<OpenAiQuestionLlmClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OpenAiOptions>>().Value;
             client.Timeout = TimeSpan.FromSeconds(Math.Max(30, options.TimeoutSeconds));
+        });
+        services.AddHttpClient<GeminiQuestionLlmClient>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<GeminiOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(30, options.TimeoutSeconds));
+        });
+        services.AddScoped<IQuestionLlmClient>(sp =>
+        {
+            var qgOptions = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<QuestionGenerationOptions>>().Value;
+            return string.Equals(qgOptions.Provider, "OpenAI", StringComparison.OrdinalIgnoreCase)
+                ? sp.GetRequiredService<OpenAiQuestionLlmClient>()
+                : sp.GetRequiredService<GeminiQuestionLlmClient>();
         });
         return services;
     }

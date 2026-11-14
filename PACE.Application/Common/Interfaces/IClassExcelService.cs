@@ -8,5 +8,8 @@ public interface IClassExcelService
 {
     IReadOnlyList<ClassStudentImportRow> ReadStudentList(Stream excelStream);
     byte[] ExportStudentList(string className, IReadOnlyList<ClassStudentDto> students);
+
+    IReadOnlyList<ClassImportRow> ReadClassList(Stream excelStream);
+    byte[] ExportClassTemplate();
 }
 

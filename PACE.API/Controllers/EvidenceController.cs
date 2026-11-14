@@ -36,32 +36,147 @@ public class EvidenceController(AppDbContext db, IGitCloneService git, TeachingA
         try { int count; while ((count = await p.StandardOutput.ReadAsync(buffer.AsMemory(), timeout.Token)) > 0) { text.Append(buffer, 0, count); if (text.Length > 1_000_000) throw new UnprocessableException("Evidence exceeds 1 MB response limit; narrow the selection."); } await p.WaitForExitAsync(timeout.Token); await error; if (p.ExitCode != 0) throw new ExternalServiceException("git", "Repository evidence unavailable."); return text.ToString(); }
         finally { if (!p.HasExited) p.Kill(true); }
     }
-    private static async Task<string[]> DiffArguments(string directory, bool patch, CancellationToken ct)
+    private static async Task<string[]> DiffArguments(string directory, string commitSha, bool patch, CancellationToken ct)
     {
-        var lineage = (await ReadGit(directory, ["rev-list", "--parents", "-n", "1", "HEAD"], ct)).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        // Depth-two clone retains HEAD's first parent, so merge diffs compare that actual parent.
+        var lineage = (await ReadGit(directory, ["rev-list", "--parents", "-n", "1", commitSha], ct)).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return lineage.Length > 1
          ? ["diff", patch ? "--patch" : "--numstat", "--no-ext-diff", "--no-renames", lineage[1], lineage[0], "--"]
-         : ["diff-tree", "--root", "--no-commit-id", "-r", patch ? "--patch" : "--numstat", "--no-ext-diff", "--no-renames", "HEAD", "--"];
+         : ["diff-tree", "--root", "--no-commit-id", "-r", patch ? "--patch" : "--numstat", "--no-ext-diff", "--no-renames", commitSha, "--"];
     }
+    public static (List<GitCommitView> Commits, List<GitContributionView> Contributions) ParseGitCommitsAndContributions(string logOutput)
+    {
+        var lines = logOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var commits = new List<GitCommitView>();
+
+        string? sha = null, authorEmail = null, authorName = null, message = null, timestamp = null;
+        int additions = 0, deletions = 0, changedFilesCount = 0;
+
+        void FlushCurrentCommit()
+        {
+            if (sha != null)
+            {
+                commits.Add(new GitCommitView(
+                    Sha: sha,
+                    AuthorEmail: authorEmail ?? "",
+                    AuthorName: authorName ?? "",
+                    Message: message ?? "",
+                    Timestamp: timestamp ?? "",
+                    Additions: additions,
+                    Deletions: deletions,
+                    ChangedFilesCount: changedFilesCount
+                ));
+                sha = null; authorEmail = null; authorName = null; message = null; timestamp = null;
+                additions = 0; deletions = 0; changedFilesCount = 0;
+            }
+        }
+
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("COMMIT\0"))
+            {
+                FlushCurrentCommit();
+                var fields = line.Substring("COMMIT\0".Length).Split('\0');
+                if (fields.Length >= 5)
+                {
+                    sha = fields[0];
+                    authorEmail = fields[1];
+                    authorName = fields[2];
+                    message = fields[3];
+                    timestamp = fields[4];
+                }
+            }
+            else if (sha != null)
+            {
+                var parts = line.Split('\t');
+                if (parts.Length >= 3)
+                {
+                    changedFilesCount++;
+                    if (int.TryParse(parts[0], out var add)) additions += add;
+                    if (int.TryParse(parts[1], out var del)) deletions += del;
+                }
+            }
+        }
+        FlushCurrentCommit();
+
+        var totalCommits = commits.Count;
+        var totalLoc = commits.Sum(c => c.Additions + c.Deletions);
+
+        var contributions = commits
+            .GroupBy(c =>
+            {
+                var email = c.AuthorEmail.Trim().ToLowerInvariant();
+                return string.IsNullOrEmpty(email) ? c.AuthorName.Trim().ToLowerInvariant() : email;
+            })
+            .Select(g =>
+            {
+                var first = g.First();
+                var name = string.IsNullOrWhiteSpace(first.AuthorName) ? (first.AuthorEmail.Length > 0 ? first.AuthorEmail : "Unknown") : first.AuthorName;
+                var email = first.AuthorEmail;
+                var commitCount = g.Count();
+                var totalAdd = g.Sum(c => c.Additions);
+                var totalDel = g.Sum(c => c.Deletions);
+                var totalFiles = g.Sum(c => c.ChangedFilesCount);
+                var commitRatio = totalCommits > 0 ? Math.Round((double)commitCount / totalCommits * 100, 1) : 0;
+                var locRatio = totalLoc > 0 ? Math.Round((double)(totalAdd + totalDel) / totalLoc * 100, 1) : 0;
+
+                return new GitContributionView(
+                    AuthorName: name,
+                    AuthorEmail: email,
+                    CommitCount: commitCount,
+                    Additions: totalAdd,
+                    Deletions: totalDel,
+                    ChangedFilesCount: totalFiles,
+                    CommitRatio: commitRatio,
+                    LocRatio: locRatio
+                );
+            })
+            .OrderByDescending(c => c.CommitCount)
+            .ThenByDescending(c => c.Additions)
+            .ToList();
+
+        return (commits, contributions);
+    }
+
     [ProducesResponseType(typeof(EvidenceView), 200)]
     [HttpGet]
     public async Task<IActionResult> Bundle(Guid projectId, CancellationToken ct)
     {
         var url = await Repository(projectId, ct); using var clone = await git.CloneAsync(url, ct);
-        var fields = (await ReadGit(clone.RootPath, ["log", "-1", "--format=%H%x00%ae%x00%an%x00%s%x00%aI"], ct)).TrimEnd().Split('\0');
-        var counts = (await ReadGit(clone.RootPath, await DiffArguments(clone.RootPath, false, ct), ct)).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Split('\t')).Where(x => x.Length >= 3).ToList();
-        var additions = counts.Sum(x => int.TryParse(x[0], out var n) ? n : 0); var deletions = counts.Sum(x => int.TryParse(x[1], out var n) ? n : 0);
+        var logOutput = await ReadGit(clone.RootPath, ["log", "-n", "50", "--numstat", "--format=COMMIT%x00%H%x00%ae%x00%an%x00%s%x00%aI"], ct);
+        var (commits, contributions) = ParseGitCommitsAndContributions(logOutput);
         var analysis = await db.AnalysisRuns.AsNoTracking().Where(r => r.Id == projectId).Select(r => new { r.AnalyzedCommitSha, r.AnalyzedAt }).SingleAsync(ct);
-        return Ok(new { projectId, repositoryUrl = url, analyzedCommitSha = analysis.AnalyzedCommitSha, analysisTimestamp = analysis.AnalyzedAt, currentCommitSha = fields[0], commits = new[] { new { sha = fields[0], authorEmail = fields[1], authorName = fields[2], message = fields[3], timestamp = fields[4], additions, deletions, changedFilesCount = counts.Count } }, contributions = new object[0], analyzedAt = DateTime.UtcNow, coverage = "Current repository HEAD only (analyzer shallow clone includes HEAD parents). Stored analysis revision is reported separately; legacy analysis may have no revision. Contribution ratios and Jira data are unavailable." });
+        var currentCommitSha = commits.Count > 0 ? commits[0].Sha : "";
+
+        return Ok(new EvidenceView(
+            ProjectId: projectId,
+            RepositoryUrl: url,
+            Commits: commits,
+            Contributions: contributions,
+            AnalyzedAt: DateTime.UtcNow,
+            Coverage: "Repository commits history and member contribution metrics computed from up to 50 recent commits.",
+            AnalyzedCommitSha: analysis.AnalyzedCommitSha,
+            AnalysisTimestamp: analysis.AnalyzedAt,
+            CurrentCommitSha: currentCommitSha
+        ));
     }
     [ProducesResponseType(typeof(CommitDiffView[]), 200)]
     [HttpGet("commits/{commitSha}/diffs")]
     public async Task<IActionResult> Diffs(Guid projectId, string commitSha, CancellationToken ct)
     {
         var url = await Repository(projectId, ct); if (!Regex.IsMatch(commitSha, "\\A[0-9a-fA-F]{40}\\z")) return BadRequest(new { error = "Full 40-character commit SHA required." });
-        using var clone = await git.CloneAsync(url, ct); var head = (await ReadGit(clone.RootPath, ["rev-parse", "HEAD"], ct)).Trim(); if (!string.Equals(head, commitSha, StringComparison.OrdinalIgnoreCase)) return NotFound(new { error = "Commit outside shallow evidence snapshot; load current evidence again." });
-        var patch = await ReadGit(clone.RootPath, await DiffArguments(clone.RootPath, true, ct), ct);
+        using var clone = await git.CloneAsync(url, ct);
+        bool commitExists = false;
+        try
+        {
+            var rev = (await ReadGit(clone.RootPath, ["rev-parse", "--verify", $"{commitSha}^{{commit}}"], ct)).Trim();
+            commitExists = !string.IsNullOrEmpty(rev);
+        }
+        catch (ExternalServiceException)
+        {
+            commitExists = false;
+        }
+        if (!commitExists) return NotFound(new { error = "Commit outside evidence snapshot; commit not found in repository." });
+        var patch = await ReadGit(clone.RootPath, await DiffArguments(clone.RootPath, commitSha, true, ct), ct);
         // Return actual unified patches; no inferred per-file metrics or synthetic source.
         var files = Regex.Split(patch, "(?m)(?=^diff --git )").Where(x => x.StartsWith("diff --git ")).Take(100).Select(x => new { filename = Regex.Match(x, "(?m)^\\+\\+\\+ b/(.*)$").Groups[1].Value is { Length: > 0 } name ? name : Regex.Match(x, "(?m)^--- a/(.*)$").Groups[1].Value, status = x.Contains("new file mode ") ? "added" : x.Contains("deleted file mode ") ? "deleted" : "modified", additions = x.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++")), deletions = x.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---")), patch = x }).ToArray();
         return Ok(files);

@@ -15,6 +15,8 @@ public interface IUnitOfWork
     IStudentAnswerRepository StudentAnswers { get; }
     IGeneratedQuestionRepository GeneratedQuestions { get; }
     IClassRepository Classes { get; }
+    ISemesterRepository Semesters { get; }
+    ICourseRepository Courses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

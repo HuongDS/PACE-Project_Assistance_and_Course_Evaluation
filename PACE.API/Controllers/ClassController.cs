@@ -16,6 +16,49 @@ public class ClassController(IClassService classService) : ControllerBase
     public async Task<ActionResult<PagedResult<ClassDto>>> GetAll([FromQuery] ClassQuery query, CancellationToken ct)
         => Ok(await classService.GetPagedAsync(query, ct));
 
+    [HttpGet("template")]
+    [Authorize(Roles = Roles.Staff)]
+    public async Task<IActionResult> DownloadTemplate(CancellationToken ct)
+    {
+        var (fileBytes, fileName) = await classService.ExportClassTemplateAsync(ct);
+        return File(
+            fileBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = Roles.Staff)]
+    public async Task<ActionResult<ClassDto>> Create(
+        [FromBody] CreateClassRequest request,
+        CancellationToken ct)
+    {
+        var result = await classService.CreateClassAsync(request, ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPost("import")]
+    [Authorize(Roles = Roles.Staff)]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<ImportClassesResult>> ImportClasses(
+        IFormFile file,
+        CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            throw new BadRequestException("Chưa chọn file Excel.");
+
+        if (!file.FileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            throw new BadRequestException("Chỉ hỗ trợ file Excel định dạng .xlsx.");
+
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, ct);
+        stream.Position = 0;
+
+        var result = await classService.ImportClassesAsync(stream, ct);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ClassDetailDto>> GetById(Guid id, CancellationToken ct)
         => Ok(await classService.GetDetailAsync(id, ct));

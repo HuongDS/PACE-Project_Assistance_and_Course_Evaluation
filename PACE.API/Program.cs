@@ -149,5 +149,6 @@ var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
 
 await app.SeedAdminsAsync();
+await app.SeedAcademicDataAsync();
 
 app.Run();

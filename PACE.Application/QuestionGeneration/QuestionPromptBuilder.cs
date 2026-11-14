@@ -23,7 +23,8 @@ public static class QuestionPromptBuilder
         string difficulty,
         string? additionalContext = null,
         IEnumerable<FewShotExample>? fewShotExamples = null,
-        string? groundTruthSpecification = null)
+        string? groundTruthSpecification = null,
+        bool hasFrontend = false)
     {
         string difficultyInstruction = difficulty.ToLower() switch
         {
@@ -89,6 +90,16 @@ QUY TẮC BẮT BUỘC VỀ TRUY VẾT LUỒNG CODE (TARGETED ENTRY POINTS):
     ]
   }}
 ]";
+
+        if (hasFrontend)
+        {
+            systemInstruction += """
+
+NGỮ CẢNH GIAO DIỆN:
+- Với mã giao diện được cung cấp, hãy ưu tiên tình huống hỏi người dùng sẽ thấy gì hoặc làm được gì khi điều kiện cụ thể xảy ra. Chỉ nêu thông báo, trạng thái màn hình, nút hoặc điều hướng có căn cứ trong mã.
+- Với câu hỏi về giao diện, targetedEntryPoints dùng đúng nhãn Class.Method trong mã được cung cấp. Mảng được phép chỉ có một điểm vào nếu mã chỉ chứng minh được một điểm. Quy tắc call stack backend ở trên áp dụng khi câu hỏi thực sự đi qua các tầng đó.
+""";
+        }
 
         var prompt = new StringBuilder();
 

@@ -47,6 +47,15 @@ public static partial class BusinessTemplateGenerator
             .Replace("[action]", m.MethodName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
     }
 
+    public static List<BusinessTemplate> GroupFrontend(IEnumerable<ParsedMethod> methods)
+        => methods.OrderBy(m => m.FilePath, StringComparer.Ordinal)
+            .Select(m => new BusinessTemplate
+            {
+                BusinessName = $"Giao diện: {m.FilePath}",
+                Apis = [new ApiTemplate { Controller = m.ClassName, Function = m.MethodName }]
+            })
+            .ToList();
+
     public static List<BusinessTemplate> GroupByController(IEnumerable<TemplateEndpoint> endpoints)
         => endpoints
             .GroupBy(e => e.Controller, StringComparer.OrdinalIgnoreCase)

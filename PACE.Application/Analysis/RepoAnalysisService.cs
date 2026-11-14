@@ -199,11 +199,12 @@ public sealed class RepoAnalysisService(
             var scan = scanner.Scan(clone.WorkingPath, ct);
             warnings.AddRange(scan.Warnings);
             if (scan.TotalFiles == 0)
-                throw new UnprocessableException("Không tìm thấy mã nguồn backend C#, Java hoặc JavaScript/TypeScript trong repo.");
+                throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
 
             var parsed = new ParseResult();
             foreach (var parser in parsers)
                 parsed.Merge(parser.Parse(scan.FilesFor(parser.Kind), ct));
+            parsed.Methods.AddRange(scan.FrontendEntries());
             warnings.AddRange(parsed.Warnings);
 
             if (parsed.Methods.Count == 0)
@@ -257,6 +258,9 @@ public sealed class RepoAnalysisService(
         var matcher = new EntryPointMatcher(parsed.Methods);
         var builder = new FlowBuilder(resolver, settings.MaxFlowDepth, settings.MaxStepsPerFlow);
 
+        var frontendMethods = parsed.Methods
+            .Where(m => m.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal))
+            .ToList();
         var methods = parsed.Methods.Select(m => new MethodSource
         {
             Id = m.Id,
@@ -326,6 +330,12 @@ public sealed class RepoAnalysisService(
                 }));
 
                 methodIds.UnionWith(graph.Methods.Select(m => m.Id));
+                foreach (var screen in frontendMethods.Where(screen =>
+                    (api.Path is { Length: > 1 } path && screen.SourceCode.Contains(path, StringComparison.Ordinal))
+                    || (entry.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal)
+                        && string.Equals(Path.GetExtension(screen.FilePath), ".html", StringComparison.OrdinalIgnoreCase)
+                        && screen.SourceCode.Contains(entry.FilePath.Split('/').Last(), StringComparison.Ordinal))))
+                    methodIds.Add(screen.Id);
             }
 
             if (entries.Count == 0)

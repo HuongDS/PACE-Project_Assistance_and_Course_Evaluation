@@ -74,3 +74,8 @@ scripts/k6/batches/
 scripts/k6/*.log
 scripts/k6/summary*.json
 scripts/k6/results*.json
+
+# Todo and checklists
+*TODO*
+*todolist*
+*.xlsx

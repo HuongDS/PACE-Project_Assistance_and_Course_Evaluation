@@ -17,7 +17,8 @@ public record EvidenceView(Guid ProjectId, string RepositoryUrl, IReadOnlyList<G
 public record CommitDiffView(string Filename, string Status, int Additions, int Deletions, string Patch);
 public record AstNodeView(string Id, string Label, string Type);
 public record AstEdgeView(string Source, string Target, string Relation);
-public record AstView(IReadOnlyList<AstNodeView> Nodes, IReadOnlyList<AstEdgeView> Edges, int? CyclomaticComplexity, string GraphKind, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp);
+public record MethodComplexityView(Guid MethodId, string MethodName, int? CyclomaticComplexity);
+public record AstView(IReadOnlyList<AstNodeView> Nodes, IReadOnlyList<AstEdgeView> Edges, int? CyclomaticComplexity, string GraphKind, string Coverage, string? AnalyzedCommitSha, DateTime? AnalysisTimestamp, IReadOnlyList<MethodComplexityView>? MethodComplexities = null, int SemanticErrors = 0);
 public record AuditEventView(Guid Id, DateTime Timestamp, string EventType, string ActorName, string Details);
 public record FinalScoreView(Guid StudentId, string StudentName, decimal? Score, string? GradeLetter, IReadOnlyList<ScoreInput>? Evaluations, DateTime? EvaluatedAt, Guid? EvaluatorId);
 public record AssessmentReportView(Guid Id, Guid SessionId, string CourseCode, string? GroupName, int? TotalDurationSeconds, IReadOnlyList<FinalScoreView> FinalScores, IReadOnlyList<AuditEventView> Timeline, DateTime GeneratedAt, IReadOnlyList<SessionCriterion> Rubric, string? RepositoryUrl);

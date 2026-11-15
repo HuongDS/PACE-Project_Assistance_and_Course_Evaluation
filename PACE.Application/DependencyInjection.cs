@@ -24,6 +24,11 @@ public static class DependencyInjection
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
         services.AddScoped<IBatchTemplateService, BatchTemplateService>();
+        services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ITimetableService, TimetableService>();
+        services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IOralPracticeService, OralPracticeService>();
         services.AddSingleton<IDrawioSpecificationStorage, FileDrawioSpecificationStorage>();
         return services;
     }

@@ -306,6 +306,86 @@ public class ClassService(
             0);
     }
 
+    public async Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request, CancellationToken ct = default)
+    {
+        await EnsureStaffAccessAsync(id, ct);
+
+        var cls = await uow.Classes.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Lớp học không tồn tại.");
+
+        var trimmedName = request.Name.Trim();
+        if (string.IsNullOrEmpty(trimmedName))
+            throw new BadRequestException("Tên lớp học không được để trống.");
+
+        var course = await uow.Courses.GetByIdAsync(request.CourseId, ct)
+            ?? throw new BadRequestException("Môn học không tồn tại trong hệ thống.");
+
+        if (currentUser.Role == UserRole.Lecturer && course.LecturerId != currentUser.UserId)
+            throw new ForbiddenException("Bạn chỉ có thể gán lớp cho môn học do chính bạn phụ trách.");
+
+        var targetSemesterId = request.SemesterId ?? cls.SemesterId;
+        if (!targetSemesterId.HasValue)
+        {
+            var currentSemester = await uow.Semesters.GetCurrentSemesterAsync(ct)
+                ?? throw new BadRequestException("Hệ thống chưa có học kỳ hiện tại nào.");
+            targetSemesterId = currentSemester.Id;
+        }
+
+        var targetSemester = await uow.Semesters.GetByIdAsync(targetSemesterId.Value, ct)
+            ?? throw new NotFoundException("Học kỳ được chọn không tồn tại.");
+
+        var duplicate = await uow.Classes.AnyAsync(
+            c => c.Id != id && c.SemesterId == targetSemesterId.Value && c.Name != null && c.Name.ToLower() == trimmedName.ToLower(), ct);
+        if (duplicate)
+            throw new ConflictException($"Lớp học '{trimmedName}' đã tồn tại trong học kỳ '{targetSemester.Name}'.");
+
+        var startDate = request.StartDate ?? cls.StartDate;
+        var actualStartDate = request.ActualStartDate ?? cls.ActualStartDate;
+        var endDate = request.EndDate ?? cls.EndDate;
+
+        if (startDate >= endDate)
+            throw new BadRequestException("Ngày bắt đầu lớp học phải trước ngày kết thúc.");
+
+        cls.Name = trimmedName;
+        cls.CourseId = course.Id;
+        cls.SemesterId = targetSemesterId.Value;
+        cls.StartDate = startDate;
+        cls.ActualStartDate = actualStartDate;
+        cls.EndDate = endDate;
+
+        uow.Classes.Update(cls);
+        await uow.SaveChangesAsync(ct);
+
+        var studentCount = (await uow.Classes.GetAllStudentsInClassAsync(cls.Id, ct)).Count;
+        var groupCount = await uow.Groups.CountAsync(g => g.ClassId == cls.Id, ct);
+
+        return new ClassDto(
+            cls.Id,
+            cls.Name,
+            course.Id,
+            course.Code,
+            course.Name,
+            course.LecturerId,
+            course.Lecturer?.FullName ?? "",
+            course.Lecturer?.Email ?? "",
+            targetSemester.Name,
+            cls.StartDate,
+            cls.EndDate,
+            studentCount,
+            groupCount);
+    }
+
+    public async Task DeleteClassAsync(Guid id, CancellationToken ct = default)
+    {
+        await EnsureStaffAccessAsync(id, ct);
+
+        var cls = await uow.Classes.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Lớp học không tồn tại.");
+
+        uow.Classes.Remove(cls);
+        await uow.SaveChangesAsync(ct);
+    }
+
     public async Task<ImportClassesResult> ImportClassesAsync(Stream excelStream, CancellationToken ct = default)
     {
         if (!currentUser.IsAdmin && currentUser.Role != UserRole.Lecturer)

@@ -78,7 +78,32 @@ public static class AcademicDataSeeder
                         FROM courses c
                         WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
                     END IF;
+
+                    -- Xóa bỏ các index, constraint và cột LecturerId, Semester khỏi bảng courses
+                    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_courses_users_LecturerId') THEN
+                        ALTER TABLE courses DROP CONSTRAINT ""FK_courses_users_LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_Code_Semester_LecturerId') THEN
+                        DROP INDEX ""IX_courses_Code_Semester_LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_LecturerId') THEN
+                        DROP INDEX ""IX_courses_LecturerId"";
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                        ALTER TABLE courses DROP COLUMN ""LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'Semester') THEN
+                        ALTER TABLE courses DROP COLUMN ""Semester"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'lecturer_id') THEN
+                        ALTER TABLE courses DROP COLUMN lecturer_id;
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'semester') THEN
+                        ALTER TABLE courses DROP COLUMN semester;
+                    END IF;
                 END $$;
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
             ");
 
             // 1. Seed Semesters

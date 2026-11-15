@@ -127,7 +127,7 @@ public class DbInspectionTests
         {
             var repoId = (Guid)repoIdObj;
 
-            // Ensure Course exists and assigned to Lecturer
+            // Ensure Course exists
             var courseId = Guid.NewGuid();
             await using var getCourseCmd = new NpgsqlCommand("SELECT \"Id\" FROM courses LIMIT 1", conn);
             var existingCourse = await getCourseCmd.ExecuteScalarAsync();
@@ -135,18 +135,13 @@ public class DbInspectionTests
             if (existingCourse != null && existingCourse != DBNull.Value)
             {
                 courseId = (Guid)existingCourse;
-                await using var updateCourseCmd = new NpgsqlCommand("UPDATE courses SET \"LecturerId\" = @lid WHERE \"Id\" = @cid", conn);
-                updateCourseCmd.Parameters.AddWithValue("lid", lecturerUserId);
-                updateCourseCmd.Parameters.AddWithValue("cid", courseId);
-                await updateCourseCmd.ExecuteNonQueryAsync();
             }
             else
             {
                 await using var insertCourseCmd = new NpgsqlCommand(@"
-                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""Credits"", ""Semester"", ""LecturerId"")
-                    VALUES (@cid, 'PRN231', 'Building Cross-Platform Web Applications with .NET', 3, 'FA26', @lid)", conn);
+                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""Credits"")
+                    VALUES (@cid, 'PRN231', 'Building Cross-Platform Web Applications with .NET', 3)", conn);
                 insertCourseCmd.Parameters.AddWithValue("cid", courseId);
-                insertCourseCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 await insertCourseCmd.ExecuteNonQueryAsync();
             }
 
@@ -673,5 +668,139 @@ public class DbInspectionTests
         }
 
         Assert.NotNull(sessions);
+    }
+
+    [Fact]
+    public async Task MigrateAndDropLecturerIdFromCourses()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .Build();
+
+        var connStr = config.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        // 1. Đồng bộ __EFMigrationsHistory cho các migration cũ đã có trong schema
+        await using var syncHistoryCmd = new NpgsqlCommand(@"
+            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
+            ('20261013125910_InitialCreate', '9.0.4'),
+            ('20261013134643_AddSourceCodeAndDataFlow', '9.0.4'),
+            ('20261014091624_UpdateStudentSubmissionSchema', '9.0.4'),
+            ('20261014164311_AddAnalysisRunBusinessTemplate', '9.0.4'),
+            ('20261017144245_AddCreatedAtToStudentSubmission', '9.0.4'),
+            ('20261017173036_TeachingWorkflows', '9.0.4'),
+            ('20261017174201_AnalysisProvenance', '9.0.4'),
+            ('20261114121657_AddOralExamToAssessmentSessions', '9.0.4')
+            ON CONFLICT (""MigrationId"") DO NOTHING;", conn);
+        await syncHistoryCmd.ExecuteNonQueryAsync();
+
+        // 2. Chạy migration AddLecturerToClassAndDecoupleCourse:
+        // - Thêm lecturer_id vào classes
+        // - Copy LecturerId từ courses sang classes
+        // - Drop constraints, indexes và cột LecturerId, Semester khỏi courses
+        // - Tạo index unique mới
+        await using var migrateCmd = new NpgsqlCommand(@"
+            ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+            CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+            DO $$
+            DECLARE
+                user_pk_col text;
+            BEGIN
+                SELECT column_name INTO user_pk_col
+                FROM information_schema.columns
+                WHERE table_name = 'users' AND column_name IN ('Id', 'id')
+                LIMIT 1;
+
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_classes_users_lecturer_id') THEN
+                    IF user_pk_col = 'Id' THEN
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(""Id"") ON DELETE SET NULL;
+                    ELSE
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE SET NULL;
+                    END IF;
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'courses' AND column_name = 'LecturerId'
+                ) THEN
+                    UPDATE classes SET lecturer_id = c.""LecturerId""
+                    FROM courses c
+                    WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_courses_users_LecturerId') THEN
+                    ALTER TABLE courses DROP CONSTRAINT ""FK_courses_users_LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_Code_Semester_LecturerId') THEN
+                    DROP INDEX ""IX_courses_Code_Semester_LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_LecturerId') THEN
+                    DROP INDEX ""IX_courses_LecturerId"";
+                END IF;
+
+                -- Xóa hoàn toàn cột LecturerId và Semester khỏi bảng courses
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                    ALTER TABLE courses DROP COLUMN ""LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'Semester') THEN
+                    ALTER TABLE courses DROP COLUMN ""Semester"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'lecturer_id') THEN
+                    ALTER TABLE courses DROP COLUMN lecturer_id;
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'semester') THEN
+                    ALTER TABLE courses DROP COLUMN semester;
+                END IF;
+            END $$;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_classes_course_id_semester_id_name') THEN
+                    CREATE UNIQUE INDEX ""IX_classes_course_id_semester_id_name"" ON classes(course_id, semester_id, name);
+                END IF;
+            END $$;
+
+            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+            VALUES ('20261115163000_AddLecturerToClassAndDecoupleCourse', '9.0.4')
+            ON CONFLICT (""MigrationId"") DO NOTHING;", conn);
+        await migrateCmd.ExecuteNonQueryAsync();
+
+        // 3. Kiểm tra các cột thực tế của bảng courses trong database
+        await using var checkColsCmd = new NpgsqlCommand(@"
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'courses'
+            ORDER BY ordinal_position;", conn);
+        await using var reader = await checkColsCmd.ExecuteReaderAsync();
+        var columns = new List<string>();
+        _output.WriteLine("=== REAL DATABASE COLUMNS IN 'courses' TABLE ===");
+        while (await reader.ReadAsync())
+        {
+            var colName = reader.GetString(0);
+            var colType = reader.GetString(1);
+            columns.Add(colName);
+            _output.WriteLine($"- {colName} ({colType})");
+        }
+
+        // 4. Assertions
+        Assert.DoesNotContain("LecturerId", columns, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Semester", columns, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(columns, c => string.Equals(c, "Code", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(columns, c => string.Equals(c, "Name", StringComparison.OrdinalIgnoreCase));
     }
 }

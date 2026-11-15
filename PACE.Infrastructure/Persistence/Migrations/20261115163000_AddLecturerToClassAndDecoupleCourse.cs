@@ -65,6 +65,20 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_LecturerId') THEN
                         DROP INDEX ""IX_courses_LecturerId"";
                     END IF;
+
+                    -- Xóa bỏ hoàn toàn cột LecturerId và Semester khỏi bảng courses
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                        ALTER TABLE courses DROP COLUMN ""LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'Semester') THEN
+                        ALTER TABLE courses DROP COLUMN ""Semester"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'lecturer_id') THEN
+                        ALTER TABLE courses DROP COLUMN lecturer_id;
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'semester') THEN
+                        ALTER TABLE courses DROP COLUMN semester;
+                    END IF;
                 END $$;
             ");
 
@@ -81,6 +95,19 @@ namespace PACE.Infrastructure.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_courses_Code",
                 table: "courses");
+
+            migrationBuilder.AddColumn<string>(
+                name: "Semester",
+                table: "courses",
+                type: "character varying(50)",
+                maxLength: 50,
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "LecturerId",
+                table: "courses",
+                type: "uuid",
+                nullable: true);
 
             migrationBuilder.DropIndex(
                 name: "IX_classes_course_id_semester_id_name",

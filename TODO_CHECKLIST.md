@@ -16,11 +16,11 @@
 
 ### PHẦN 2.1: BACKEND (BE) — HOÀN THIỆN CÁC TÍNH NĂNG KHUNG ĐANG LÀM DỞ 🚧
 
-- [ ] **1. Hoàn thiện CRUD Services & Controllers cho các bảng Học vụ trong Migration `UpdateDbSchemaTo2026`**:
-  - *Đã có*: `SemestersController` (`GET`, `POST`, `PUT`) và `ClassController` (`GET`, `POST`, `Import/Export`).
-  - *Cần làm nốt*:
-    - Bổ sung `PUT /api/classes/{id}`, `DELETE /api/classes/{id}` trong [ClassController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/ClassController.cs) và `DELETE /api/semesters/{id}` trong [SemestersController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/SemestersController.cs).
-    - Viết CRUD Controllers/Services cho các bảng đã có trong DB: `Group`, `GroupMember`, `ClassSchedule`, `ClassSession`, `Attendance`, `Room`, `TimeSlot`, `StudentProfile`, `LecturerProfile`, `OralExam`, `OralQuestion`, `StudentOralSession`, `StudentOralAnswer`.
+- [x] **1. Hoàn thiện CRUD Services & Controllers cho các bảng Học vụ trong Migration `UpdateDbSchemaTo2026`**:
+  - *Đã hoàn thành*:
+    - Bổ sung `PUT /api/classes/{id}`, `DELETE /api/classes/{id}` trong [ClassController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/ClassController.cs) (kèm logic chặn xóa khi lớp đã có phiên đánh giá điểm chính thức `HasOfficialAssessmentSessionsAsync`) và `DELETE /api/semesters/{id}` trong [SemestersController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/SemestersController.cs).
+    - Tái cấu trúc chuẩn hóa học vụ: Tách rời `Course` (danh mục môn học tĩnh trong khung đào tạo) và `Class` (gán `LecturerId` cho từng lớp học phần của môn trong kỳ).
+    - Viết đầy đủ DTOs, Repositories, Services và CRUD Controllers cho 13 thực thể: `Group`, `GroupMember`, `ClassSchedule`, `ClassSession`, `Attendance`, `Room`, `TimeSlot`, `StudentProfile`, `LecturerProfile`, `OralExam`, `OralQuestion`, `StudentOralSession`, `StudentOralAnswer`.
 - [ ] **2. Hoàn thiện API Chi tiết Khóa học & Cấu hình Rubric Phiên đánh giá (`TeachingController.cs`)**:
   - Thay thế các giá trị đang hardcode rỗng trong [TeachingController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/TeachingController.cs#L131-L235):
     - `milestones = new object[0]` -> trả về danh sách Milestones thực tế của khóa học.

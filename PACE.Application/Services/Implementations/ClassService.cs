@@ -409,6 +409,10 @@ public class ClassService(
         var cls = await uow.Classes.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Lớp học không tồn tại.");
 
+        var hasOfficialAssessments = await uow.Classes.HasOfficialAssessmentSessionsAsync(id, ct);
+        if (hasOfficialAssessments)
+            throw new BadRequestException("Không thể xóa lớp học đã có phiên đánh giá điểm chính thức. Dữ liệu đánh giá điểm cần được bảo lưu.");
+
         uow.Classes.Remove(cls);
         await uow.SaveChangesAsync(ct);
     }

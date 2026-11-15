@@ -240,6 +240,82 @@ public class AcademicCrudTests
     }
 
     [Fact]
+    public async Task ClassService_DeleteClassAsync_BlocksWhenOfficialAssessmentExists()
+    {
+        var classId = Guid.NewGuid();
+        var cls = new Class { Id = classId, Name = "SE1919" };
+
+        var classRepo = Stub<IClassRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetByIdAsync" => Task.FromResult<Class?>(cls),
+                "HasOfficialAssessmentSessionsAsync" => Task.FromResult(true),
+                _ => null!
+            };
+            return res;
+        });
+
+        var uow = Stub<IUnitOfWork>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "get_Classes" => classRepo,
+                "SaveChangesAsync" => Task.FromResult(1),
+                _ => null!
+            };
+            return res;
+        });
+
+        var current = MockUser(UserRole.Admin, Guid.NewGuid());
+        var excel = Stub<IClassExcelService>.Create((m, a) => null!);
+        var service = new ClassService(uow, current, excel);
+
+        var ex = await Assert.ThrowsAsync<BadRequestException>(() => service.DeleteClassAsync(classId));
+        Assert.Contains("phiên đánh giá điểm chính thức", ex.Message);
+    }
+
+    [Fact]
+    public async Task ClassService_DeleteClassAsync_SucceedsWhenNoOfficialAssessments()
+    {
+        var classId = Guid.NewGuid();
+        var cls = new Class { Id = classId, Name = "SE1919" };
+        bool removed = false;
+
+        var classRepo = Stub<IClassRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetByIdAsync" => Task.FromResult<Class?>(cls),
+                "HasOfficialAssessmentSessionsAsync" => Task.FromResult(false),
+                "Remove" => null!,
+                _ => null!
+            };
+            if (m.Name == "Remove") removed = true;
+            return res;
+        });
+
+        var uow = Stub<IUnitOfWork>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "get_Classes" => classRepo,
+                "SaveChangesAsync" => Task.FromResult(1),
+                _ => null!
+            };
+            return res;
+        });
+
+        var current = MockUser(UserRole.Admin, Guid.NewGuid());
+        var excel = Stub<IClassExcelService>.Create((m, a) => null!);
+        var service = new ClassService(uow, current, excel);
+
+        await service.DeleteClassAsync(classId);
+
+        Assert.True(removed);
+    }
+
+    [Fact]
     public async Task GroupService_CreateAndUpdate_Succeeds()
     {
         var classId = Guid.NewGuid();

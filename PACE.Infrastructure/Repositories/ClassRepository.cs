@@ -389,5 +389,32 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
     {
         return DbSet.AnyAsync(c => c.Id == classId, ct);
     }
+
+    public async Task<bool> HasOfficialAssessmentSessionsAsync(Guid classId, CancellationToken ct = default)
+    {
+        // 1. Kiểm tra AssessmentSession gắn với OralExam hoặc Group/Project của lớp đã hoàn thành, đang diễn ra hoặc đã ghi nhận điểm
+        var hasOfficialAssessmentSession = await Context.AssessmentSessions.AsNoTracking().AnyAsync(s =>
+            ((s.OralExam != null && s.OralExam.ClassId == classId) ||
+             (s.Project.AnalysisRun.Group != null && s.Project.AnalysisRun.Group.ClassId == classId)) &&
+            (s.Status == "COMPLETED" ||
+             s.Status == "CONCLUDED" ||
+             s.Status == "IN_PROGRESS" ||
+             s.ActualEndTime != null ||
+             s.Students.Any(st => st.EvaluatedAt != null || (!string.IsNullOrEmpty(st.EvaluationJson) && st.EvaluationJson != "[]"))),
+            ct);
+
+        if (hasOfficialAssessmentSession) return true;
+
+        // 2. Kiểm tra StudentOralSession trong OralExam của lớp có kết quả đánh giá / câu trả lời / phản hồi
+        var hasOfficialStudentOralSession = await Context.StudentOralSessions.AsNoTracking().AnyAsync(sos =>
+            sos.OralExam.ClassId == classId &&
+            (sos.EndTime != null ||
+             !string.IsNullOrEmpty(sos.FinalFeedback) ||
+             !string.IsNullOrEmpty(sos.AiEvaluationSummary) ||
+             sos.Answers.Any()),
+            ct);
+
+        return hasOfficialStudentOralSession;
+    }
 }
 

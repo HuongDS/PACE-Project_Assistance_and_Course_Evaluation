@@ -4,7 +4,9 @@ using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Analysis.Common;
 using PACE.Application.Analysis.Models;
 using PACE.Application.Analysis;
+using PACE.Application.Analysis.Security;
 using PACE.Application.Common.Exceptions;
+using System.Text.RegularExpressions;
 
 namespace PACE.Infrastructure.Analysis;
 
@@ -96,14 +98,21 @@ public sealed class RepositoryScanner : IRepositoryScanner
             foreach (var sub in subDirs)
             {
                 var name = Path.GetFileName(sub);
-                if (name.StartsWith('.') || SkipDirectories.Contains(name)) continue;
-                if (TestProjectSuffixes.Any(s => name.EndsWith(s, StringComparison.OrdinalIgnoreCase))) continue;
+                if (name.StartsWith('.')) { scan.Log(RelativeTo(root, sub), ScanFileStatus.Ignored, "thư mục ẩn"); continue; }
+                if (SkipDirectories.Contains(name)) { scan.Log(RelativeTo(root, sub), ScanFileStatus.Ignored, "thư mục build, phụ thuộc hoặc test"); continue; }
+                if (TestProjectSuffixes.Any(s => name.EndsWith(s, StringComparison.OrdinalIgnoreCase))) { scan.Log(RelativeTo(root, sub), ScanFileStatus.Ignored, "dự án test"); continue; }
                 pending.Push(sub);
             }
 
             foreach (var file in files)
             {
                 var fileName = Path.GetFileName(file);
+                if (IsSensitiveFile(fileName))
+                {
+                    scan.Log(RelativeTo(root, file), ScanFileStatus.Ignored, "file cấu hình hoặc khoá có thể chứa thông tin nhạy cảm");
+                    continue;
+                }
+
                 if (fileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
                 {
                     hasDotNet = true;
@@ -130,27 +139,35 @@ public sealed class RepositoryScanner : IRepositoryScanner
 
             if (ext.Equals(".cs", StringComparison.OrdinalIgnoreCase))
             {
-                if (fileName.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)) continue;
-                AddFile(scan.CSharpFiles, root, file);
+                if (fileName.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase))
+                {
+                    scan.Log(RelativeTo(root, file), ScanFileStatus.Ignored, "file sinh tự động");
+                    continue;
+                }
+                AddFile(scan, root, file, scan.CSharpFiles);
             }
             else if (ext.Equals(".java", StringComparison.OrdinalIgnoreCase))
             {
-                AddFile(scan.JavaFiles, root, file);
+                AddFile(scan, root, file, scan.JavaFiles);
             }
             else if (JsExtensions.Contains(ext))
             {
-                if (IsIgnoredScript(fileName)) continue;
+                if (IsIgnoredScript(fileName))
+                {
+                    scan.Log(RelativeTo(root, file), ScanFileStatus.Ignored, "script test, cấu hình hoặc file đã minify");
+                    continue;
+                }
                 if (NearestPackageIsBackend(Path.GetDirectoryName(file)!, root, packageJsonDirs))
                 {
-                    AddFile(scan.JsTsFiles, root, file);
-                    if (ext.ToLowerInvariant() is ".jsx" or ".tsx") AddFile(scan.FrontendFiles, root, file);
+                    if (ext.ToLowerInvariant() is ".jsx" or ".tsx") AddFile(scan, root, file, scan.JsTsFiles, scan.FrontendFiles);
+                    else AddFile(scan, root, file, scan.JsTsFiles);
                 }
                 else
-                    AddFile(scan.FrontendFiles, root, file);
+                    AddFile(scan, root, file, scan.FrontendFiles);
             }
             else if (ext.ToLowerInvariant() is ".html" or ".vue" or ".svelte")
             {
-                AddFile(scan.FrontendFiles, root, file);
+                AddFile(scan, root, file, scan.FrontendFiles);
             }
         }
 
@@ -164,13 +181,84 @@ public sealed class RepositoryScanner : IRepositoryScanner
         return scan;
     }
 
-    private static void AddFile(List<SourceFile> target, string root, string file)
+    private static readonly string[] SensitiveExactNames =
+    [
+        ".env", ".npmrc", ".netrc", ".pgpass", "secrets.json", "secret.json", "credentials", "credentials.json",
+        "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "launchSettings.json"
+    ];
+
+    private static readonly string[] SensitiveExtensions =
+        [".pem", ".key", ".pfx", ".p12", ".jks", ".keystore", ".kdbx", ".tfvars"];
+
+    /// <summary>File thường chứa mật khẩu/khoá: không đọc, không lưu, không gửi sang AI.</summary>
+    internal static bool IsSensitiveFile(string fileName)
     {
-        var info = new FileInfo(file);
-        if (info.Length > MaxFileBytes) return;
+        if (SensitiveExactNames.Contains(fileName, StringComparer.OrdinalIgnoreCase)) return true;
+        if (fileName.StartsWith(".env.", StringComparison.OrdinalIgnoreCase)) return true;
+        if (SensitiveExtensions.Contains(Path.GetExtension(fileName), StringComparer.OrdinalIgnoreCase)) return true;
+        if (fileName.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase) && fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) return true;
+        if (fileName.StartsWith("application", StringComparison.OrdinalIgnoreCase)
+            && (fileName.EndsWith(".properties", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".yml", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase))) return true;
+        return false;
+    }
+
+    private static string RelativeTo(string root, string path) => Path.GetRelativePath(root, path).Replace('\\', '/');
+
+    /// <summary>
+    /// Đọc, kiểm tra và che thông tin nhạy cảm của một file rồi thêm vào các danh sách đích.
+    /// Mọi kết quả (nhận, bỏ qua, lỗi) đều được ghi vào log của lần quét. Nếu không che được thì bỏ file
+    /// thay vì dùng bản chưa che.
+    /// </summary>
+    private static void AddFile(RepositoryScan scan, string root, string file, params List<SourceFile>[] targets)
+    {
+        var relative = RelativeTo(root, file);
+
+        long length;
+        try { length = new FileInfo(file).Length; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            scan.Log(relative, ScanFileStatus.Failed, "không đọc được thông tin file");
+            return;
+        }
+        if (length > MaxFileBytes)
+        {
+            scan.Log(relative, ScanFileStatus.Ignored, $"vượt quá {MaxFileBytes / 1024} KB");
+            return;
+        }
+
         var content = SafeRead(file);
-        if (string.IsNullOrEmpty(content)) return;
-        target.Add(new SourceFile(file, Path.GetRelativePath(root, file).Replace('\\', '/'), content));
+        if (content is null)
+        {
+            scan.Log(relative, ScanFileStatus.Failed, "không đọc được file");
+            return;
+        }
+        if (content.Length == 0)
+        {
+            scan.Log(relative, ScanFileStatus.Ignored, "file rỗng");
+            return;
+        }
+        if (content.Contains('\0'))
+        {
+            scan.Log(relative, ScanFileStatus.Ignored, "file nhị phân");
+            return;
+        }
+
+        RedactionResult redacted;
+        try
+        {
+            redacted = SecretRedactor.Redact(content);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            scan.Log(relative, ScanFileStatus.Failed, "quét thông tin nhạy cảm quá thời gian, đã bỏ file để an toàn");
+            return;
+        }
+
+        foreach (var hit in redacted.Hits) scan.Redactions.Add(new RedactionFinding(relative, hit.Rule, hit.Line));
+        scan.Log(relative, ScanFileStatus.Accepted, redacted.Hits.Count == 0 ? "" : $"đã che {redacted.Hits.Count} thông tin nhạy cảm");
+
+        var source = new SourceFile(file, relative, redacted.Content);
+        foreach (var target in targets) target.Add(source);
     }
 
     private static bool IsIgnoredScript(string fileName)

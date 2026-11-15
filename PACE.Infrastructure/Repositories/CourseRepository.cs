@@ -11,22 +11,25 @@ public class CourseRepository(AppDbContext context) : GenericRepository<Course>(
     {
         var normalized = code.Trim().ToLower();
         return DbSet
-            .Include(c => c.Lecturer)
+            .Include(c => c.Classes)
+                .ThenInclude(cl => cl.Lecturer)
             .FirstOrDefaultAsync(c => c.Code.ToLower() == normalized, ct);
     }
 
     public Task<Course?> GetByIdWithLecturerAsync(Guid id, CancellationToken ct = default)
     {
         return DbSet
-            .Include(c => c.Lecturer)
+            .Include(c => c.Classes)
+                .ThenInclude(cl => cl.Lecturer)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
     public Task<List<Course>> GetByLecturerIdAsync(Guid lecturerId, CancellationToken ct = default)
     {
         return DbSet
-            .Include(c => c.Lecturer)
-            .Where(c => c.LecturerId == lecturerId)
+            .Include(c => c.Classes)
+                .ThenInclude(cl => cl.Lecturer)
+            .Where(c => c.Classes.Any(cl => cl.LecturerId == lecturerId))
             .OrderBy(c => c.Code)
             .ToListAsync(ct);
     }
@@ -34,7 +37,8 @@ public class CourseRepository(AppDbContext context) : GenericRepository<Course>(
     public Task<List<Course>> GetAllWithLecturerAsync(CancellationToken ct = default)
     {
         return DbSet
-            .Include(c => c.Lecturer)
+            .Include(c => c.Classes)
+                .ThenInclude(cl => cl.Lecturer)
             .OrderBy(c => c.Code)
             .ToListAsync(ct);
     }

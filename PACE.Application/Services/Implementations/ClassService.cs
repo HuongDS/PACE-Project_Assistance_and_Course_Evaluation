@@ -229,13 +229,26 @@ public class ClassService(
         var trimmedName = request.Name.Trim();
 
         // 1. Kiểm tra môn học (Course)
-        var course = await uow.Courses.GetByIdWithLecturerAsync(request.CourseId, ct)
+        var course = await uow.Courses.GetByIdAsync(request.CourseId, ct)
             ?? throw new NotFoundException("Môn học không tồn tại.");
 
-        if (!currentUser.IsAdmin && course.LecturerId != currentUser.UserId)
-            throw new ForbiddenException("Bạn chỉ được tạo lớp cho môn học do mình phụ trách.");
+        // 2. Xác định giảng viên phụ trách (Lecturer)
+        Guid? assignedLecturerId;
+        if (currentUser.IsAdmin)
+        {
+            assignedLecturerId = request.LecturerId ?? currentUser.UserId;
+        }
+        else
+        {
+            // Giảng viên tạo lớp thì chính giảng viên đó phụ trách
+            if (request.LecturerId.HasValue && request.LecturerId.Value != currentUser.UserId)
+            {
+                throw new ForbiddenException("Giảng viên không thể chỉ định giảng viên khác phụ trách lớp.");
+            }
+            assignedLecturerId = currentUser.UserId;
+        }
 
-        // 2. Xác định học kỳ (Semester)
+        // 3. Xác định học kỳ (Semester)
         var currentSemester = await uow.Semesters.GetCurrentSemesterAsync(ct)
             ?? throw new BadRequestException("Hệ thống chưa có học kỳ nào được thiết lập. Vui lòng liên hệ quản trị viên.");
 
@@ -262,13 +275,13 @@ public class ClassService(
             targetSemester = currentSemester;
         }
 
-        // 3. Kiểm tra trùng tên lớp trong học kỳ
+        // 4. Kiểm tra trùng tên lớp của môn học đó trong học kỳ (cho phép cùng tên lớp ở các môn khác nhau)
         var exists = await uow.Classes.AnyAsync(
-            c => c.SemesterId == targetSemester.Id && c.Name != null && c.Name.ToLower() == trimmedName.ToLower(), ct);
+            c => c.CourseId == course.Id && c.SemesterId == targetSemester.Id && c.Name != null && c.Name.ToLower() == trimmedName.ToLower(), ct);
         if (exists)
-            throw new ConflictException($"Lớp học '{trimmedName}' đã tồn tại trong học kỳ {targetSemester.Name}.");
+            throw new ConflictException($"Lớp học '{trimmedName}' của môn '{course.Code}' đã tồn tại trong học kỳ {targetSemester.Name}.");
 
-        // 4. Ngày bắt đầu / kết thúc
+        // 5. Ngày bắt đầu / kết thúc
         var startDate = request.StartDate ?? targetSemester.StartDate;
         var actualStartDate = request.ActualStartDate ?? startDate;
         var endDate = request.EndDate ?? targetSemester.EndDate;
@@ -282,6 +295,7 @@ public class ClassService(
             Name = trimmedName,
             CourseId = course.Id,
             SemesterId = targetSemester.Id,
+            LecturerId = assignedLecturerId,
             StartDate = startDate,
             ActualStartDate = actualStartDate,
             EndDate = endDate
@@ -290,15 +304,21 @@ public class ClassService(
         await uow.Classes.AddAsync(newClass, ct);
         await uow.SaveChangesAsync(ct);
 
+        User? lecturer = null;
+        if (assignedLecturerId.HasValue && uow.Users != null)
+        {
+            lecturer = await uow.Users.GetByIdAsync(assignedLecturerId.Value, ct);
+        }
+
         return new ClassDto(
             newClass.Id,
             newClass.Name,
             course.Id,
             course.Code,
             course.Name,
-            course.LecturerId,
-            course.Lecturer?.FullName ?? "",
-            course.Lecturer?.Email ?? "",
+            assignedLecturerId,
+            lecturer?.FullName ?? lecturer?.Email ?? "",
+            lecturer?.Email ?? "",
             targetSemester.Name,
             newClass.StartDate,
             newClass.EndDate,
@@ -320,9 +340,6 @@ public class ClassService(
         var course = await uow.Courses.GetByIdAsync(request.CourseId, ct)
             ?? throw new BadRequestException("Môn học không tồn tại trong hệ thống.");
 
-        if (currentUser.Role == UserRole.Lecturer && course.LecturerId != currentUser.UserId)
-            throw new ForbiddenException("Bạn chỉ có thể gán lớp cho môn học do chính bạn phụ trách.");
-
         var targetSemesterId = request.SemesterId ?? cls.SemesterId;
         if (!targetSemesterId.HasValue)
         {
@@ -335,9 +352,9 @@ public class ClassService(
             ?? throw new NotFoundException("Học kỳ được chọn không tồn tại.");
 
         var duplicate = await uow.Classes.AnyAsync(
-            c => c.Id != id && c.SemesterId == targetSemesterId.Value && c.Name != null && c.Name.ToLower() == trimmedName.ToLower(), ct);
+            c => c.Id != id && c.CourseId == course.Id && c.SemesterId == targetSemesterId.Value && c.Name != null && c.Name.ToLower() == trimmedName.ToLower(), ct);
         if (duplicate)
-            throw new ConflictException($"Lớp học '{trimmedName}' đã tồn tại trong học kỳ '{targetSemester.Name}'.");
+            throw new ConflictException($"Lớp học '{trimmedName}' của môn '{course.Code}' đã tồn tại trong học kỳ '{targetSemester.Name}'.");
 
         var startDate = request.StartDate ?? cls.StartDate;
         var actualStartDate = request.ActualStartDate ?? cls.ActualStartDate;
@@ -349,6 +366,10 @@ public class ClassService(
         cls.Name = trimmedName;
         cls.CourseId = course.Id;
         cls.SemesterId = targetSemesterId.Value;
+        if (currentUser.IsAdmin && request.LecturerId.HasValue)
+        {
+            cls.LecturerId = request.LecturerId.Value;
+        }
         cls.StartDate = startDate;
         cls.ActualStartDate = actualStartDate;
         cls.EndDate = endDate;
@@ -359,15 +380,21 @@ public class ClassService(
         var studentCount = (await uow.Classes.GetAllStudentsInClassAsync(cls.Id, ct)).Count;
         var groupCount = await uow.Groups.CountAsync(g => g.ClassId == cls.Id, ct);
 
+        User? lecturer = null;
+        if (cls.LecturerId.HasValue && uow.Users != null)
+        {
+            lecturer = await uow.Users.GetByIdAsync(cls.LecturerId.Value, ct);
+        }
+
         return new ClassDto(
             cls.Id,
             cls.Name,
             course.Id,
             course.Code,
             course.Name,
-            course.LecturerId,
-            course.Lecturer?.FullName ?? "",
-            course.Lecturer?.Email ?? "",
+            cls.LecturerId,
+            lecturer?.FullName ?? lecturer?.Email ?? "",
+            lecturer?.Email ?? "",
             targetSemester.Name,
             cls.StartDate,
             cls.EndDate,
@@ -398,15 +425,7 @@ public class ClassService(
         if (rows.Count == 0)
             throw new BadRequestException("File Excel không có dữ liệu lớp học.");
 
-        List<Course> availableCourses;
-        if (currentUser.IsAdmin)
-        {
-            availableCourses = await uow.Courses.GetAllWithLecturerAsync(ct);
-        }
-        else
-        {
-            availableCourses = await uow.Courses.GetByLecturerIdAsync(currentUser.UserId, ct);
-        }
+        var availableCourses = await uow.Courses.GetAllWithLecturerAsync(ct);
 
         var courseMap = availableCourses
             .GroupBy(c => c.Code.Trim().ToLowerInvariant())
@@ -446,20 +465,13 @@ public class ClassService(
 
             if (!courseMap.TryGetValue(courseCode.ToLowerInvariant(), out var course))
             {
-                if (currentUser.Role == UserRole.Lecturer)
-                {
-                    errors.Add($"Dòng {row.Row} ({className}): Môn học '{courseCode}' không tồn tại hoặc không do bạn phụ trách.");
-                }
-                else
-                {
-                    errors.Add($"Dòng {row.Row} ({className}): Mã môn học '{courseCode}' không tồn tại trong hệ thống.");
-                }
+                errors.Add($"Dòng {row.Row} ({className}): Mã môn học '{courseCode}' không tồn tại trong hệ thống.");
                 skippedCount++;
                 continue;
             }
 
             var exists = await uow.Classes.AnyAsync(
-                c => c.SemesterId == currentSemester.Id && c.Name != null && c.Name.ToLower() == className.ToLower(), ct);
+                c => c.CourseId == course.Id && c.SemesterId == currentSemester.Id && c.Name != null && c.Name.ToLower() == className.ToLower(), ct);
             if (exists)
             {
                 errors.Add($"Dòng {row.Row} ({className}): Lớp học đã tồn tại trong học kỳ {currentSemester.Name}.");
@@ -477,12 +489,14 @@ public class ClassService(
                 continue;
             }
 
+            var assignedLecturerId = currentUser.Role == UserRole.Lecturer ? (Guid?)currentUser.UserId : null;
             var newClass = new Class
             {
                 Id = Guid.NewGuid(),
                 Name = className,
                 CourseId = course.Id,
                 SemesterId = currentSemester.Id,
+                LecturerId = assignedLecturerId,
                 StartDate = startDate,
                 ActualStartDate = startDate,
                 EndDate = endDate
@@ -498,9 +512,9 @@ public class ClassService(
                 course.Id,
                 course.Code,
                 course.Name,
-                course.LecturerId,
-                course.Lecturer?.FullName ?? "",
-                course.Lecturer?.Email ?? "",
+                assignedLecturerId,
+                currentUser.Role == UserRole.Lecturer ? currentUser.Email : "",
+                currentUser.Role == UserRole.Lecturer ? currentUser.Email : "",
                 currentSemester.Name,
                 newClass.StartDate,
                 newClass.EndDate,

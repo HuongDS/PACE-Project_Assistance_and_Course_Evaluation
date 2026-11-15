@@ -26,7 +26,7 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
                 .Select(l => l.LecturerCode)
                 .FirstOrDefaultAsync(ct);
 
-            q = q.Where(c => c.Course.LecturerId == lecturerUserId.Value
+            q = q.Where(c => c.LecturerId == lecturerUserId.Value
                           || (!string.IsNullOrEmpty(lecturerCode) && (c.Schedules.Any(s => s.LecturerCode == lecturerCode)
                                                                    || c.Sessions.Any(s => s.LecturerCode == lecturerCode))));
         }
@@ -50,7 +50,6 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             if (!string.IsNullOrEmpty(semName))
             {
                 q = q.Where(c => c.SemesterId == query.SemesterId.Value
-                              || (c.Course.Semester != null && c.Course.Semester.ToLower() == semName)
                               || (c.Semester != null && c.Semester.Name.ToLower() == semName));
             }
             else
@@ -61,8 +60,7 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
         else if (!string.IsNullOrWhiteSpace(query.Semester))
         {
             var sem = query.Semester.Trim().ToLower();
-            q = q.Where(c => (c.Semester != null && c.Semester.Name.ToLower() == sem)
-                          || (c.Course.Semester != null && c.Course.Semester.ToLower() == sem));
+            q = q.Where(c => c.Semester != null && c.Semester.Name.ToLower() == sem);
         }
 
         var keyword = NormalizeSearch(query.SearchTerm);
@@ -72,9 +70,8 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
                 (c.Name != null && c.Name.ToLower().Contains(keyword)) ||
                 c.Course.Code.ToLower().Contains(keyword) ||
                 c.Course.Name.ToLower().Contains(keyword) ||
-                (c.Course.Semester != null && c.Course.Semester.ToLower().Contains(keyword)) ||
                 (c.Semester != null && c.Semester.Name.ToLower().Contains(keyword)) ||
-                (c.Course.Lecturer != null && (c.Course.Lecturer.FullName.ToLower().Contains(keyword) || c.Course.Lecturer.Email.ToLower().Contains(keyword))));
+                (c.Lecturer != null && (c.Lecturer.FullName.ToLower().Contains(keyword) || c.Lecturer.Email.ToLower().Contains(keyword))));
         }
 
         var projectQuery = q.OrderByDescending(c => c.StartDate).ThenBy(c => c.Name)
@@ -84,10 +81,10 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
                 c.CourseId,
                 c.Course.Code,
                 c.Course.Name,
-                c.Course.LecturerId,
-                c.Course.Lecturer != null && !string.IsNullOrEmpty(c.Course.Lecturer.FullName) ? c.Course.Lecturer.FullName : (c.Course.Lecturer != null ? c.Course.Lecturer.Email : null),
-                c.Course.Lecturer != null ? c.Course.Lecturer.Email : null,
-                c.Course.Semester ?? (c.Semester != null ? c.Semester.Name : null),
+                c.LecturerId,
+                c.Lecturer != null && !string.IsNullOrEmpty(c.Lecturer.FullName) ? c.Lecturer.FullName : (c.Lecturer != null ? c.Lecturer.Email : null),
+                c.Lecturer != null ? c.Lecturer.Email : null,
+                c.Semester != null ? c.Semester.Name : null,
                 c.StartDate,
                 c.EndDate,
                 c.StudentClasses.Count,
@@ -100,7 +97,7 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
     {
         var c = await DbSet.AsNoTracking()
             .Include(c => c.Course)
-                .ThenInclude(co => co.Lecturer)
+            .Include(c => c.Lecturer)
             .Include(c => c.Semester)
             .FirstOrDefaultAsync(c => c.Id == classId, ct);
 
@@ -115,10 +112,10 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             c.CourseId,
             c.Course.Code,
             c.Course.Name,
-            c.Course.LecturerId,
-            c.Course.Lecturer != null && !string.IsNullOrEmpty(c.Course.Lecturer.FullName) ? c.Course.Lecturer.FullName : (c.Course.Lecturer != null ? c.Course.Lecturer.Email : null),
-            c.Course.Lecturer != null ? c.Course.Lecturer.Email : null,
-            c.Course.Semester ?? c.Semester?.Name,
+            c.LecturerId,
+            c.Lecturer != null && !string.IsNullOrEmpty(c.Lecturer.FullName) ? c.Lecturer.FullName : (c.Lecturer != null ? c.Lecturer.Email : null),
+            c.Lecturer != null ? c.Lecturer.Email : null,
+            c.Semester?.Name,
             c.StartDate,
             c.EndDate,
             studentCount,
@@ -276,7 +273,7 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
 
         return await Context.Classes
             .Where(c => c.Id == classId)
-            .AnyAsync(c => c.Course.LecturerId == lecturerUserId
+            .AnyAsync(c => c.LecturerId == lecturerUserId
                         || (!string.IsNullOrEmpty(lecturerCode) && (c.Schedules.Any(s => s.LecturerCode == lecturerCode)
                                                                  || c.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct);
     }

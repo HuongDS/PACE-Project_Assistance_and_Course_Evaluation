@@ -55,6 +55,30 @@ public static class AcademicDataSeeder
                         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
                     END IF;
                 END $$;
+
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'FK_classes_users_lecturer_id'
+                    ) THEN
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'courses' AND column_name = 'LecturerId'
+                    ) THEN
+                        UPDATE classes SET lecturer_id = c.""LecturerId""
+                        FROM courses c
+                        WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                    END IF;
+                END $$;
             ");
 
             // 1. Seed Semesters
@@ -144,9 +168,7 @@ public static class AcademicDataSeeder
                         Id = Guid.NewGuid(),
                         Code = code,
                         Name = name,
-                        Credits = credits,
-                        Semester = "Fall 2026",
-                        LecturerId = lecturer.Id
+                        Credits = credits
                     };
                     db.Courses.Add(course);
                     await db.SaveChangesAsync();
@@ -176,6 +198,7 @@ public static class AcademicDataSeeder
                         Name = className,
                         CourseId = c.Id,
                         SemesterId = fall2026.Id,
+                        LecturerId = lecturer.Id,
                         StartDate = start,
                         ActualStartDate = start,
                         EndDate = end

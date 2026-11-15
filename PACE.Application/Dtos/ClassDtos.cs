@@ -88,6 +88,7 @@ public class CreateClassRequest
     public Guid CourseId { get; set; }
 
     public Guid? SemesterId { get; set; }
+    public Guid? LecturerId { get; set; }
 
     public DateOnly? StartDate { get; set; }
     public DateOnly? ActualStartDate { get; set; }
@@ -104,6 +105,7 @@ public class UpdateClassRequest
     public Guid CourseId { get; set; }
 
     public Guid? SemesterId { get; set; }
+    public Guid? LecturerId { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? ActualStartDate { get; set; }
     public DateOnly? EndDate { get; set; }

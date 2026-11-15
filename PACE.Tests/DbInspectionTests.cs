@@ -150,6 +150,18 @@ public class DbInspectionTests
                 await insertCourseCmd.ExecuteNonQueryAsync();
             }
 
+            // Ensure lecturer_id column exists on classes
+            await using var ensureColCmd = new NpgsqlCommand(@"
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                        UPDATE classes SET lecturer_id = c.""LecturerId"" FROM courses c WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                    END IF;
+                END $$;", conn);
+            await ensureColCmd.ExecuteNonQueryAsync();
+
             // Ensure Class exists
             var classId = Guid.NewGuid();
             await using var getClassCmd = new NpgsqlCommand("SELECT id FROM classes LIMIT 1", conn);
@@ -158,18 +170,20 @@ public class DbInspectionTests
             if (existingClass != null && existingClass != DBNull.Value)
             {
                 classId = (Guid)existingClass;
-                await using var updateClassCmd = new NpgsqlCommand("UPDATE classes SET course_id = @cid, name = COALESCE(name, 'SE1701') WHERE id = @clid", conn);
+                await using var updateClassCmd = new NpgsqlCommand("UPDATE classes SET course_id = @cid, lecturer_id = @lid, name = COALESCE(name, 'SE1701') WHERE id = @clid", conn);
                 updateClassCmd.Parameters.AddWithValue("cid", courseId);
+                updateClassCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 updateClassCmd.Parameters.AddWithValue("clid", classId);
                 await updateClassCmd.ExecuteNonQueryAsync();
             }
             else
             {
                 await using var insertClassCmd = new NpgsqlCommand(@"
-                    INSERT INTO classes (id, course_id, name, start_date, actual_start_date, end_date)
-                    VALUES (@clid, @cid, 'SE1701', '2026-09-01', '2026-09-01', '2026-12-31')", conn);
+                    INSERT INTO classes (id, course_id, lecturer_id, name, start_date, actual_start_date, end_date)
+                    VALUES (@clid, @cid, @lid, 'SE1701', '2026-09-01', '2026-09-01', '2026-12-31')", conn);
                 insertClassCmd.Parameters.AddWithValue("clid", classId);
                 insertClassCmd.Parameters.AddWithValue("cid", courseId);
+                insertClassCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 await insertClassCmd.ExecuteNonQueryAsync();
             }
 
@@ -336,20 +350,34 @@ public class DbInspectionTests
                 await insC.ExecuteNonQueryAsync();
             }
 
+            // Ensure lecturer_id column exists on classes
+            await using var ensureColCmd2 = new NpgsqlCommand(@"
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);", conn);
+            await ensureColCmd2.ExecuteNonQueryAsync();
+
             // Class
             var clid = Guid.NewGuid();
             await using var getClCmd = new NpgsqlCommand("SELECT id FROM classes WHERE name = @cln LIMIT 1", conn);
             getClCmd.Parameters.AddWithValue("cln", clName);
             var exCl = await getClCmd.ExecuteScalarAsync();
-            if (exCl != null && exCl != DBNull.Value) clid = (Guid)exCl;
+            if (exCl != null && exCl != DBNull.Value)
+            {
+                clid = (Guid)exCl;
+                await using var upCl = new NpgsqlCommand("UPDATE classes SET lecturer_id = @lid WHERE id = @clid", conn);
+                upCl.Parameters.AddWithValue("lid", lecturerId);
+                upCl.Parameters.AddWithValue("clid", clid);
+                await upCl.ExecuteNonQueryAsync();
+            }
             else
             {
                 await using var insCl = new NpgsqlCommand(@"
-                    INSERT INTO classes (id, course_id, semester_id, name, start_date, actual_start_date, end_date)
-                    VALUES (@clid, @cid, @sid, @name, '2026-09-01', '2026-09-01', '2026-12-31')", conn);
+                    INSERT INTO classes (id, course_id, semester_id, lecturer_id, name, start_date, actual_start_date, end_date)
+                    VALUES (@clid, @cid, @sid, @lid, @name, '2026-09-01', '2026-09-01', '2026-12-31')", conn);
                 insCl.Parameters.AddWithValue("clid", clid);
                 insCl.Parameters.AddWithValue("cid", cid);
                 insCl.Parameters.AddWithValue("sid", semesterId);
+                insCl.Parameters.AddWithValue("lid", lecturerId);
                 insCl.Parameters.AddWithValue("name", clName);
                 await insCl.ExecuteNonQueryAsync();
             }

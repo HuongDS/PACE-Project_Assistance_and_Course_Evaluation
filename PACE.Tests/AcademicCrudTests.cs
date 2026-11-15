@@ -129,6 +129,8 @@ public class AcademicCrudTests
             Name = "SE1701",
             CourseId = courseId,
             SemesterId = semesterId,
+            LecturerId = lecturerId,
+            Lecturer = new User { Id = lecturerId, FullName = "Thầy Giảng", Email = "giang@fpt.edu.vn" },
             StartDate = new DateOnly(2026, 9, 1),
             EndDate = new DateOnly(2026, 12, 31)
         };
@@ -137,9 +139,7 @@ public class AcademicCrudTests
         {
             Id = courseId,
             Code = "PRN231",
-            Name = "DotNet",
-            LecturerId = lecturerId,
-            Lecturer = new User { Id = lecturerId, FullName = "Thầy Giảng", Email = "giang@fpt.edu.vn" }
+            Name = "DotNet"
         };
 
         var semester = new Semester
@@ -194,6 +194,16 @@ public class AcademicCrudTests
             return res;
         });
 
+        var userRepo = Stub<IUserRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetByIdAsync" => Task.FromResult<User?>(new User { Id = lecturerId, FullName = "Thầy Giảng", Email = "giang@fpt.edu.vn" }),
+                _ => null!
+            };
+            return res;
+        });
+
         var uow = Stub<IUnitOfWork>.Create((m, a) =>
         {
             object res = m.Name switch
@@ -202,6 +212,7 @@ public class AcademicCrudTests
                 "get_Courses" => courseRepo,
                 "get_Semesters" => semRepo,
                 "get_Groups" => groupRepo,
+                "get_Users" => userRepo,
                 "SaveChangesAsync" => Task.FromResult(1),
                 _ => null!
             };

@@ -324,6 +324,75 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("classes", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.ClassAssessmentRound", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("MilestoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MilestoneId");
+
+                    b.ToTable("class_assessment_rounds", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassMilestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "DueAt");
+
+                    b.ToTable("class_milestones", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -460,6 +529,41 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("courses", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseAnnouncement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "CreatedAt");
+
+                    b.ToTable("course_announcements", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.CourseProject", b =>
@@ -1354,6 +1458,28 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Semester");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.ClassAssessmentRound", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.ClassMilestone", "Milestone")
+                        .WithMany()
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Milestone");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassMilestone", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.Class", "Class")
@@ -1429,6 +1555,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Schedule");
 
                     b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseAnnouncement", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.CourseProject", b =>

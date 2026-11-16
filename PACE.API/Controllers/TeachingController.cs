@@ -119,10 +119,7 @@ public class TeachingAccess(AppDbContext db, ICurrentUserService current)
 [ApiController, Route("api/courses"), Authorize]
 public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<CoursesController> logger) : ControllerBase
 {
-    private async Task<IQueryable<Course>> Visible(CancellationToken ct)
-    {
-        var u = await access.User(ct);
-        return db.Courses.AsNoTracking().Where(c =>
+    private IQueryable<Course> Visible(User u) => db.Courses.AsNoTracking().Where(c =>
             u.Role == UserRole.Admin ||
             (u.Role == UserRole.Lecturer && c.Classes.Any(cl => cl.LecturerId == u.Id)) ||
             (u.Role == UserRole.Student && (
@@ -130,8 +127,8 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
                 c.Classes.Any(cl => cl.Groups.Any(g =>
                     g.AnalysisRuns.Any(r => r.Id == u.AnalysisRunId) ||
                     g.Members.Any(m => m.StudentCode == u.StudentCode))))));
-    }
-    private IQueryable<object> Details(IQueryable<Course> q) => q.Select(c => new
+
+    private IQueryable<object> Details(IQueryable<Course> q, User user) => q.Select(c => new
     {
         c.Id,
         c.Code,
@@ -153,7 +150,13 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
             lecturerId = cl.LecturerId,
             lecturerName = cl.Lecturer != null ? (cl.Lecturer.FullName ?? cl.Lecturer.Email) : ""
         }),
-        milestones = new object[0],
+        milestones = db.ClassMilestones.Where(item => item.Class.CourseId == c.Id &&
+                (user.Role == UserRole.Admin ||
+                 (user.Role == UserRole.Lecturer && item.Class.LecturerId == user.Id) ||
+                 (user.Role == UserRole.Student && user.StudentCode != null && item.Class.StudentClasses.Any(
+                     student => student.StudentCode == user.StudentCode && student.Status == 1))))
+            .OrderBy(item => item.DueAt).ThenBy(item => item.Id)
+            .Select(item => new ClassScheduleItemView(item.Id, item.ClassId, item.Kind, item.Title, item.Description, item.DueAt)).ToList(),
         projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any())
             ? c.Classes.SelectMany(cl => cl.Groups)
                 .SelectMany(g => g.AnalysisRuns.Select(r => new
@@ -192,9 +195,22 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
             })
     });
     [ProducesResponseType(typeof(CourseView[]), 200)]
-    [HttpGet] public async Task<IActionResult> List([FromQuery, Range(1, int.MaxValue)] int page = 1, [FromQuery, Range(1, 100)] int pageSize = 20, CancellationToken ct = default) => Ok(await Details((await Visible(ct)).OrderBy(c => c.Code).Skip((page - 1) * pageSize).Take(pageSize)).ToListAsync(ct));
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery, Range(1, int.MaxValue)] int page = 1,
+        [FromQuery, Range(1, 100)] int pageSize = 20, CancellationToken ct = default)
+    {
+        var user = await access.User(ct);
+        var courses = Visible(user).OrderBy(c => c.Code).Skip((page - 1) * pageSize).Take(pageSize);
+        return Ok(await Details(courses, user).ToListAsync(ct));
+    }
     [ProducesResponseType(typeof(CourseView), 200)]
-    [HttpGet("{id:guid}")] public async Task<IActionResult> Get(Guid id, CancellationToken ct) => Ok(await Details((await Visible(ct)).Where(c => c.Id == id)).SingleOrDefaultAsync(ct) ?? throw new NotFoundException("Course unavailable."));
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> Get(Guid id, CancellationToken ct)
+    {
+        var user = await access.User(ct);
+        return Ok(await Details(Visible(user).Where(c => c.Id == id), user).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Course unavailable."));
+    }
     [ProducesResponseType(typeof(ResourceCreated), 201)]
     [HttpPost, Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> Create(CreateCourseRequest request, CancellationToken ct)

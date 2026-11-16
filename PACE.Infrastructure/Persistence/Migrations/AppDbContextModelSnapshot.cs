@@ -75,6 +75,54 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("analysis_runs", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.AssessmentRoundRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublishedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoundId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("assessment_round_revisions", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -86,6 +134,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("ActualStartTime")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AssessmentRoundRevisionId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("OralExamId")
                         .HasColumnType("uuid")
@@ -122,6 +173,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssessmentRoundRevisionId");
 
                     b.HasIndex("OralExamId");
 
@@ -299,6 +352,18 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("lecturer_id");
 
+                    b.Property<int>("MaxGroupMembers")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("max_group_members");
+
+                    b.Property<int>("MinGroupMembers")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("min_group_members");
+
                     b.Property<string>("Name")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -322,6 +387,75 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("classes", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassAssessmentRound", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("MilestoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MilestoneId");
+
+                    b.ToTable("class_assessment_rounds", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassMilestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "DueAt");
+
+                    b.ToTable("class_milestones", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
@@ -372,6 +506,30 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasIndex("TimeSlotId");
 
                     b.ToTable("class_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassScheduleImport", b =>
+                {
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(132)
+                        .HasColumnType("character varying(132)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(72)
+                        .HasColumnType("character varying(72)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("ClassId", "Key")
+                        .HasName("PK_class_schedule_imports");
+
+                    b.ToTable("class_schedule_imports", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
@@ -462,6 +620,41 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("courses", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.CourseAnnouncement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "CreatedAt");
+
+                    b.ToTable("course_announcements", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.CourseProject", b =>
                 {
                     b.Property<Guid>("AnalysisRunId")
@@ -485,6 +678,56 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("course_projects", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseTopic", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int>("MaxGroups")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("max_groups");
+
+                    b.Property<string>("Requirements")
+                        .HasColumnType("text")
+                        .HasColumnName("requirements");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("course_topics", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.DataFlowEdge", b =>
@@ -578,11 +821,27 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("class_id");
 
+                    b.Property<Guid?>("CourseTopicId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_topic_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_approved");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -599,7 +858,140 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ClassId");
 
+                    b.HasIndex("CourseTopicId");
+
                     b.ToTable("groups", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupChangeRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("FailStudentIfRemoved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("fail_student_if_removed");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("payload_json");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasColumnType("text")
+                        .HasColumnName("review_notes");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("GroupId", "Status");
+
+                    b.ToTable("group_change_requests", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_user_id");
+
+                    b.Property<string>("InvitedStudentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("invited_student_code");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitedByUserId");
+
+                    b.HasIndex("InvitedStudentCode");
+
+                    b.HasIndex("GroupId", "InvitedStudentCode", "Status");
+
+                    b.ToTable("group_invitations", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.GroupMember", b =>
@@ -759,6 +1151,67 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasIndex("AnalysisRunId", "ClassName", "MethodName");
 
                     b.ToTable("method_sources", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Milestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("Deadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deadline");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
+                    b.Property<int>("OrderIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("order_index");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "Type");
+
+                    b.ToTable("milestones", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
@@ -1243,8 +1696,24 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Group");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.AssessmentRoundRevision", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.ClassAssessmentRound", "Round")
+                        .WithMany()
+                        .HasForeignKey("RoundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Round");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
+                    b.HasOne("PACE.Domain.Entities.AssessmentRoundRevision", "AssessmentRoundRevision")
+                        .WithMany()
+                        .HasForeignKey("AssessmentRoundRevisionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PACE.Domain.Entities.OralExam", "OralExam")
                         .WithMany("AssessmentSessions")
                         .HasForeignKey("OralExamId")
@@ -1255,6 +1724,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssessmentRoundRevision");
 
                     b.Navigation("OralExam");
 
@@ -1354,6 +1825,28 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Semester");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.ClassAssessmentRound", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.ClassMilestone", "Milestone")
+                        .WithMany()
+                        .HasForeignKey("MilestoneId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Milestone");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassMilestone", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.ClassSchedule", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.Class", "Class")
@@ -1387,6 +1880,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Room");
 
                     b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassScheduleImport", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
@@ -1431,6 +1935,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("TimeSlot");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.CourseAnnouncement", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.CourseProject", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.AnalysisRun", "AnalysisRun")
@@ -1446,6 +1961,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("AnalysisRun");
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseTopic", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Course", "Course")
+                        .WithMany("Topics")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Course");
                 });
@@ -1496,7 +2022,67 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PACE.Domain.Entities.CourseTopic", "CourseTopic")
+                        .WithMany("Groups")
+                        .HasForeignKey("CourseTopicId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Class");
+
+                    b.Navigation("CourseTopic");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupChangeRequest", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany("ChangeRequests")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("ReviewedByUser");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupInvitation", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany("Invitations")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.User", "InvitedByUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "InvitedStudent")
+                        .WithMany("GroupInvitations")
+                        .HasForeignKey("InvitedStudentCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("InvitedByUser");
+
+                    b.Navigation("InvitedStudent");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.GroupMember", b =>
@@ -1549,6 +2135,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("AnalysisRun");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Milestone", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("Milestones")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
@@ -1763,6 +2360,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Groups");
 
+                    b.Navigation("Milestones");
+
                     b.Navigation("OralExams");
 
                     b.Navigation("Schedules");
@@ -1787,6 +2386,13 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Classes");
 
                     b.Navigation("Projects");
+
+                    b.Navigation("Topics");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseTopic", b =>
+                {
+                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.GeneratedQuestion", b =>
@@ -1797,6 +2403,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PACE.Domain.Entities.Group", b =>
                 {
                     b.Navigation("AnalysisRuns");
+
+                    b.Navigation("ChangeRequests");
+
+                    b.Navigation("Invitations");
 
                     b.Navigation("Members");
                 });
@@ -1853,6 +2463,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PACE.Domain.Entities.StudentProfile", b =>
                 {
                     b.Navigation("Attendances");
+
+                    b.Navigation("GroupInvitations");
 
                     b.Navigation("GroupMembers");
 

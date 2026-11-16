@@ -8,6 +8,7 @@ public class Course
     public int Credits { get; set; } = 3;
     public ICollection<CourseProject> Projects { get; set; } = new List<CourseProject>();
     public ICollection<Class> Classes { get; set; } = new List<Class>();
+    public ICollection<CourseTopic> Topics { get; set; } = new List<CourseTopic>();
 }
 public class CourseProject
 {
@@ -26,6 +27,8 @@ public class AssessmentSession
     public CourseProject Project { get; set; } = null!;
     public Guid? OralExamId { get; set; }
     public OralExam? OralExam { get; set; }
+    public Guid? AssessmentRoundRevisionId { get; set; }
+    public AssessmentRoundRevision? AssessmentRoundRevision { get; set; }
     public string Title { get; set; } = "";
     public string Status { get; set; } = "CREATED";
     public DateTime ScheduledStart { get; set; }

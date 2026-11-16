@@ -22,6 +22,7 @@ public interface IUnitOfWork
     IAttendanceRepository Attendances { get; }
     IProfileRepository Profiles { get; }
     IOralPracticeRepository OralPractices { get; }
+    IMilestoneRepository Milestones { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

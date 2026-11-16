@@ -31,6 +31,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupTopicSubmission> GroupTopicSubmissions => Set<GroupTopicSubmission>();
+    public DbSet<ClassMilestone> ClassMilestones => Set<ClassMilestone>();
+    public DbSet<ClassScheduleImport> ClassScheduleImports => Set<ClassScheduleImport>();
+    public DbSet<ClassAssessmentRound> ClassAssessmentRounds => Set<ClassAssessmentRound>();
+    public DbSet<AssessmentRoundRevision> AssessmentRoundRevisions => Set<AssessmentRoundRevision>();
+    public DbSet<CourseAnnouncement> CourseAnnouncements => Set<CourseAnnouncement>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();
@@ -41,6 +46,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<OralQuestion> OralQuestions => Set<OralQuestion>();
     public DbSet<StudentOralSession> StudentOralSessions => Set<StudentOralSession>();
     public DbSet<StudentOralAnswer> StudentOralAnswers => Set<StudentOralAnswer>();
+    public DbSet<CourseTopic> CourseTopics => Set<CourseTopic>();
+    public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+    public DbSet<GroupChangeRequest> GroupChangeRequests => Set<GroupChangeRequest>();
+    public DbSet<Milestone> Milestones => Set<Milestone>();
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

@@ -30,6 +30,8 @@ public class AssessmentSessionConfiguration : IEntityTypeConfiguration<Assessmen
         e.Property(x => x.OralExamId).HasColumnName("oral_exam_id");
         e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict);
         e.HasOne(x => x.OralExam).WithMany(o => o.AssessmentSessions).HasForeignKey(x => x.OralExamId).OnDelete(DeleteBehavior.SetNull);
+        e.HasOne(x => x.AssessmentRoundRevision).WithMany().HasForeignKey(x => x.AssessmentRoundRevisionId)
+            .OnDelete(DeleteBehavior.Restrict);
         e.HasIndex(x => new { x.ProjectId, x.ScheduledStart });
     }
 }

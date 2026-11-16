@@ -182,15 +182,26 @@ public class DbInspectionTests
                 await insertClassCmd.ExecuteNonQueryAsync();
             }
 
-            // Ensure Group exists and points to this repo and class
-            var gid = Guid.NewGuid();
-            await using var groupCmd = new NpgsqlCommand(@"
-                INSERT INTO groups (id, class_id, name, topic_name, created_at)
-                VALUES (@gid, @clid, 'Nhóm 01', 'Hệ thống Quản lý và Đánh giá Khóa học (PACE)', now())
-                ON CONFLICT (id) DO NOTHING", conn);
-            groupCmd.Parameters.AddWithValue("gid", gid);
-            groupCmd.Parameters.AddWithValue("clid", classId);
-            await groupCmd.ExecuteNonQueryAsync();
+            // Ensure Group exists and points to this repo and class (idempotent, avoid duplicates)
+            await using var checkGroupCmd = new NpgsqlCommand("SELECT id FROM groups WHERE class_id = @clid LIMIT 1", conn);
+            checkGroupCmd.Parameters.AddWithValue("clid", classId);
+            var existingGid = await checkGroupCmd.ExecuteScalarAsync();
+            Guid gid;
+
+            if (existingGid != null && existingGid != DBNull.Value)
+            {
+                gid = (Guid)existingGid;
+            }
+            else
+            {
+                gid = Guid.NewGuid();
+                await using var groupCmd = new NpgsqlCommand(@"
+                    INSERT INTO groups (id, class_id, name, topic_name, created_at)
+                    VALUES (@gid, @clid, 'Nhóm 01', 'Hệ thống Quản lý và Đánh giá Khóa học (PACE)', now())", conn);
+                groupCmd.Parameters.AddWithValue("gid", gid);
+                groupCmd.Parameters.AddWithValue("clid", classId);
+                await groupCmd.ExecuteNonQueryAsync();
+            }
 
             await using var updRunCmd = new NpgsqlCommand(@"
                 UPDATE analysis_runs SET group_id = @gid WHERE ""Id"" = @rid", conn);

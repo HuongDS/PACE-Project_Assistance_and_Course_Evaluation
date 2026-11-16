@@ -63,14 +63,15 @@ public class TeachingAccess(AppDbContext db, ICurrentUserService current)
                 CourseId = course!.Id,
                 Course = course
             };
+            db.CourseProjects.Add(p);
         }
-        else if (run != null)
+        else
         {
-            p.AnalysisRun = run;
-            if (p.Course == null && course != null)
+            if (run != null) p.AnalysisRun = run;
+            if (course != null && p.CourseId != course.Id)
             {
-                p.Course = course;
                 p.CourseId = course.Id;
+                p.Course = course;
             }
         }
 

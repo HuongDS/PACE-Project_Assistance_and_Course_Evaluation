@@ -8,6 +8,7 @@ public class Course
     public int Credits { get; set; } = 3;
     public ICollection<CourseProject> Projects { get; set; } = new List<CourseProject>();
     public ICollection<Class> Classes { get; set; } = new List<Class>();
+    public ICollection<CourseTopic> Topics { get; set; } = new List<CourseTopic>();
 }
 public class CourseProject
 {

@@ -25,6 +25,8 @@ public static class DependencyInjection
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
         services.AddScoped<IBatchTemplateService, BatchTemplateService>();
         services.AddScoped<IGroupService, GroupService>();
+        services.AddScoped<ITopicManagementService, TopicManagementService>();
+        services.AddScoped<IGroupChangeRequestService, GroupChangeRequestService>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IProfileService, ProfileService>();

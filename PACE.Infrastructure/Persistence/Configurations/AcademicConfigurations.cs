@@ -35,6 +35,10 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
         e.Property(x => x.StartDate).HasColumnName("start_date").IsRequired();
         e.Property(x => x.ActualStartDate).HasColumnName("actual_start_date").IsRequired();
         e.Property(x => x.EndDate).HasColumnName("end_date").IsRequired();
+        e.Property(x => x.GroupRegistrationDeadline).HasColumnName("group_registration_deadline");
+        e.Property(x => x.IsGroupLocked).HasColumnName("is_group_locked").HasDefaultValue(false);
+        e.Property(x => x.MaxGroupMembers).HasColumnName("max_group_members").HasDefaultValue(5);
+        e.Property(x => x.MinGroupMembers).HasColumnName("min_group_members").HasDefaultValue(3);
 
         e.HasOne(x => x.Course)
             .WithMany(c => c.Classes)

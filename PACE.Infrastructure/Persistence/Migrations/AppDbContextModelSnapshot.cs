@@ -634,6 +634,50 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("group_members", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.GroupTopicSubmission", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("GroupId", "Version");
+
+                    b.ToTable("group_topic_submissions", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>
                 {
                     b.Property<string>("LecturerCode")
@@ -1472,6 +1516,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("StudentProfile");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupTopicSubmission", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>

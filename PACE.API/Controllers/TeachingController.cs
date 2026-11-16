@@ -131,7 +131,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
                     g.AnalysisRuns.Any(r => r.Id == u.AnalysisRunId) ||
                     g.Members.Any(m => m.StudentCode == u.StudentCode))))));
     }
-    private static IQueryable<object> Details(IQueryable<Course> q) => q.Select(c => new
+    private IQueryable<object> Details(IQueryable<Course> q) => q.Select(c => new
     {
         c.Id,
         c.Code,
@@ -166,6 +166,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
                     classId = (Guid?)g.ClassId,
                     className = (string?)g.Class.Name,
                     repoUrl = r.RepoUrl,
+                    hasTopicSubmissions = db.GroupTopicSubmissions.Any(topic => topic.GroupId == g.Id),
                     isApproved = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => (bool?)p.IsApproved).FirstOrDefault(),
                     notes = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.Notes).FirstOrDefault(),
                     decidedAt = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.DecidedAt).FirstOrDefault(),
@@ -182,6 +183,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
                 classId = p.AnalysisRun.Group != null ? (Guid?)p.AnalysisRun.Group.ClassId : null,
                 className = p.AnalysisRun.Group != null ? p.AnalysisRun.Group.Class.Name : (string?)null,
                 repoUrl = p.AnalysisRun.RepoUrl,
+                hasTopicSubmissions = db.GroupTopicSubmissions.Any(topic => topic.GroupId == p.AnalysisRun.GroupId),
                 isApproved = p.IsApproved,
                 notes = p.Notes,
                 decidedAt = p.DecidedAt,
@@ -250,7 +252,11 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
     public async Task<IActionResult> Approve(Guid projectId, TopicDecision request, CancellationToken ct)
     {
         var p = await access.Project(projectId, ct);
-        await access.Staff(p, ct);
+        await RequireTopicReviewer(p, ct);
+        if (p.AnalysisRun?.GroupId is Guid groupId &&
+            await db.GroupTopicSubmissions.AnyAsync(topic => topic.GroupId == groupId, ct))
+            throw new ConflictException("Review this group's submitted topic version using the group topic endpoint.");
+
 
         // Quy tắc: Nếu duyệt rồi là không được sửa, tương ứng với các đề tài bị từ chối cũng vậy
         if (p.IsApproved.HasValue)
@@ -272,7 +278,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
     public async Task<IActionResult> GetTopicHistory(Guid projectId, CancellationToken ct)
     {
         var p = await access.Project(projectId, ct);
-        await access.Staff(p, ct);
+        await RequireTopicReviewer(p, ct);
 
         var events = await db.AuditEvents.AsNoTracking()
             .Where(x => x.ResourceId == projectId)
@@ -305,6 +311,14 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
         }
 
         return Ok(list.OrderByDescending(x => x.timestamp));
+    }
+
+    private async Task RequireTopicReviewer(CourseProject project, CancellationToken ct)
+    {
+        if (project.AnalysisRun?.Group?.Class is Class courseClass)
+            GroupTopicsController.RequireReviewer(await access.User(ct), courseClass);
+        else
+            await access.Staff(project, ct);
     }
 }
 

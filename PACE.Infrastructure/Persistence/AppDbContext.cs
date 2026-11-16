@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<Class> Classes => Set<Class>();
     public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
     public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupTopicSubmission> GroupTopicSubmissions => Set<GroupTopicSubmission>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<TimeSlot> TimeSlots => Set<TimeSlot>();

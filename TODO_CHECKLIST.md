@@ -66,9 +66,9 @@
 
 #### 3.3. Xử lý Bằng chứng, Cơ sở Tri thức Dự án & Hệ thống RAG
 - **Backend (BE):**
-  - [ ] **Bộ lọc file & Quét che giấu thông tin nhạy cảm (Secret Redaction Pipeline)**:
-    - Kiểm tra định dạng/dung lượng file, loại bỏ thư mục build/dependencies, tự động quét và che giấu API keys, mật khẩu, token trong code/config trước khi lưu hoặc gửi sang LLM.
-    - Lưu log các file được chấp nhận, bị bỏ qua hoặc lỗi.
+  - [x] **Bộ lọc file & Quét che giấu thông tin nhạy cảm (Secret Redaction Pipeline)**:
+    - Đã làm: `RepositoryScanner` bỏ file nhạy cảm (`.env`, `appsettings*.json`, `*.pem`, `*.key`...), file nhị phân/rỗng/quá 512 KB, thư mục build/dependencies; che API key, token, mật khẩu, chuỗi kết nối, khoá riêng bằng `SecretRedactor` ngay khi đọc file nên mã lưu DB và mã gửi sang LLM đều đã che. Không che được thì bỏ file.
+    - Log nhận/bỏ qua/lỗi và số chỗ đã che nằm trong application log và cảnh báo của kết quả phân tích; chưa lưu thành bảng DB. Repo đã phân tích trước đây vẫn giữ mã chưa che đến khi phân tích lại.
   - [ ] **Trích xuất Tài liệu & Đối chiếu chéo (Cross-Source Conflict Detection)**:
     - Đọc nội dung tài liệu nộp (DOCX/PDF/Markdown, SQL/DB schema, OpenAPI).
     - Tự động đối chiếu các tuyên bố trong tài liệu với source code và DB schema thực tế; bảo lưu và xuất danh sách các điểm mâu thuẫn cho giảng viên.

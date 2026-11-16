@@ -53,7 +53,7 @@
 - **Backend (BE):**
   - [ ] **Tích hợp Jira API (Read-only)**: Lấy danh sách issues, trạng thái, lịch sử chuyển trạng thái, người được giao (assignee) và sprint.
   - [ ] **Ánh xạ định danh (Identity Mapping)**: Liên kết tài khoản Sinh viên trong hệ thống với username/email GitHub và tài khoản Jira.
-  - [ ] **Phân tích Tiến hóa Code (Code Evolution) ở mức File/Class/Method**:
+  - [ ] **Phân tích Tiến hóa Code (Code Evolution) mức File/Class/Method**:
     - Theo dõi lịch sử thay đổi ở mức module/file/class/method theo thời gian (ai tạo mới, ai sửa đổi, ai viết lại phần lớn code).
     - Phân biệt rõ **đóng góp lịch sử** (người viết code ban đầu) và **hiện trạng mã nguồn** (người sửa đổi/viết lại sau đó), kèm cơ chế chụp snapshot định kỳ.
   - [ ] **Đối chiếu đa nguồn & Phát hiện bất thường (Anomaly Detection)**:

@@ -1008,4 +1008,377 @@ public class DbInspectionTests
             _output.WriteLine($"[VERIFIED] {expectedRole} ({email}) - Name: {name} - PasswordHash matches '{rawPassword}'");
         }
     }
+
+    [Fact]
+    public async Task InspectStudentGroupsAndClasses()
+    {
+        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        _output.WriteLine("=== CLASSES FOR SE170001 ===");
+        await using var clCmd = new NpgsqlCommand(@"
+            SELECT c.id, c.name, c.course_id, co.""Code"", co.""Name""
+            FROM student_classes sc
+            JOIN classes c ON c.id = sc.class_id
+            LEFT JOIN courses co ON co.""Id"" = c.course_id
+            WHERE sc.student_code = 'SE170001';", conn);
+        await using (var r = await clCmd.ExecuteReaderAsync())
+        {
+            while (await r.ReadAsync())
+            {
+                _output.WriteLine($"ClassId: {r[0]} | Name: {r[1]} | CourseId: {r[2]} | CourseCode: {r[3]} - {r[4]}");
+            }
+        }
+
+        _output.WriteLine("\n=== GROUPS FOR SE170001 ===");
+        await using var gCmd = new NpgsqlCommand(@"
+            SELECT g.id, g.class_id, c.name as class_name, g.name as group_name, g.topic_name, gm.role
+            FROM group_members gm
+            JOIN groups g ON g.id = gm.group_id
+            LEFT JOIN classes c ON c.id = g.class_id
+            WHERE gm.student_code = 'SE170001';", conn);
+        await using (var r2 = await gCmd.ExecuteReaderAsync())
+        {
+            while (await r2.ReadAsync())
+            {
+                _output.WriteLine($"GroupId: {r2[0]} | ClassId: {r2[1]} ({r2[2]}) | GroupName: {r2[3]} | Topic: {r2[4]} | Role: {r2[5]}");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SeedGroupAndTopicWorkflowData()
+    {
+        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        var defHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
+
+        // 1. Users & Profiles
+        var students = new[]
+        {
+            ("SE170001", "Nguyễn Văn Sinh Viên", "student@pace.edu.vn"),
+            ("SE170002", "Trần Thị Mai", "mai.tt@fpt.edu.vn"),
+            ("SE170003", "Lê Hoàng Nam", "nam.lh@fpt.edu.vn"),
+            ("SE170004", "Phạm Quốc Bảo", "bao.pq@fpt.edu.vn"),
+            ("SE170005", "Võ Minh Thư", "thu.vm@fpt.edu.vn"),
+            ("SE170006", "Đặng Quang Huy", "huy.dq@fpt.edu.vn"),
+            ("SE170007", "Ngô Bảo Ngọc", "ngoc.nb@fpt.edu.vn"),
+            ("SE170008", "Hoàng Văn Đức", "duc.hv@fpt.edu.vn"),
+        };
+
+        var studentIds = new Dictionary<string, Guid>();
+        foreach (var (code, name, email) in students)
+        {
+            var sid = Guid.NewGuid();
+            await using var chkCmd = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE \"StudentCode\" = @c OR LOWER(\"Email\") = @e LIMIT 1", conn);
+            chkCmd.Parameters.AddWithValue("c", code);
+            chkCmd.Parameters.AddWithValue("e", email.ToLower());
+            var exId = await chkCmd.ExecuteScalarAsync();
+            if (exId != null && exId != DBNull.Value)
+            {
+                sid = (Guid)exId;
+                await using var updUser = new NpgsqlCommand(@"
+                    UPDATE users SET ""StudentCode"" = @c, ""full_name"" = @n, ""password_hash"" = @h
+                    WHERE ""Id"" = @id", conn);
+                updUser.Parameters.AddWithValue("c", code);
+                updUser.Parameters.AddWithValue("n", name);
+                updUser.Parameters.AddWithValue("h", defHash);
+                updUser.Parameters.AddWithValue("id", sid);
+                await updUser.ExecuteNonQueryAsync();
+            }
+            else
+            {
+                await using var insUser = new NpgsqlCommand(@"
+                    INSERT INTO users (""Id"", ""Email"", ""StudentCode"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
+                    VALUES (@id, @e, @c, @n, 'Student', @h, now())", conn);
+                insUser.Parameters.AddWithValue("id", sid);
+                insUser.Parameters.AddWithValue("e", email.ToLower());
+                insUser.Parameters.AddWithValue("c", code);
+                insUser.Parameters.AddWithValue("n", name);
+                insUser.Parameters.AddWithValue("h", defHash);
+                await insUser.ExecuteNonQueryAsync();
+            }
+            studentIds[code] = sid;
+
+            await using var upsertProf = new NpgsqlCommand(@"
+                INSERT INTO student_profiles (student_code, user_id, enrollment_year, created_at)
+                VALUES (@c, @uid, 2023, now())
+                ON CONFLICT (student_code) DO UPDATE SET user_id = EXCLUDED.user_id", conn);
+            upsertProf.Parameters.AddWithValue("c", code);
+            upsertProf.Parameters.AddWithValue("uid", sid);
+            await upsertProf.ExecuteNonQueryAsync();
+        }
+
+        // Lecturer
+        var lecturerId = Guid.NewGuid();
+        await using var chkLec = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE LOWER(\"Email\") = 'lecturer@pace.edu.vn' LIMIT 1", conn);
+        var exLec = await chkLec.ExecuteScalarAsync();
+        if (exLec != null && exLec != DBNull.Value)
+        {
+            lecturerId = (Guid)exLec;
+        }
+
+        // 2. Courses & Classes
+        var courseData = new[]
+        {
+            ("PRN231", "Building Cross-Platform Web Applications with .NET", "SE1701"),
+            ("PRM392", "Mobile Programming (Android & Flutter)", "SE1703")
+        };
+
+        var classIds = new Dictionary<string, Guid>();
+        var courseIds = new Dictionary<string, Guid>();
+
+        foreach (var (code, name, clName) in courseData)
+        {
+            var cid = Guid.NewGuid();
+            await using var cCmd = new NpgsqlCommand("SELECT \"Id\" FROM courses WHERE \"Code\" = @c LIMIT 1", conn);
+            cCmd.Parameters.AddWithValue("c", code);
+            var exC = await cCmd.ExecuteScalarAsync();
+            if (exC != null && exC != DBNull.Value) cid = (Guid)exC;
+            else
+            {
+                await using var insC = new NpgsqlCommand(@"
+                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""credits"", ""Semester"")
+                    VALUES (@id, @c, @n, 3, 'FA26')", conn);
+                insC.Parameters.AddWithValue("id", cid);
+                insC.Parameters.AddWithValue("c", code);
+                insC.Parameters.AddWithValue("n", name);
+                await insC.ExecuteNonQueryAsync();
+            }
+            courseIds[code] = cid;
+
+            var clid = Guid.NewGuid();
+            await using var clCmd = new NpgsqlCommand("SELECT id FROM classes WHERE name = @cln LIMIT 1", conn);
+            clCmd.Parameters.AddWithValue("cln", clName);
+            var exCl = await clCmd.ExecuteScalarAsync();
+            if (exCl != null && exCl != DBNull.Value)
+            {
+                clid = (Guid)exCl;
+                await using var updCl = new NpgsqlCommand("UPDATE classes SET lecturer_id = @lid, course_id = @cid WHERE id = @id", conn);
+                updCl.Parameters.AddWithValue("lid", lecturerId);
+                updCl.Parameters.AddWithValue("cid", cid);
+                updCl.Parameters.AddWithValue("id", clid);
+                await updCl.ExecuteNonQueryAsync();
+            }
+            else
+            {
+                await using var insCl = new NpgsqlCommand(@"
+                    INSERT INTO classes (id, course_id, lecturer_id, name, start_date, actual_start_date, end_date)
+                    VALUES (@id, @cid, @lid, @name, '2026-09-01', '2026-09-01', '2026-12-31')", conn);
+                insCl.Parameters.AddWithValue("id", clid);
+                insCl.Parameters.AddWithValue("cid", cid);
+                insCl.Parameters.AddWithValue("lid", lecturerId);
+                insCl.Parameters.AddWithValue("name", clName);
+                await insCl.ExecuteNonQueryAsync();
+            }
+            classIds[clName] = clid;
+        }
+
+        // Enroll students
+        // SE1701: SE170001, SE170002, SE170003, SE170004, SE170005
+        foreach (var sc in new[] { "SE170001", "SE170002", "SE170003", "SE170004", "SE170005" })
+        {
+            await using var enCmd = new NpgsqlCommand(@"
+                INSERT INTO student_classes (student_code, class_id, status)
+                VALUES (@sc, @clid, 1)
+                ON CONFLICT (student_code, class_id) DO UPDATE SET status = 1", conn);
+            enCmd.Parameters.AddWithValue("sc", sc);
+            enCmd.Parameters.AddWithValue("clid", classIds["SE1701"]);
+            await enCmd.ExecuteNonQueryAsync();
+        }
+
+        // SE1703: SE170006, SE170007, SE170008
+        foreach (var sc in new[] { "SE170006", "SE170007", "SE170008" })
+        {
+            await using var enCmd = new NpgsqlCommand(@"
+                INSERT INTO student_classes (student_code, class_id, status)
+                VALUES (@sc, @clid, 1)
+                ON CONFLICT (student_code, class_id) DO UPDATE SET status = 1", conn);
+            enCmd.Parameters.AddWithValue("sc", sc);
+            enCmd.Parameters.AddWithValue("clid", classIds["SE1703"]);
+            await enCmd.ExecuteNonQueryAsync();
+        }
+
+        // 3. Milestones
+        // SE1701: GroupRegistration OPEN (deadline in 7 days)
+        await using var msCmd1 = new NpgsqlCommand(@"
+            INSERT INTO milestones (id, class_id, type, title, description, deadline, is_locked, order_index, created_at)
+            VALUES 
+            (gen_random_uuid(), @cl1, 0, 'Đăng ký nhóm đồ án', 'Thời hạn sinh viên tự lập nhóm và mời thành viên.', now() + interval '7 days', false, 1, now()),
+            (gen_random_uuid(), @cl1, 1, 'Nộp đề xuất đề tài', 'Thời hạn nhóm chốt đề tài mẫu hoặc đề xuất mới.', now() + interval '14 days', false, 2, now()),
+            (gen_random_uuid(), @cl1, 3, 'Nộp báo cáo cuối kỳ', 'Hạn nộp source code và tài liệu đồ án.', now() + interval '45 days', false, 3, now())
+            ON CONFLICT DO NOTHING;", conn);
+        msCmd1.Parameters.AddWithValue("cl1", classIds["SE1701"]);
+        await msCmd1.ExecuteNonQueryAsync();
+
+        // SE1703: GroupRegistration LOCKED (deadline passed)
+        await using var msCmd2 = new NpgsqlCommand(@"
+            INSERT INTO milestones (id, class_id, type, title, description, deadline, is_locked, order_index, created_at)
+            VALUES 
+            (gen_random_uuid(), @cl2, 0, 'Đăng ký nhóm đồ án', 'Hạn chốt lập nhóm (Đã khóa).', now() - interval '2 days', true, 1, now()),
+            (gen_random_uuid(), @cl2, 1, 'Nộp đề xuất đề tài', 'Hạn nộp đề tài đồ án.', now() + interval '5 days', false, 2, now())
+            ON CONFLICT DO NOTHING;", conn);
+        msCmd2.Parameters.AddWithValue("cl2", classIds["SE1703"]);
+        await msCmd2.ExecuteNonQueryAsync();
+
+        // 4. Sample Course Topics (Kho đề tài mẫu)
+        var topicsData = new[]
+        {
+            (courseIds["PRN231"], "Hệ thống Quản lý và Đánh giá Khóa học (PACE 2.0)", "Nền tảng hỗ trợ giảng viên đánh giá đồ án, phân tích commit Git và tổ chức phiên thi vấn đáp trực tuyến.", ".NET 9 Web API, Next.js 14, PostgreSQL, Docker", 1),
+            (courseIds["PRN231"], "Nền tảng E-Learning và Thi trắc nghiệm trực tuyến", "Hệ thống quản lý khóa học online, tạo ngân hàng đề thi và chống gian lận trong thi trực tuyến.", "ASP.NET Core, React, SQL Server / Postgres", 2),
+            (courseIds["PRN231"], "Hệ thống Quản lý Ký túc xá Đại học thông minh", "Quản lý phòng ở sinh viên, tự động tính tiền điện nước, xuất hóa đơn và thanh toán qua QR Code.", "Blazor / .NET API, TailwindCSS, PostgreSQL", 1),
+            (courseIds["PRN231"], "Cổng thông tin Việc làm và Tuyển dụng sinh viên FPT", "Kết nối sinh viên với các doanh nghiệp đối tác, hỗ trợ nộp CV và phỏng vấn trực tuyến.", "C# .NET, React, Redis, Azure Blob Storage", 2),
+            (courseIds["PRM392"], "Ứng dụng điểm danh và quản lý học tập Smart Campus", "Ứng dụng di động quét mã QR động để điểm danh lớp học, xem thời khóa biểu và điểm số.", "Flutter, Dart, Firebase, .NET Web API", 1),
+            (courseIds["PRM392"], "Ứng dụng theo dõi sức khỏe và luyện tập thể thao", "Theo dõi bước chân, nhịp tim, gợi ý thực đơn và bài tập cho sinh viên hàng ngày.", "React Native / Kotlin, GraphQL, PostgreSQL", 2)
+        };
+
+        foreach (var (cid, title, desc, reqs, maxGrp) in topicsData)
+        {
+            await using var insTop = new NpgsqlCommand(@"
+                INSERT INTO course_topics (id, course_id, title, description, requirements, max_groups, is_active, created_at)
+                VALUES (gen_random_uuid(), @cid, @title, @desc, @reqs, @maxGrp, true, now())
+                ON CONFLICT DO NOTHING;", conn);
+            insTop.Parameters.AddWithValue("cid", cid);
+            insTop.Parameters.AddWithValue("title", title);
+            insTop.Parameters.AddWithValue("desc", desc);
+            insTop.Parameters.AddWithValue("reqs", reqs);
+            insTop.Parameters.AddWithValue("maxGrp", maxGrp);
+            await insTop.ExecuteNonQueryAsync();
+        }
+
+        // 5. Clean up duplicate / orphaned test groups in SE1701 to keep clean data
+        await using var cleanGroupsCmd = new NpgsqlCommand(@"
+            DELETE FROM group_change_requests WHERE group_id IN (SELECT id FROM groups WHERE class_id = @cl1 AND name NOT IN ('Nhóm 01 - PACE Core Team'));
+            DELETE FROM group_invitations WHERE group_id IN (SELECT id FROM groups WHERE class_id = @cl1 AND name NOT IN ('Nhóm 01 - PACE Core Team'));
+            DELETE FROM group_members WHERE group_id IN (SELECT id FROM groups WHERE class_id = @cl1 AND name NOT IN ('Nhóm 01 - PACE Core Team'));
+            DELETE FROM groups WHERE class_id = @cl1 AND name NOT IN ('Nhóm 01 - PACE Core Team');", conn);
+        cleanGroupsCmd.Parameters.AddWithValue("cl1", classIds["SE1701"]);
+        await cleanGroupsCmd.ExecuteNonQueryAsync();
+
+        // 6. Setup Nhóm 01 in SE1701
+        var g1Id = Guid.NewGuid();
+        await using var chkG1 = new NpgsqlCommand("SELECT id FROM groups WHERE class_id = @cl1 AND name = 'Nhóm 01 - PACE Core Team' LIMIT 1", conn);
+        chkG1.Parameters.AddWithValue("cl1", classIds["SE1701"]);
+        var exG1 = await chkG1.ExecuteScalarAsync();
+        if (exG1 != null && exG1 != DBNull.Value) g1Id = (Guid)exG1;
+        else
+        {
+            await using var insG1 = new NpgsqlCommand(@"
+                INSERT INTO groups (id, class_id, name, topic_name, created_at)
+                VALUES (@id, @cl1, 'Nhóm 01 - PACE Core Team', 'Hệ thống Quản lý và Đánh giá Khóa học (PACE 2.0)', now())", conn);
+            insG1.Parameters.AddWithValue("id", g1Id);
+            insG1.Parameters.AddWithValue("cl1", classIds["SE1701"]);
+            await insG1.ExecuteNonQueryAsync();
+        }
+
+        // Members of G1: SE170001 (Leader), SE170002 (Member)
+        await using var insGm1 = new NpgsqlCommand(@"
+            INSERT INTO group_members (group_id, student_code, role, joined_at)
+            VALUES (@gid, 'SE170001', 'Leader', now())
+            ON CONFLICT (group_id, student_code) DO UPDATE SET role = 'Leader';", conn);
+        insGm1.Parameters.AddWithValue("gid", g1Id);
+        await insGm1.ExecuteNonQueryAsync();
+
+        await using var insGm2 = new NpgsqlCommand(@"
+            INSERT INTO group_members (group_id, student_code, role, joined_at)
+            VALUES (@gid, 'SE170002', 'Member', now())
+            ON CONFLICT (group_id, student_code) DO UPDATE SET role = 'Member';", conn);
+        insGm2.Parameters.AddWithValue("gid", g1Id);
+        await insGm2.ExecuteNonQueryAsync();
+
+        // Ensure AnalysisRun and CourseProject for G1
+        var runId = Guid.NewGuid();
+        await using var chkRun = new NpgsqlCommand(@"SELECT ""Id"" FROM analysis_runs WHERE group_id = @gid LIMIT 1", conn);
+        chkRun.Parameters.AddWithValue("gid", g1Id);
+        var exRun = await chkRun.ExecuteScalarAsync();
+        if (exRun != null && exRun != DBNull.Value) runId = (Guid)exRun;
+        else
+        {
+            await using var insRun = new NpgsqlCommand(@"
+                INSERT INTO analysis_runs (""Id"", group_id, ""RepoName"", ""RepoUrl"", ""IsArchived"", ""CreatedAt"")
+                VALUES (@id, @gid, 'Hệ thống Quản lý và Đánh giá Khóa học (PACE 2.0)', 'https://github.com/HuongDS/PACE-Project_Assistance_and_Course_Evaluation', false, now())", conn);
+            insRun.Parameters.AddWithValue("id", runId);
+            insRun.Parameters.AddWithValue("gid", g1Id);
+            await insRun.ExecuteNonQueryAsync();
+        }
+
+        await using var insCp = new NpgsqlCommand(@"
+            INSERT INTO course_projects (""AnalysisRunId"", ""CourseId"", ""IsApproved"", ""Notes"", ""DecidedAt"")
+            VALUES (@rid, @cid, NULL, NULL, NULL)
+            ON CONFLICT (""AnalysisRunId"") DO UPDATE SET ""CourseId"" = EXCLUDED.""CourseId"";", conn);
+        insCp.Parameters.AddWithValue("rid", runId);
+        insCp.Parameters.AddWithValue("cid", courseIds["PRN231"]);
+        await insCp.ExecuteNonQueryAsync();
+
+        // Group Invitation: G1 invites SE170003 (status Pending)
+        await using var delOldInv = new NpgsqlCommand("DELETE FROM group_invitations WHERE group_id = @gid", conn);
+        delOldInv.Parameters.AddWithValue("gid", g1Id);
+        await delOldInv.ExecuteNonQueryAsync();
+
+        await using var insInv = new NpgsqlCommand(@"
+            INSERT INTO group_invitations (id, group_id, invited_student_code, invited_by_user_id, status, created_at)
+            VALUES (gen_random_uuid(), @gid, 'SE170003', @uid, 0, now())", conn);
+        insInv.Parameters.AddWithValue("gid", g1Id);
+        insInv.Parameters.AddWithValue("uid", studentIds["SE170001"]);
+        await insInv.ExecuteNonQueryAsync();
+
+        // Group Change Request in SE1701: Type = ChangeTopic (status Pending)
+        await using var delOldCr = new NpgsqlCommand("DELETE FROM group_change_requests WHERE group_id = @gid", conn);
+        delOldCr.Parameters.AddWithValue("gid", g1Id);
+        await delOldCr.ExecuteNonQueryAsync();
+
+        await using var insCr = new NpgsqlCommand(@"
+            INSERT INTO group_change_requests (id, group_id, created_by_user_id, title, type, status, reason, payload_json, created_at)
+            VALUES (gen_random_uuid(), @gid, @uid, 'Yêu cầu đổi đề tài đồ án', 0, 0, 'Nhóm muốn bổ sung phân hệ chấm điểm AI và đổi tên đề tài thành PACE AI Platform.', '{""newTopicName"":""PACE AI - Nền tảng Đánh giá Đồ án Tự động""}', now())", conn);
+        insCr.Parameters.AddWithValue("gid", g1Id);
+        insCr.Parameters.AddWithValue("uid", studentIds["SE170001"]);
+        await insCr.ExecuteNonQueryAsync();
+
+        // 7. Setup Nhóm 02 in SE1703
+        var g2Id = Guid.NewGuid();
+        await using var chkG2 = new NpgsqlCommand("SELECT id FROM groups WHERE class_id = @cl2 AND name = 'Nhóm 02 - Mobile Devs' LIMIT 1", conn);
+        chkG2.Parameters.AddWithValue("cl2", classIds["SE1703"]);
+        var exG2 = await chkG2.ExecuteScalarAsync();
+        if (exG2 != null && exG2 != DBNull.Value) g2Id = (Guid)exG2;
+        else
+        {
+            await using var insG2 = new NpgsqlCommand(@"
+                INSERT INTO groups (id, class_id, name, topic_name, created_at)
+                VALUES (@id, @cl2, 'Nhóm 02 - Mobile Devs', 'Ứng dụng điểm danh và quản lý học tập Smart Campus', now())", conn);
+            insG2.Parameters.AddWithValue("id", g2Id);
+            insG2.Parameters.AddWithValue("cl2", classIds["SE1703"]);
+            await insG2.ExecuteNonQueryAsync();
+        }
+
+        await using var insGm3 = new NpgsqlCommand(@"
+            INSERT INTO group_members (group_id, student_code, role, joined_at)
+            VALUES (@gid, 'SE170006', 'Leader', now())
+            ON CONFLICT (group_id, student_code) DO UPDATE SET role = 'Leader';", conn);
+        insGm3.Parameters.AddWithValue("gid", g2Id);
+        await insGm3.ExecuteNonQueryAsync();
+
+        await using var insGm4 = new NpgsqlCommand(@"
+            INSERT INTO group_members (group_id, student_code, role, joined_at)
+            VALUES (@gid, 'SE170007', 'Member', now())
+            ON CONFLICT (group_id, student_code) DO UPDATE SET role = 'Member';", conn);
+        insGm4.Parameters.AddWithValue("gid", g2Id);
+        await insGm4.ExecuteNonQueryAsync();
+
+        // Change Request in SE1703: RemoveMember (SE170007 wants to leave)
+        await using var delOldCr2 = new NpgsqlCommand("DELETE FROM group_change_requests WHERE group_id = @gid", conn);
+        delOldCr2.Parameters.AddWithValue("gid", g2Id);
+        await delOldCr2.ExecuteNonQueryAsync();
+
+        await using var insCr2 = new NpgsqlCommand(@"
+            INSERT INTO group_change_requests (id, group_id, created_by_user_id, title, type, status, reason, payload_json, created_at)
+            VALUES (gen_random_uuid(), @gid, @uid, 'Đơn xin rút khỏi nhóm đồ án', 1, 0, 'Em bị trùng lịch thực tập tại doanh nghiệp nên xin rút khỏi môn học.', '{""studentCode"":""SE170007"",""fullName"":""Ngô Bảo Ngọc""}', now())", conn);
+        insCr2.Parameters.AddWithValue("gid", g2Id);
+        insCr2.Parameters.AddWithValue("uid", studentIds["SE170007"]);
+        await insCr2.ExecuteNonQueryAsync();
+
+        _output.WriteLine("SeedGroupAndTopicWorkflowData completed successfully!");
+    }
 }

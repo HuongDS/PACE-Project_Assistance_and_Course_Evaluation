@@ -46,6 +46,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<OralQuestion> OralQuestions => Set<OralQuestion>();
     public DbSet<StudentOralSession> StudentOralSessions => Set<StudentOralSession>();
     public DbSet<StudentOralAnswer> StudentOralAnswers => Set<StudentOralAnswer>();
+    public DbSet<CourseTopic> CourseTopics => Set<CourseTopic>();
+    public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
+    public DbSet<GroupChangeRequest> GroupChangeRequests => Set<GroupChangeRequest>();
+    public DbSet<Milestone> Milestones => Set<Milestone>();
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

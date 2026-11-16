@@ -10,6 +10,7 @@ public class StudentProfile
     public User User { get; set; } = null!;
     public ICollection<StudentClass> StudentClasses { get; set; } = new List<StudentClass>();
     public ICollection<GroupMember> GroupMembers { get; set; } = new List<GroupMember>();
+    public ICollection<GroupInvitation> GroupInvitations { get; set; } = new List<GroupInvitation>();
     public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     public ICollection<StudentOralSession> OralSessions { get; set; } = new List<StudentOralSession>();
 }

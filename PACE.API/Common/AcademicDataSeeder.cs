@@ -55,6 +55,55 @@ public static class AcademicDataSeeder
                         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
                     END IF;
                 END $$;
+
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'FK_classes_users_lecturer_id'
+                    ) THEN
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'courses' AND column_name = 'LecturerId'
+                    ) THEN
+                        UPDATE classes SET lecturer_id = c.""LecturerId""
+                        FROM courses c
+                        WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                    END IF;
+
+                    -- Xóa bỏ các index, constraint và cột LecturerId, Semester khỏi bảng courses
+                    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_courses_users_LecturerId') THEN
+                        ALTER TABLE courses DROP CONSTRAINT ""FK_courses_users_LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_Code_Semester_LecturerId') THEN
+                        DROP INDEX ""IX_courses_Code_Semester_LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_LecturerId') THEN
+                        DROP INDEX ""IX_courses_LecturerId"";
+                    END IF;
+
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                        ALTER TABLE courses DROP COLUMN ""LecturerId"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'Semester') THEN
+                        ALTER TABLE courses DROP COLUMN ""Semester"";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'lecturer_id') THEN
+                        ALTER TABLE courses DROP COLUMN lecturer_id;
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'semester') THEN
+                        ALTER TABLE courses DROP COLUMN semester;
+                    END IF;
+                END $$;
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
             ");
 
             // 1. Seed Semesters
@@ -94,6 +143,7 @@ public static class AcademicDataSeeder
 
             // 2. Seed Lecturer: lecturer@pace.edu.vn
             var lecturerEmail = "lecturer@pace.edu.vn";
+            var defaultHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
             var lecturer = await db.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == lecturerEmail);
             if (lecturer == null)
             {
@@ -103,6 +153,7 @@ public static class AcademicDataSeeder
                     Email = lecturerEmail,
                     FullName = "Thầy Nguyễn Văn Giảng",
                     Role = UserRole.Lecturer,
+                    PasswordHash = defaultHash,
                     CreatedAt = DateTime.UtcNow
                 };
                 db.Users.Add(lecturer);
@@ -122,7 +173,25 @@ public static class AcademicDataSeeder
                     lecturer.FullName = "Thầy Nguyễn Văn Giảng";
                     updated = true;
                 }
+                if (string.IsNullOrWhiteSpace(lecturer.PasswordHash))
+                {
+                    lecturer.PasswordHash = defaultHash;
+                    updated = true;
+                }
                 if (updated) await db.SaveChangesAsync();
+            }
+
+            var existingLecProfile = await db.LecturerProfiles.FirstOrDefaultAsync(lp => lp.LecturerCode == "GV001");
+            if (existingLecProfile == null)
+            {
+                db.LecturerProfiles.Add(new LecturerProfile
+                {
+                    LecturerCode = "GV001",
+                    UserId = lecturer.Id,
+                    AcademicTitle = "Thạc sĩ / Giảng viên",
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
             }
 
             // 3. Seed Courses
@@ -144,9 +213,7 @@ public static class AcademicDataSeeder
                         Id = Guid.NewGuid(),
                         Code = code,
                         Name = name,
-                        Credits = credits,
-                        Semester = "Fall 2026",
-                        LecturerId = lecturer.Id
+                        Credits = credits
                     };
                     db.Courses.Add(course);
                     await db.SaveChangesAsync();
@@ -176,6 +243,7 @@ public static class AcademicDataSeeder
                         Name = className,
                         CourseId = c.Id,
                         SemesterId = fall2026.Id,
+                        LecturerId = lecturer.Id,
                         StartDate = start,
                         ActualStartDate = start,
                         EndDate = end
@@ -192,7 +260,7 @@ public static class AcademicDataSeeder
             {
                 var sampleStudents = new[]
                 {
-                    ("SE170001", "Nguyễn Văn An", "an_se170001@fpt.edu.vn"),
+                    ("SE170001", "Nguyễn Văn Sinh Viên", "student@pace.edu.vn"),
                     ("SE170002", "Trần Thị Bình", "binh_se170002@fpt.edu.vn"),
                     ("SE170003", "Lê Hoàng Cường", "cuong_se170003@fpt.edu.vn"),
                     ("SE170004", "Phạm Minh Dũng", "dung_se170004@fpt.edu.vn"),
@@ -214,6 +282,7 @@ public static class AcademicDataSeeder
                             Email = email,
                             FullName = fullName,
                             Role = UserRole.Student,
+                            PasswordHash = defaultHash,
                             CreatedAt = DateTime.UtcNow
                         };
                         db.Users.Add(u);
@@ -224,7 +293,27 @@ public static class AcademicDataSeeder
                         bool updated = false;
                         if (string.IsNullOrEmpty(u.StudentCode)) { u.StudentCode = code; updated = true; }
                         if (string.IsNullOrEmpty(u.FullName) || u.FullName == code) { u.FullName = fullName; updated = true; }
+                        if (string.IsNullOrWhiteSpace(u.PasswordHash)) { u.PasswordHash = defaultHash; updated = true; }
+                        if (code == "SE170001" && (u.Email.ToLower() != "student@pace.edu.vn" || u.FullName != "Nguyễn Văn Sinh Viên"))
+                        {
+                            u.Email = "student@pace.edu.vn";
+                            u.FullName = "Nguyễn Văn Sinh Viên";
+                            updated = true;
+                        }
                         if (updated) await db.SaveChangesAsync();
+                    }
+
+                    var stuProf = await db.StudentProfiles.FirstOrDefaultAsync(sp => sp.StudentCode == code);
+                    if (stuProf == null)
+                    {
+                        db.StudentProfiles.Add(new StudentProfile
+                        {
+                            StudentCode = code,
+                            UserId = u.Id,
+                            EnrollmentYear = 2026,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                        await db.SaveChangesAsync();
                     }
                 }
 

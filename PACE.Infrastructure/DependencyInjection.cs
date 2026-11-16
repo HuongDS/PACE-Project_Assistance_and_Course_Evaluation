@@ -23,9 +23,12 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<AppDbContext>(opt =>
+        {
             opt.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
-                npg => npg.EnableRetryOnFailure(3)));
+                npg => npg.EnableRetryOnFailure(3));
+            opt.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        });
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));

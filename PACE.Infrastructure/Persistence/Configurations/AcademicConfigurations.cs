@@ -30,6 +30,7 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
         e.Property(x => x.Id).HasColumnName("id");
         e.Property(x => x.CourseId).HasColumnName("course_id").IsRequired();
         e.Property(x => x.SemesterId).HasColumnName("semester_id");
+        e.Property(x => x.LecturerId).HasColumnName("lecturer_id");
         e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100);
         e.Property(x => x.StartDate).HasColumnName("start_date").IsRequired();
         e.Property(x => x.ActualStartDate).HasColumnName("actual_start_date").IsRequired();
@@ -44,6 +45,13 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
             .WithMany(s => s.Classes)
             .HasForeignKey(x => x.SemesterId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        e.HasOne(x => x.Lecturer)
+            .WithMany()
+            .HasForeignKey(x => x.LecturerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        e.HasIndex(x => new { x.CourseId, x.SemesterId, x.Name }).IsUnique();
     }
 }
 

@@ -13,5 +13,7 @@ public interface ISemesterService
     Task<SemesterDto> CreateAsync(CreateSemesterRequest request, CancellationToken ct = default);
 
     Task<SemesterDto> UpdateAsync(Guid id, UpdateSemesterRequest request, CancellationToken ct = default);
+
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
 }
 

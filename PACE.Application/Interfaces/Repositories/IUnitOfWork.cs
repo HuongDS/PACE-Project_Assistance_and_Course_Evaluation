@@ -17,6 +17,11 @@ public interface IUnitOfWork
     IClassRepository Classes { get; }
     ISemesterRepository Semesters { get; }
     ICourseRepository Courses { get; }
+    IGroupRepository Groups { get; }
+    ITimetableRepository Timetables { get; }
+    IAttendanceRepository Attendances { get; }
+    IProfileRepository Profiles { get; }
+    IOralPracticeRepository OralPractices { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

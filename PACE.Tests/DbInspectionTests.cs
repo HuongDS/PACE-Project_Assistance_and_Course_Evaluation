@@ -127,7 +127,7 @@ public class DbInspectionTests
         {
             var repoId = (Guid)repoIdObj;
 
-            // Ensure Course exists and assigned to Lecturer
+            // Ensure Course exists
             var courseId = Guid.NewGuid();
             await using var getCourseCmd = new NpgsqlCommand("SELECT \"Id\" FROM courses LIMIT 1", conn);
             var existingCourse = await getCourseCmd.ExecuteScalarAsync();
@@ -135,20 +135,27 @@ public class DbInspectionTests
             if (existingCourse != null && existingCourse != DBNull.Value)
             {
                 courseId = (Guid)existingCourse;
-                await using var updateCourseCmd = new NpgsqlCommand("UPDATE courses SET \"LecturerId\" = @lid WHERE \"Id\" = @cid", conn);
-                updateCourseCmd.Parameters.AddWithValue("lid", lecturerUserId);
-                updateCourseCmd.Parameters.AddWithValue("cid", courseId);
-                await updateCourseCmd.ExecuteNonQueryAsync();
             }
             else
             {
                 await using var insertCourseCmd = new NpgsqlCommand(@"
-                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""Credits"", ""Semester"", ""LecturerId"")
-                    VALUES (@cid, 'PRN231', 'Building Cross-Platform Web Applications with .NET', 3, 'FA26', @lid)", conn);
+                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""Credits"")
+                    VALUES (@cid, 'PRN231', 'Building Cross-Platform Web Applications with .NET', 3)", conn);
                 insertCourseCmd.Parameters.AddWithValue("cid", courseId);
-                insertCourseCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 await insertCourseCmd.ExecuteNonQueryAsync();
             }
+
+            // Ensure lecturer_id column exists on classes
+            await using var ensureColCmd = new NpgsqlCommand(@"
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                        UPDATE classes SET lecturer_id = c.""LecturerId"" FROM courses c WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                    END IF;
+                END $$;", conn);
+            await ensureColCmd.ExecuteNonQueryAsync();
 
             // Ensure Class exists
             var classId = Guid.NewGuid();
@@ -158,30 +165,43 @@ public class DbInspectionTests
             if (existingClass != null && existingClass != DBNull.Value)
             {
                 classId = (Guid)existingClass;
-                await using var updateClassCmd = new NpgsqlCommand("UPDATE classes SET course_id = @cid, name = COALESCE(name, 'SE1701') WHERE id = @clid", conn);
+                await using var updateClassCmd = new NpgsqlCommand("UPDATE classes SET course_id = @cid, lecturer_id = @lid, name = COALESCE(name, 'SE1701') WHERE id = @clid", conn);
                 updateClassCmd.Parameters.AddWithValue("cid", courseId);
+                updateClassCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 updateClassCmd.Parameters.AddWithValue("clid", classId);
                 await updateClassCmd.ExecuteNonQueryAsync();
             }
             else
             {
                 await using var insertClassCmd = new NpgsqlCommand(@"
-                    INSERT INTO classes (id, course_id, name, start_date, actual_start_date, end_date)
-                    VALUES (@clid, @cid, 'SE1701', '2026-09-01', '2026-09-01', '2026-12-31')", conn);
+                    INSERT INTO classes (id, course_id, lecturer_id, name, start_date, actual_start_date, end_date)
+                    VALUES (@clid, @cid, @lid, 'SE1701', '2026-09-01', '2026-09-01', '2026-12-31')", conn);
                 insertClassCmd.Parameters.AddWithValue("clid", classId);
                 insertClassCmd.Parameters.AddWithValue("cid", courseId);
+                insertClassCmd.Parameters.AddWithValue("lid", lecturerUserId);
                 await insertClassCmd.ExecuteNonQueryAsync();
             }
 
-            // Ensure Group exists and points to this repo and class
-            var gid = Guid.NewGuid();
-            await using var groupCmd = new NpgsqlCommand(@"
-                INSERT INTO groups (id, class_id, name, topic_name, created_at)
-                VALUES (@gid, @clid, 'Nhóm 01', 'Hệ thống Quản lý và Đánh giá Khóa học (PACE)', now())
-                ON CONFLICT (id) DO NOTHING", conn);
-            groupCmd.Parameters.AddWithValue("gid", gid);
-            groupCmd.Parameters.AddWithValue("clid", classId);
-            await groupCmd.ExecuteNonQueryAsync();
+            // Ensure Group exists and points to this repo and class (idempotent, avoid duplicates)
+            await using var checkGroupCmd = new NpgsqlCommand("SELECT id FROM groups WHERE class_id = @clid LIMIT 1", conn);
+            checkGroupCmd.Parameters.AddWithValue("clid", classId);
+            var existingGid = await checkGroupCmd.ExecuteScalarAsync();
+            Guid gid;
+
+            if (existingGid != null && existingGid != DBNull.Value)
+            {
+                gid = (Guid)existingGid;
+            }
+            else
+            {
+                gid = Guid.NewGuid();
+                await using var groupCmd = new NpgsqlCommand(@"
+                    INSERT INTO groups (id, class_id, name, topic_name, created_at)
+                    VALUES (@gid, @clid, 'Nhóm 01', 'Hệ thống Quản lý và Đánh giá Khóa học (PACE)', now())", conn);
+                groupCmd.Parameters.AddWithValue("gid", gid);
+                groupCmd.Parameters.AddWithValue("clid", classId);
+                await groupCmd.ExecuteNonQueryAsync();
+            }
 
             await using var updRunCmd = new NpgsqlCommand(@"
                 UPDATE analysis_runs SET group_id = @gid WHERE ""Id"" = @rid", conn);
@@ -336,20 +356,34 @@ public class DbInspectionTests
                 await insC.ExecuteNonQueryAsync();
             }
 
+            // Ensure lecturer_id column exists on classes
+            await using var ensureColCmd2 = new NpgsqlCommand(@"
+                ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+                CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);", conn);
+            await ensureColCmd2.ExecuteNonQueryAsync();
+
             // Class
             var clid = Guid.NewGuid();
             await using var getClCmd = new NpgsqlCommand("SELECT id FROM classes WHERE name = @cln LIMIT 1", conn);
             getClCmd.Parameters.AddWithValue("cln", clName);
             var exCl = await getClCmd.ExecuteScalarAsync();
-            if (exCl != null && exCl != DBNull.Value) clid = (Guid)exCl;
+            if (exCl != null && exCl != DBNull.Value)
+            {
+                clid = (Guid)exCl;
+                await using var upCl = new NpgsqlCommand("UPDATE classes SET lecturer_id = @lid WHERE id = @clid", conn);
+                upCl.Parameters.AddWithValue("lid", lecturerId);
+                upCl.Parameters.AddWithValue("clid", clid);
+                await upCl.ExecuteNonQueryAsync();
+            }
             else
             {
                 await using var insCl = new NpgsqlCommand(@"
-                    INSERT INTO classes (id, course_id, semester_id, name, start_date, actual_start_date, end_date)
-                    VALUES (@clid, @cid, @sid, @name, '2026-09-01', '2026-09-01', '2026-12-31')", conn);
+                    INSERT INTO classes (id, course_id, semester_id, lecturer_id, name, start_date, actual_start_date, end_date)
+                    VALUES (@clid, @cid, @sid, @lid, @name, '2026-09-01', '2026-09-01', '2026-12-31')", conn);
                 insCl.Parameters.AddWithValue("clid", clid);
                 insCl.Parameters.AddWithValue("cid", cid);
                 insCl.Parameters.AddWithValue("sid", semesterId);
+                insCl.Parameters.AddWithValue("lid", lecturerId);
                 insCl.Parameters.AddWithValue("name", clName);
                 await insCl.ExecuteNonQueryAsync();
             }
@@ -645,5 +679,333 @@ public class DbInspectionTests
         }
 
         Assert.NotNull(sessions);
+    }
+
+    [Fact]
+    public async Task MigrateAndDropLecturerIdFromCourses()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .Build();
+
+        var connStr = config.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        // 1. Đồng bộ __EFMigrationsHistory cho các migration cũ đã có trong schema
+        await using var syncHistoryCmd = new NpgsqlCommand(@"
+            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") VALUES
+            ('20261013125910_InitialCreate', '9.0.4'),
+            ('20261013134643_AddSourceCodeAndDataFlow', '9.0.4'),
+            ('20261014091624_UpdateStudentSubmissionSchema', '9.0.4'),
+            ('20261014164311_AddAnalysisRunBusinessTemplate', '9.0.4'),
+            ('20261017144245_AddCreatedAtToStudentSubmission', '9.0.4'),
+            ('20261017173036_TeachingWorkflows', '9.0.4'),
+            ('20261017174201_AnalysisProvenance', '9.0.4'),
+            ('20261114121657_AddOralExamToAssessmentSessions', '9.0.4')
+            ON CONFLICT (""MigrationId"") DO NOTHING;", conn);
+        await syncHistoryCmd.ExecuteNonQueryAsync();
+
+        // 2. Chạy migration AddLecturerToClassAndDecoupleCourse:
+        // - Thêm lecturer_id vào classes
+        // - Copy LecturerId từ courses sang classes
+        // - Drop constraints, indexes và cột LecturerId, Semester khỏi courses
+        // - Tạo index unique mới
+        await using var migrateCmd = new NpgsqlCommand(@"
+            ALTER TABLE classes ADD COLUMN IF NOT EXISTS lecturer_id uuid;
+            CREATE INDEX IF NOT EXISTS ""IX_classes_lecturer_id"" ON classes(lecturer_id);
+            DO $$
+            DECLARE
+                user_pk_col text;
+            BEGIN
+                SELECT column_name INTO user_pk_col
+                FROM information_schema.columns
+                WHERE table_name = 'users' AND column_name IN ('Id', 'id')
+                LIMIT 1;
+
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_classes_users_lecturer_id') THEN
+                    IF user_pk_col = 'Id' THEN
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(""Id"") ON DELETE SET NULL;
+                    ELSE
+                        ALTER TABLE classes
+                        ADD CONSTRAINT ""FK_classes_users_lecturer_id""
+                        FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE SET NULL;
+                    END IF;
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name = 'courses' AND column_name = 'LecturerId'
+                ) THEN
+                    UPDATE classes SET lecturer_id = c.""LecturerId""
+                    FROM courses c
+                    WHERE classes.course_id = c.""Id"" AND classes.lecturer_id IS NULL;
+                END IF;
+            END $$;
+
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_courses_users_LecturerId') THEN
+                    ALTER TABLE courses DROP CONSTRAINT ""FK_courses_users_LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_Code_Semester_LecturerId') THEN
+                    DROP INDEX ""IX_courses_Code_Semester_LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_courses_LecturerId') THEN
+                    DROP INDEX ""IX_courses_LecturerId"";
+                END IF;
+
+                -- Xóa hoàn toàn cột LecturerId và Semester khỏi bảng courses
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'LecturerId') THEN
+                    ALTER TABLE courses DROP COLUMN ""LecturerId"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'Semester') THEN
+                    ALTER TABLE courses DROP COLUMN ""Semester"";
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'lecturer_id') THEN
+                    ALTER TABLE courses DROP COLUMN lecturer_id;
+                END IF;
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'courses' AND column_name = 'semester') THEN
+                    ALTER TABLE courses DROP COLUMN semester;
+                END IF;
+            END $$;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_classes_course_id_semester_id_name') THEN
+                    CREATE UNIQUE INDEX ""IX_classes_course_id_semester_id_name"" ON classes(course_id, semester_id, name);
+                END IF;
+            END $$;
+
+            INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"")
+            VALUES ('20261115163000_AddLecturerToClassAndDecoupleCourse', '9.0.4')
+            ON CONFLICT (""MigrationId"") DO NOTHING;", conn);
+        await migrateCmd.ExecuteNonQueryAsync();
+
+        // 3. Kiểm tra các cột thực tế của bảng courses trong database
+        await using var checkColsCmd = new NpgsqlCommand(@"
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'courses'
+            ORDER BY ordinal_position;", conn);
+        await using var reader = await checkColsCmd.ExecuteReaderAsync();
+        var columns = new List<string>();
+        _output.WriteLine("=== REAL DATABASE COLUMNS IN 'courses' TABLE ===");
+        while (await reader.ReadAsync())
+        {
+            var colName = reader.GetString(0);
+            var colType = reader.GetString(1);
+            columns.Add(colName);
+            _output.WriteLine($"- {colName} ({colType})");
+        }
+
+        // 4. Assertions
+        Assert.DoesNotContain("LecturerId", columns, StringComparer.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Semester", columns, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(columns, c => string.Equals(c, "Code", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(columns, c => string.Equals(c, "Name", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task SeedAccountsForLecturerAdminAndStudent()
+    {
+        var config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .Build();
+
+        var connStr = config.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        const string rawPassword = "PacePassword#2026";
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
+
+        // ==========================================
+        // 1. ADMIN ACCOUNT: admin@pace.edu.vn / manager
+        // ==========================================
+        var adminId = Guid.NewGuid();
+        await using var findAdminCmd = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE LOWER(\"Email\") = 'admin@pace.edu.vn' LIMIT 1", conn);
+        var existingAdminId = await findAdminCmd.ExecuteScalarAsync();
+
+        if (existingAdminId != null && existingAdminId != DBNull.Value)
+        {
+            adminId = (Guid)existingAdminId;
+            await using var updAdminCmd = new NpgsqlCommand(@"
+                UPDATE users 
+                SET ""Role"" = 'Admin', 
+                    ""full_name"" = 'Quản trị viên Hệ thống', 
+                    ""password_hash"" = @hash
+                WHERE ""Id"" = @id", conn);
+            updAdminCmd.Parameters.AddWithValue("hash", passwordHash);
+            updAdminCmd.Parameters.AddWithValue("id", adminId);
+            await updAdminCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Admin] Updated existing user {adminId} (admin@pace.edu.vn)");
+        }
+        else
+        {
+            await using var insAdminCmd = new NpgsqlCommand(@"
+                INSERT INTO users (""Id"", ""Email"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
+                VALUES (@id, 'admin@pace.edu.vn', 'Quản trị viên Hệ thống', 'Admin', @hash, now())", conn);
+            insAdminCmd.Parameters.AddWithValue("id", adminId);
+            insAdminCmd.Parameters.AddWithValue("hash", passwordHash);
+            await insAdminCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Admin] Created new admin user {adminId}");
+        }
+
+        // Cập nhật thêm nếu còn user 'manager' độc lập
+        await using var updManagerCmd = new NpgsqlCommand(@"
+            UPDATE users SET ""password_hash"" = @hash, ""Role"" = 'Admin' 
+            WHERE LOWER(""Email"") = 'manager'", conn);
+        updManagerCmd.Parameters.AddWithValue("hash", passwordHash);
+        await updManagerCmd.ExecuteNonQueryAsync();
+        await updManagerCmd.ExecuteNonQueryAsync();
+
+        // ==========================================
+        // 2. LECTURER ACCOUNT: lecturer@pace.edu.vn
+        // ==========================================
+        var lecturerId = Guid.NewGuid();
+        await using var findLecCmd = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE LOWER(\"Email\") = 'lecturer@pace.edu.vn' LIMIT 1", conn);
+        var existingLecId = await findLecCmd.ExecuteScalarAsync();
+
+        if (existingLecId != null && existingLecId != DBNull.Value)
+        {
+            lecturerId = (Guid)existingLecId;
+            await using var updLecCmd = new NpgsqlCommand(@"
+                UPDATE users 
+                SET ""Role"" = 'Lecturer', 
+                    ""full_name"" = 'Thầy Nguyễn Văn Giảng', 
+                    ""password_hash"" = @hash 
+                WHERE ""Id"" = @id", conn);
+            updLecCmd.Parameters.AddWithValue("hash", passwordHash);
+            updLecCmd.Parameters.AddWithValue("id", lecturerId);
+            await updLecCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Lecturer] Updated existing lecturer user {lecturerId}");
+        }
+        else
+        {
+            await using var insLecCmd = new NpgsqlCommand(@"
+                INSERT INTO users (""Id"", ""Email"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
+                VALUES (@id, 'lecturer@pace.edu.vn', 'Thầy Nguyễn Văn Giảng', 'Lecturer', @hash, now())", conn);
+            insLecCmd.Parameters.AddWithValue("id", lecturerId);
+            insLecCmd.Parameters.AddWithValue("hash", passwordHash);
+            await insLecCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Lecturer] Created new lecturer user {lecturerId}");
+        }
+
+        // Upsert lecturer_profiles (GV001)
+        await using var upsertLecProf = new NpgsqlCommand(@"
+            INSERT INTO lecturer_profiles (lecturer_code, user_id, academic_title, created_at)
+            VALUES ('GV001', @uid, 'Thạc sĩ / Giảng viên', now())
+            ON CONFLICT (lecturer_code) DO UPDATE 
+            SET user_id = EXCLUDED.user_id, academic_title = EXCLUDED.academic_title", conn);
+        upsertLecProf.Parameters.AddWithValue("uid", lecturerId);
+        await upsertLecProf.ExecuteNonQueryAsync();
+        _output.WriteLine("[Lecturer] Upserted lecturer_profile GV001");
+
+        // Gán giảng viên vào các lớp giảng dạy (SE1703, SE1704, SE1701, SE1702 nếu có)
+        await using var assignLecClass = new NpgsqlCommand(@"
+            UPDATE classes 
+            SET lecturer_id = @lid 
+            WHERE name IN ('SE1701', 'SE1702', 'SE1703', 'SE1704')", conn);
+        assignLecClass.Parameters.AddWithValue("lid", lecturerId);
+        var classesUpdated = await assignLecClass.ExecuteNonQueryAsync();
+        _output.WriteLine($"[Lecturer] Assigned lecturer to {classesUpdated} classes");
+
+        // ==========================================
+        // 3. STUDENT ACCOUNT: student@pace.edu.vn / SE170001
+        // ==========================================
+        var studentId = Guid.NewGuid();
+        await using var findStuCmd = new NpgsqlCommand(@"
+            SELECT ""Id"" FROM users 
+            WHERE LOWER(""Email"") = 'student@pace.edu.vn' OR ""StudentCode"" = 'SE170001' 
+            LIMIT 1", conn);
+        var existingStuId = await findStuCmd.ExecuteScalarAsync();
+
+        if (existingStuId != null && existingStuId != DBNull.Value)
+        {
+            studentId = (Guid)existingStuId;
+            await using var updStuCmd = new NpgsqlCommand(@"
+                UPDATE users 
+                SET ""Role"" = 'Student', 
+                    ""StudentCode"" = 'SE170001',
+                    ""Email"" = 'student@pace.edu.vn',
+                    ""full_name"" = 'Nguyễn Văn Sinh Viên', 
+                    ""password_hash"" = @hash 
+                WHERE ""Id"" = @id", conn);
+            updStuCmd.Parameters.AddWithValue("hash", passwordHash);
+            updStuCmd.Parameters.AddWithValue("id", studentId);
+            await updStuCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Student] Updated existing student user {studentId}");
+        }
+        else
+        {
+            await using var insStuCmd = new NpgsqlCommand(@"
+                INSERT INTO users (""Id"", ""Email"", ""StudentCode"", ""full_name"", ""Role"", ""password_hash"", ""CreatedAt"")
+                VALUES (@id, 'student@pace.edu.vn', 'SE170001', 'Nguyễn Văn Sinh Viên', 'Student', @hash, now())", conn);
+            insStuCmd.Parameters.AddWithValue("id", studentId);
+            insStuCmd.Parameters.AddWithValue("hash", passwordHash);
+            await insStuCmd.ExecuteNonQueryAsync();
+            _output.WriteLine($"[Student] Created new student user {studentId}");
+        }
+
+        // Upsert student_profiles (SE170001)
+        await using var upsertStuProf = new NpgsqlCommand(@"
+            INSERT INTO student_profiles (student_code, user_id, enrollment_year, created_at)
+            VALUES ('SE170001', @uid, 2026, now())
+            ON CONFLICT (student_code) DO UPDATE 
+            SET user_id = EXCLUDED.user_id, enrollment_year = 2026", conn);
+        upsertStuProf.Parameters.AddWithValue("uid", studentId);
+        await upsertStuProf.ExecuteNonQueryAsync();
+        _output.WriteLine("[Student] Upserted student_profile SE170001");
+
+        // Gán student SE170001 vào lớp SE1703 và SE1701
+        await using var enrollStuCmd = new NpgsqlCommand(@"
+            INSERT INTO student_classes (student_code, class_id, status)
+            SELECT 'SE170001', id, 1
+            FROM classes
+            WHERE name IN ('SE1701', 'SE1703')
+            ON CONFLICT (student_code, class_id) DO NOTHING", conn);
+        var enrolledCount = await enrollStuCmd.ExecuteNonQueryAsync();
+        _output.WriteLine($"[Student] Enrolled SE170001 into classes: {enrolledCount} rows affected");
+
+        // ==========================================
+        // 4. VERIFY LOGIN INTEGRITY FOR ALL 3 ACCOUNTS
+        // ==========================================
+        var accountsToCheck = new[]
+        {
+            ("Admin", "admin@pace.edu.vn"),
+            ("Lecturer", "lecturer@pace.edu.vn"),
+            ("Student", "student@pace.edu.vn")
+        };
+
+        foreach (var (expectedRole, email) in accountsToCheck)
+        {
+            await using var verifyCmd = new NpgsqlCommand(@"
+                SELECT ""Id"", ""Role"", ""password_hash"", ""full_name"" 
+                FROM users 
+                WHERE LOWER(""Email"") = @e", conn);
+            verifyCmd.Parameters.AddWithValue("e", email);
+            await using var reader = await verifyCmd.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync(), $"Account {email} must exist in users table");
+
+            var roleStr = reader.GetString(1);
+            var storedHash = reader.GetString(2);
+            var name = reader.GetString(3);
+
+            Assert.Equal(expectedRole, roleStr);
+            Assert.True(BCrypt.Net.BCrypt.Verify(rawPassword, storedHash), $"Password verify failed for {email}");
+            _output.WriteLine($"[VERIFIED] {expectedRole} ({email}) - Name: {name} - PasswordHash matches '{rawPassword}'");
+        }
     }
 }

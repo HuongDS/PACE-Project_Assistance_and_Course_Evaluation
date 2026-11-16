@@ -91,6 +91,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("oral_exam_id");
 
+                    b.Property<string>("OralQuestionsJson")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
@@ -292,6 +295,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("end_date");
 
+                    b.Property<Guid?>("LecturerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lecturer_id");
+
                     b.Property<string>("Name")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -307,9 +314,12 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("LecturerId");
 
                     b.HasIndex("SemesterId");
+
+                    b.HasIndex("CourseId", "SemesterId", "Name")
+                        .IsUnique();
 
                     b.ToTable("classes", (string)null);
                 });
@@ -439,24 +449,14 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(3)
                         .HasColumnName("credits");
 
-                    b.Property<Guid>("LecturerId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<string>("Semester")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("LecturerId");
-
-                    b.HasIndex("Code", "Semester", "LecturerId")
+                    b.HasIndex("Code")
                         .IsUnique();
 
                     b.ToTable("courses", (string)null);
@@ -632,6 +632,50 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasIndex("StudentCode");
 
                     b.ToTable("group_members", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupTopicSubmission", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("GroupId", "Version");
+
+                    b.ToTable("group_topic_submissions", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>
@@ -866,6 +910,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("EvaluatorId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("OralEvidenceJson")
+                        .HasColumnType("text");
 
                     b.HasKey("SessionId", "StudentId");
 
@@ -1290,12 +1337,19 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PACE.Domain.Entities.User", "Lecturer")
+                        .WithMany()
+                        .HasForeignKey("LecturerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PACE.Domain.Entities.Semester", "Semester")
                         .WithMany("Classes")
                         .HasForeignKey("SemesterId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Course");
+
+                    b.Navigation("Lecturer");
 
                     b.Navigation("Semester");
                 });
@@ -1375,17 +1429,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Schedule");
 
                     b.Navigation("TimeSlot");
-                });
-
-            modelBuilder.Entity("PACE.Domain.Entities.Course", b =>
-                {
-                    b.HasOne("PACE.Domain.Entities.User", "Lecturer")
-                        .WithMany()
-                        .HasForeignKey("LecturerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Lecturer");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.CourseProject", b =>
@@ -1473,6 +1516,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("StudentProfile");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.GroupTopicSubmission", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.LecturerProfile", b =>

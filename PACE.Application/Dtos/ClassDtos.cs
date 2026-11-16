@@ -88,7 +88,24 @@ public class CreateClassRequest
     public Guid CourseId { get; set; }
 
     public Guid? SemesterId { get; set; }
+    public Guid? LecturerId { get; set; }
 
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? ActualStartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+}
+
+public class UpdateClassRequest
+{
+    [Required(ErrorMessage = "Tên lớp học không được để trống.")]
+    [MaxLength(100, ErrorMessage = "Tên lớp học tối đa 100 ký tự.")]
+    public string Name { get; set; } = null!;
+
+    [Required(ErrorMessage = "Mã môn học (CourseId) không được để trống.")]
+    public Guid CourseId { get; set; }
+
+    public Guid? SemesterId { get; set; }
+    public Guid? LecturerId { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? ActualStartDate { get; set; }
     public DateOnly? EndDate { get; set; }

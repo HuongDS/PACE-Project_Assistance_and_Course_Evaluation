@@ -42,12 +42,28 @@ public class TeachingAccess(AppDbContext db, ICurrentUserService current)
             .Include(r => r.Group)
                 .ThenInclude(g => g!.Members)
             .Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Id == id, ct);
+            .FirstOrDefaultAsync(r => r.Id == id || r.GroupId == id, ct);
 
         var p = await db.CourseProjects
             .Include(x => x.Course)
             .Include(x => x.AnalysisRun)
-            .SingleOrDefaultAsync(x => x.AnalysisRunId == id, ct);
+            .SingleOrDefaultAsync(x => x.AnalysisRunId == id || (run != null && x.AnalysisRunId == run.Id), ct);
+
+        if (run == null && p == null)
+        {
+            var grp = await db.Groups.Include(g => g.Class).ThenInclude(c => c.Course).FirstOrDefaultAsync(g => g.Id == id, ct);
+            if (grp != null)
+            {
+                run = new AnalysisRun
+                {
+                    Id = Guid.NewGuid(),
+                    GroupId = grp.Id,
+                    RepoName = grp.TopicName ?? grp.Name,
+                    CreatedAt = DateTime.UtcNow
+                };
+                db.AnalysisRuns.Add(run);
+            }
+        }
 
         if (run == null && p == null) throw new NotFoundException("Project not assigned to a course.");
 
@@ -164,24 +180,31 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
                 isLocked = m.IsLocked,
                 orderIndex = m.OrderIndex
             }),
-        projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any())
+        projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any() || !string.IsNullOrEmpty(g.TopicName))
             ? c.Classes.SelectMany(cl => cl.Groups)
-                .SelectMany(g => g.AnalysisRuns.Select(r => new
+                .Where(g => g.AnalysisRuns.Any() || !string.IsNullOrEmpty(g.TopicName))
+                .Select(g => new
                 {
-                    id = r.Id,
-                    name = g.TopicName ?? r.RepoName ?? g.Name,
+                    id = g.AnalysisRuns.OrderByDescending(r => r.CreatedAt).Select(r => r.Id).FirstOrDefault() != Guid.Empty
+                        ? g.AnalysisRuns.OrderByDescending(r => r.CreatedAt).Select(r => r.Id).FirstOrDefault()
+                        : g.Id,
+                    name = g.TopicName ?? g.AnalysisRuns.OrderByDescending(r => r.CreatedAt).Select(r => r.RepoName).FirstOrDefault() ?? g.Name,
                     topicName = g.TopicName,
                     groupId = (Guid?)g.Id,
                     groupName = (string?)g.Name,
                     classId = (Guid?)g.ClassId,
                     className = (string?)g.Class.Name,
-                    repoUrl = r.RepoUrl,
-                    isApproved = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => (bool?)p.IsApproved).FirstOrDefault(),
-                    notes = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.Notes).FirstOrDefault(),
-                    decidedAt = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.DecidedAt).FirstOrDefault(),
-                    createdAt = (DateTime?)r.CreatedAt,
-                    students = r.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email })
-                }))
+                    repoUrl = g.AnalysisRuns.OrderByDescending(r => r.CreatedAt).Select(r => r.RepoUrl).FirstOrDefault(),
+                    isApproved = c.Projects.Where(p => g.AnalysisRuns.Select(r => r.Id).Contains(p.AnalysisRunId)).Select(p => (bool?)p.IsApproved).FirstOrDefault(),
+                    notes = c.Projects.Where(p => g.AnalysisRuns.Select(r => r.Id).Contains(p.AnalysisRunId)).Select(p => p.Notes).FirstOrDefault(),
+                    decidedAt = c.Projects.Where(p => g.AnalysisRuns.Select(r => r.Id).Contains(p.AnalysisRunId)).Select(p => p.DecidedAt).FirstOrDefault(),
+                    createdAt = g.AnalysisRuns.OrderByDescending(r => r.CreatedAt).Select(r => (DateTime?)r.CreatedAt).FirstOrDefault() ?? (DateTime?)g.CreatedAt,
+                    students = g.Members.Select(m => new
+                    {
+                        Id = m.StudentProfile != null && m.StudentProfile.User != null ? m.StudentProfile.User.Id : Guid.Empty,
+                        Email = m.StudentProfile != null && m.StudentProfile.User != null ? m.StudentProfile.User.Email : m.StudentCode
+                    })
+                })
             : c.Projects.Select(p => new
             {
                 id = p.AnalysisRunId,

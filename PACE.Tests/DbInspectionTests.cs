@@ -824,7 +824,7 @@ public class DbInspectionTests
         // 1. ADMIN ACCOUNT: admin@pace.edu.vn / manager
         // ==========================================
         var adminId = Guid.NewGuid();
-        await using var findAdminCmd = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE LOWER(\"Email\") IN ('admin@pace.edu.vn', 'manager') LIMIT 1", conn);
+        await using var findAdminCmd = new NpgsqlCommand("SELECT \"Id\" FROM users WHERE LOWER(\"Email\") = 'admin@pace.edu.vn' LIMIT 1", conn);
         var existingAdminId = await findAdminCmd.ExecuteScalarAsync();
 
         if (existingAdminId != null && existingAdminId != DBNull.Value)
@@ -834,13 +834,12 @@ public class DbInspectionTests
                 UPDATE users 
                 SET ""Role"" = 'Admin', 
                     ""full_name"" = 'Quản trị viên Hệ thống', 
-                    ""password_hash"" = @hash,
-                    ""Email"" = 'admin@pace.edu.vn'
+                    ""password_hash"" = @hash
                 WHERE ""Id"" = @id", conn);
             updAdminCmd.Parameters.AddWithValue("hash", passwordHash);
             updAdminCmd.Parameters.AddWithValue("id", adminId);
             await updAdminCmd.ExecuteNonQueryAsync();
-            _output.WriteLine($"[Admin] Updated existing user {adminId} to admin@pace.edu.vn");
+            _output.WriteLine($"[Admin] Updated existing user {adminId} (admin@pace.edu.vn)");
         }
         else
         {
@@ -858,6 +857,7 @@ public class DbInspectionTests
             UPDATE users SET ""password_hash"" = @hash, ""Role"" = 'Admin' 
             WHERE LOWER(""Email"") = 'manager'", conn);
         updManagerCmd.Parameters.AddWithValue("hash", passwordHash);
+        await updManagerCmd.ExecuteNonQueryAsync();
         await updManagerCmd.ExecuteNonQueryAsync();
 
         // ==========================================

@@ -136,25 +136,50 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
         totalGroups = c.Classes.SelectMany(cl => cl.Groups).Count() > 0
             ? c.Classes.SelectMany(cl => cl.Groups).Count()
             : c.Projects.Count,
+        classes = c.Classes.Select(cl => new
+        {
+            id = cl.Id,
+            name = cl.Name,
+            semesterId = cl.SemesterId,
+            semesterName = cl.Semester != null ? cl.Semester.Name : "",
+            studentCount = cl.StudentClasses.Count,
+            groupCount = cl.Groups.Count,
+            lecturerId = cl.LecturerId,
+            lecturerName = cl.Lecturer != null ? (cl.Lecturer.FullName ?? cl.Lecturer.Email) : ""
+        }),
         milestones = new object[0],
         projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any())
             ? c.Classes.SelectMany(cl => cl.Groups)
                 .SelectMany(g => g.AnalysisRuns.Select(r => new
                 {
                     id = r.Id,
-                    name = r.RepoName ?? g.Name,
-                    isApproved = (bool?)true,
-                    notes = (string?)null,
-                    decidedAt = (DateTime?)r.CreatedAt,
+                    name = g.TopicName ?? r.RepoName ?? g.Name,
+                    topicName = g.TopicName,
+                    groupId = (Guid?)g.Id,
+                    groupName = (string?)g.Name,
+                    classId = (Guid?)g.ClassId,
+                    className = (string?)g.Class.Name,
+                    repoUrl = r.RepoUrl,
+                    isApproved = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => (bool?)p.IsApproved).FirstOrDefault(),
+                    notes = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.Notes).FirstOrDefault(),
+                    decidedAt = c.Projects.Where(p => p.AnalysisRunId == r.Id).Select(p => p.DecidedAt).FirstOrDefault(),
+                    createdAt = (DateTime?)r.CreatedAt,
                     students = r.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email })
                 }))
             : c.Projects.Select(p => new
             {
                 id = p.AnalysisRunId,
-                name = p.AnalysisRun.RepoName ?? "",
+                name = p.AnalysisRun.Group != null && !string.IsNullOrEmpty(p.AnalysisRun.Group.TopicName) ? p.AnalysisRun.Group.TopicName : (p.AnalysisRun.RepoName ?? ""),
+                topicName = p.AnalysisRun.Group != null ? p.AnalysisRun.Group.TopicName : (string?)null,
+                groupId = p.AnalysisRun.GroupId,
+                groupName = p.AnalysisRun.Group != null ? p.AnalysisRun.Group.Name : (string?)null,
+                classId = p.AnalysisRun.Group != null ? (Guid?)p.AnalysisRun.Group.ClassId : null,
+                className = p.AnalysisRun.Group != null ? p.AnalysisRun.Group.Class.Name : (string?)null,
+                repoUrl = p.AnalysisRun.RepoUrl,
                 isApproved = p.IsApproved,
                 notes = p.Notes,
                 decidedAt = p.DecidedAt,
+                createdAt = (DateTime?)p.AnalysisRun.CreatedAt,
                 students = p.AnalysisRun.Users.Where(u => u.Role == UserRole.Student).Select(u => new { u.Id, u.Email })
             })
     });
@@ -218,8 +243,62 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
     [HttpPost("projects/{projectId:guid}/topic-approval"), Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> Approve(Guid projectId, TopicDecision request, CancellationToken ct)
     {
-        var p = await access.Project(projectId, ct); await access.Staff(p, ct); p.IsApproved = request.IsApproved; p.Notes = request.Notes; p.DecidedAt = DateTime.UtcNow;
-        access.Audit(projectId, "TOPIC_DECIDED", request.IsApproved ? "Approved" : "Rejected"); await access.Save(ct); logger.LogInformation("Topic decision persisted for project {ProjectId}", projectId); return NoContent();
+        var p = await access.Project(projectId, ct);
+        await access.Staff(p, ct);
+
+        // Quy tắc: Nếu duyệt rồi là không được sửa, tương ứng với các đề tài bị từ chối cũng vậy
+        if (p.IsApproved.HasValue)
+        {
+            return BadRequest(new { error = "Đề tài này đã có kết quả xét duyệt (Đã duyệt hoặc Bị từ chối) và không thể thay đổi quyết định." });
+        }
+
+        p.IsApproved = request.IsApproved;
+        p.Notes = request.Notes;
+        p.DecidedAt = DateTime.UtcNow;
+
+        access.Audit(projectId, "TOPIC_DECIDED", $"{{\"decision\": \"{(request.IsApproved ? "Approved" : "Rejected")}\", \"notes\": \"{request.Notes?.Replace("\"", "\\\"")}\"}}");
+        await access.Save(ct);
+        logger.LogInformation("Topic decision persisted for project {ProjectId}", projectId);
+        return NoContent();
+    }
+
+    [HttpGet("projects/{projectId:guid}/topic-history"), Authorize(Roles = "Admin,Lecturer")]
+    public async Task<IActionResult> GetTopicHistory(Guid projectId, CancellationToken ct)
+    {
+        var p = await access.Project(projectId, ct);
+        await access.Staff(p, ct);
+
+        var events = await db.AuditEvents.AsNoTracking()
+            .Where(x => x.ResourceId == projectId)
+            .OrderByDescending(x => x.Timestamp)
+            .Select(x => new
+            {
+                id = x.Id.ToString(),
+                actorId = x.ActorId,
+                actorName = x.ActorName,
+                eventType = x.EventType,
+                details = x.Details,
+                timestamp = x.Timestamp
+            })
+            .ToListAsync(ct);
+
+        var list = events.ToList();
+
+        // Luôn đảm bảo có sự kiện đề xuất đề tài ban đầu trong lịch sử
+        if (!list.Any(x => x.eventType == "TOPIC_PROPOSED"))
+        {
+            list.Add(new
+            {
+                id = $"proposal-{projectId}",
+                actorId = Guid.Empty,
+                actorName = p.AnalysisRun?.Group?.Name ?? "Nhóm sinh viên",
+                eventType = "TOPIC_PROPOSED",
+                details = p.AnalysisRun?.Group?.TopicName ?? p.AnalysisRun?.RepoName ?? "Đề xuất đề tài ban đầu",
+                timestamp = p.AnalysisRun?.CreatedAt ?? DateTime.UtcNow.AddDays(-7)
+            });
+        }
+
+        return Ok(list.OrderByDescending(x => x.timestamp));
     }
 }
 

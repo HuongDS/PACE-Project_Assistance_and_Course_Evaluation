@@ -55,3 +55,18 @@ public class AssessmentRoundRevisionConfiguration : IEntityTypeConfiguration<Ass
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public class ClassScheduleImportConfiguration : IEntityTypeConfiguration<ClassScheduleImport>
+{
+    public const string PrimaryKey = "PK_class_schedule_imports";
+
+    public void Configure(EntityTypeBuilder<ClassScheduleImport> entity)
+    {
+        entity.ToTable("class_schedule_imports");
+        entity.HasKey(x => new { x.ClassId, x.Key }).HasName(PrimaryKey);
+        entity.Property(x => x.Key).HasMaxLength(132);
+        entity.Property(x => x.Fingerprint).HasMaxLength(72);
+        entity.Property(x => x.ResultJson).HasColumnType("jsonb");
+        entity.HasOne(x => x.Class).WithMany().HasForeignKey(x => x.ClassId);
+    }
+}

@@ -491,6 +491,30 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("class_schedules", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.ClassScheduleImport", b =>
+                {
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(132)
+                        .HasColumnType("character varying(132)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(72)
+                        .HasColumnType("character varying(72)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("ClassId", "Key")
+                        .HasName("PK_class_schedule_imports");
+
+                    b.ToTable("class_schedule_imports", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1572,6 +1596,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("Room");
 
                     b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.ClassScheduleImport", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.ClassSession", b =>

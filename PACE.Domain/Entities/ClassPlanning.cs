@@ -56,3 +56,12 @@ public class AssessmentRoundRevision
     public DateTime PublishedAt { get; set; }
     public ClassAssessmentRound Round { get; set; } = null!;
 }
+
+public class ClassScheduleImport
+{
+    public Guid ClassId { get; set; }
+    public string Key { get; set; } = null!;
+    public string Fingerprint { get; set; } = null!;
+    public string ResultJson { get; set; } = null!;
+    public Class Class { get; set; } = null!;
+}

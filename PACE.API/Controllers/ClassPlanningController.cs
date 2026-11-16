@@ -1,15 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using PACE.Application.Common.Exceptions;
 using PACE.Domain.Entities;
 using PACE.Domain.Enums;
 using PACE.Infrastructure.Excel;
 using PACE.Infrastructure.Persistence;
+using PACE.Infrastructure.Persistence.Configurations;
 
 namespace PACE.API.Controllers;
 
@@ -126,14 +129,27 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
     [HttpPost("milestones/import"), Authorize(Roles = Roles.Staff)]
     [RequestSizeLimit(UploadLimit + 65536), RequestFormLimits(MultipartBodyLengthLimit = UploadLimit)]
     public async Task<ActionResult<IReadOnlyList<ClassScheduleItemView>>> ImportSchedule(
-        Guid classId, IFormFile file, CancellationToken ct)
+        Guid classId, IFormFile file,
+        [FromHeader(Name = "Idempotency-Key"), RegularExpression("^[A-Za-z0-9._-]{1,128}$")] string? idempotencyKey,
+        CancellationToken ct)
     {
         await RequireClassAccess(classId, write: true, ct);
         if (file.Length is <= 0 or > UploadLimit)
             throw new BadRequestException("Upload a nonempty file of at most 5 MiB.");
 
         using var stream = file.OpenReadStream();
-        var rows = ClassScheduleImportReader.Read(stream, Path.GetExtension(file.FileName).ToLowerInvariant(), ct);
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (extension is not (".csv" or ".xlsx"))
+            throw new BadRequestException("Upload an .xlsx or .csv file.");
+
+        var fingerprint = extension + ":" + Convert.ToHexString(await SHA256.HashDataAsync(stream, ct));
+        var key = idempotencyKey == null ? fingerprint : "key:" + idempotencyKey;
+        var existing = await FindImport(classId, key, ct);
+        if (existing != null)
+            return ImportResponse(existing, fingerprint);
+
+        stream.Position = 0;
+        var rows = ClassScheduleImportReader.Read(stream, extension, ct);
         if (rows.Count == 0)
             throw new BadRequestException("The import must contain at least one data row.");
 
@@ -155,9 +171,32 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
             }
         }
 
+        var result = items.Select(ScheduleView).ToArray();
+        var batch = new ClassScheduleImport
+        {
+            ClassId = classId, Key = key, Fingerprint = fingerprint,
+            ResultJson = JsonSerializer.Serialize(result)
+        };
+        db.ClassScheduleImports.Add(batch);
         db.ClassMilestones.AddRange(items);
-        await access.Save(ct);
-        return StatusCode(StatusCodes.Status201Created, items.Select(ScheduleView).ToArray());
+        try
+        {
+            await access.Save(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: ClassScheduleImportConfiguration.PrimaryKey
+        })
+        {
+            // A concurrent retry committed first. EF rolled back this batch and its rows.
+            var committed = await FindImport(classId, key, ct);
+            if (committed == null)
+                throw;
+            return ImportResponse(committed, fingerprint);
+        }
+
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 
     [HttpGet("milestones/{id:guid}/assessment-rounds"), Authorize(Roles = Roles.Staff)]
@@ -305,6 +344,18 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
         db.CourseAnnouncements.Remove(await FindAnnouncement(classId, id, ct));
         await access.Save(ct);
         return NoContent();
+    }
+
+    private Task<ClassScheduleImport?> FindImport(Guid classId, string key, CancellationToken ct) =>
+        db.ClassScheduleImports.AsNoTracking().SingleOrDefaultAsync(x => x.ClassId == classId && x.Key == key, ct);
+
+    private ObjectResult ImportResponse(ClassScheduleImport batch, string fingerprint)
+    {
+        if (batch.Fingerprint != fingerprint)
+            throw new ConflictException("This idempotency key was already used for a different import file.");
+
+        return StatusCode(StatusCodes.Status201Created,
+            JsonSerializer.Deserialize<ClassScheduleItemView[]>(batch.ResultJson));
     }
 
     private async Task<User> RequireClassAccess(Guid classId, bool write, CancellationToken ct)

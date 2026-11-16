@@ -113,5 +113,18 @@ public class SemesterService(IUnitOfWork uow) : ISemesterService
         var current = await uow.Semesters.GetCurrentSemesterAsync(ct);
         return MapToDto(semester, current != null && semester.Id == current.Id);
     }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var semester = await uow.Semesters.GetByIdAsync(id, ct)
+            ?? throw new NotFoundException("Học kỳ không tồn tại.");
+
+        var hasClasses = await uow.Classes.AnyAsync(c => c.SemesterId == id, ct);
+        if (hasClasses)
+            throw new BadRequestException("Không thể xóa học kỳ đã có lớp học liên kết. Hãy xóa hoặc chuyển các lớp học sang học kỳ khác trước.");
+
+        uow.Semesters.Remove(semester);
+        await uow.SaveChangesAsync(ct);
+    }
 }
 

@@ -6,11 +6,9 @@ public class Course
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public int Credits { get; set; } = 3;
-    public string Semester { get; set; } = "";
-    public Guid LecturerId { get; set; }
-    public User Lecturer { get; set; } = null!;
     public ICollection<CourseProject> Projects { get; set; } = new List<CourseProject>();
     public ICollection<Class> Classes { get; set; } = new List<Class>();
+    public ICollection<CourseTopic> Topics { get; set; } = new List<CourseTopic>();
 }
 public class CourseProject
 {
@@ -29,12 +27,15 @@ public class AssessmentSession
     public CourseProject Project { get; set; } = null!;
     public Guid? OralExamId { get; set; }
     public OralExam? OralExam { get; set; }
+    public Guid? AssessmentRoundRevisionId { get; set; }
+    public AssessmentRoundRevision? AssessmentRoundRevision { get; set; }
     public string Title { get; set; } = "";
     public string Status { get; set; } = "CREATED";
     public DateTime ScheduledStart { get; set; }
     public DateTime ScheduledEnd { get; set; }
     public DateTime? ActualStartTime { get; set; }
     public DateTime? ActualEndTime { get; set; }
+    public string? OralQuestionsJson { get; set; }
     public string RubricJson { get; set; } = "[]";
     public Guid Version { get; set; } = Guid.NewGuid();
     public ICollection<SessionStudent> Students { get; set; } = new List<SessionStudent>();
@@ -45,6 +46,7 @@ public class SessionStudent
     public AssessmentSession Session { get; set; } = null!;
     public Guid StudentId { get; set; }
     public User Student { get; set; } = null!;
+    public string? OralEvidenceJson { get; set; }
     public string? EvaluationJson { get; set; }
     public Guid? EvaluatorId { get; set; }
     public DateTime? EvaluatedAt { get; set; }

@@ -122,5 +122,24 @@ public class ClassController(IClassService classService) : ControllerBase
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             fileName);
     }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = Roles.Staff)]
+    public async Task<ActionResult<ClassDto>> Update(
+        Guid id,
+        [FromBody] UpdateClassRequest request,
+        CancellationToken ct)
+    {
+        var result = await classService.UpdateClassAsync(id, request, ct);
+        return Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Staff)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await classService.DeleteClassAsync(id, ct);
+        return NoContent();
+    }
 }
 

@@ -30,10 +30,13 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
         e.Property(x => x.Id).HasColumnName("id");
         e.Property(x => x.CourseId).HasColumnName("course_id").IsRequired();
         e.Property(x => x.SemesterId).HasColumnName("semester_id");
+        e.Property(x => x.LecturerId).HasColumnName("lecturer_id");
         e.Property(x => x.Name).HasColumnName("name").HasMaxLength(100);
         e.Property(x => x.StartDate).HasColumnName("start_date").IsRequired();
         e.Property(x => x.ActualStartDate).HasColumnName("actual_start_date").IsRequired();
         e.Property(x => x.EndDate).HasColumnName("end_date").IsRequired();
+        e.Property(x => x.MaxGroupMembers).HasColumnName("max_group_members").HasDefaultValue(5);
+        e.Property(x => x.MinGroupMembers).HasColumnName("min_group_members").HasDefaultValue(3);
 
         e.HasOne(x => x.Course)
             .WithMany(c => c.Classes)
@@ -44,6 +47,13 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
             .WithMany(s => s.Classes)
             .HasForeignKey(x => x.SemesterId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        e.HasOne(x => x.Lecturer)
+            .WithMany()
+            .HasForeignKey(x => x.LecturerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        e.HasIndex(x => new { x.CourseId, x.SemesterId, x.Name }).IsUnique();
     }
 }
 
@@ -69,4 +79,33 @@ public class StudentClassConfiguration : IEntityTypeConfiguration<StudentClass>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
+
+public class MilestoneConfiguration : IEntityTypeConfiguration<Milestone>
+{
+    public void Configure(EntityTypeBuilder<Milestone> e)
+    {
+        e.ToTable("milestones");
+        e.HasKey(x => x.Id);
+
+        e.Property(x => x.Id).HasColumnName("id");
+        e.Property(x => x.ClassId).HasColumnName("class_id").IsRequired();
+        e.Property(x => x.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
+        e.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        e.Property(x => x.Type).HasColumnName("type").IsRequired();
+        e.Property(x => x.StartDate).HasColumnName("start_date");
+        e.Property(x => x.Deadline).HasColumnName("deadline").IsRequired();
+        e.Property(x => x.IsLocked).HasColumnName("is_locked").HasDefaultValue(false);
+        e.Property(x => x.OrderIndex).HasColumnName("order_index").HasDefaultValue(1);
+        e.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+        e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+
+        e.HasOne(x => x.Class)
+            .WithMany(c => c.Milestones)
+            .HasForeignKey(x => x.ClassId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        e.HasIndex(x => new { x.ClassId, x.Type });
+    }
+}
+
 

@@ -32,5 +32,7 @@ public interface IClassRepository : IGenericRepository<Class>
     Task<bool> RemoveStudentFromClassAsync(Guid classId, string studentCode, CancellationToken ct = default);
 
     Task<bool> ClassExistsAsync(Guid classId, CancellationToken ct = default);
+
+    Task<bool> HasOfficialAssessmentSessionsAsync(Guid classId, CancellationToken ct = default);
 }
 

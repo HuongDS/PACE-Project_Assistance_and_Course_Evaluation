@@ -210,7 +210,7 @@ public class ReportsController(AppDbContext db, TeachingAccess access) : Control
             "PACE Assessment Report",
             $"Session: {s.Id}",
             $"Title: {s.Title}",
-            $"Course: {p.Course.Code} / {p.Course.Semester}",
+            $"Course: {p.Course.Code} / {p.AnalysisRun?.Group?.Class?.Semester?.Name ?? ""}",
             $"Project: {p.AnalysisRun.RepoName}",
             $"Started (UTC): {s.ActualStartTime:O}",
             $"Completed (UTC): {s.ActualEndTime:O}",

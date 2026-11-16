@@ -67,7 +67,8 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             var grp = await Context.Groups.AsNoTracking()
                 .Include(g => g.Class)
                     .ThenInclude(c => c.Course)
-                        .ThenInclude(co => co.Lecturer)
+                .Include(g => g.Class)
+                    .ThenInclude(c => c.Lecturer)
                 .Include(g => g.Class)
                     .ThenInclude(c => c.Semester)
                 .FirstOrDefaultAsync(g => g.AnalysisRuns.Any(r => r.Id == id), ct);
@@ -84,7 +85,8 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
                     grp = await Context.Groups.AsNoTracking()
                         .Include(g => g.Class)
                             .ThenInclude(c => c.Course)
-                                .ThenInclude(co => co.Lecturer)
+                        .Include(g => g.Class)
+                            .ThenInclude(c => c.Lecturer)
                         .Include(g => g.Class)
                             .ThenInclude(c => c.Semester)
                         .FirstOrDefaultAsync(g => g.Members.Any(gm => gm.StudentProfile != null && userIds.Contains(gm.StudentProfile.UserId)), ct);
@@ -93,7 +95,6 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
 
             var cp = await Context.CourseProjects.AsNoTracking()
                 .Include(p => p.Course)
-                    .ThenInclude(c => c.Lecturer)
                 .FirstOrDefaultAsync(p => p.AnalysisRunId == id, ct);
 
             var groupName = summary.GroupName ?? grp?.Name;
@@ -102,12 +103,10 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             var className = summary.ClassName ?? grp?.Class?.Name;
 
             var lecturerName = summary.LecturerName
-                ?? (!string.IsNullOrEmpty(grp?.Class?.Course?.Lecturer?.FullName) ? grp.Class.Course.Lecturer.FullName : grp?.Class?.Course?.Lecturer?.Email)
-                ?? (!string.IsNullOrEmpty(cp?.Course?.Lecturer?.FullName) ? cp.Course.Lecturer.FullName : cp?.Course?.Lecturer?.Email);
+                ?? (!string.IsNullOrEmpty(grp?.Class?.Lecturer?.FullName) ? grp.Class.Lecturer.FullName : grp?.Class?.Lecturer?.Email);
 
             var lecturerEmail = summary.LecturerEmail
-                ?? grp?.Class?.Course?.Lecturer?.Email
-                ?? cp?.Course?.Lecturer?.Email;
+                ?? grp?.Class?.Lecturer?.Email;
 
             var courseCode = summary.CourseCode
                 ?? grp?.Class?.Course?.Code
@@ -118,9 +117,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
                 ?? cp?.Course?.Name;
 
             var semester = summary.Semester
-                ?? grp?.Class?.Course?.Semester
-                ?? grp?.Class?.Semester?.Name
-                ?? cp?.Course?.Semester;
+                ?? grp?.Class?.Semester?.Name;
 
             summary = summary with
             {
@@ -200,11 +197,11 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             r.Group != null ? r.Group.TopicName : null,
             r.Group != null ? (Guid?)r.Group.ClassId : null,
             r.Group != null && r.Group.Class != null ? r.Group.Class.Name : null,
-            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null && r.Group.Class.Course.Lecturer != null
-                ? (!string.IsNullOrEmpty(r.Group.Class.Course.Lecturer.FullName) ? r.Group.Class.Course.Lecturer.FullName : r.Group.Class.Course.Lecturer.Email)
+            r.Group != null && r.Group.Class != null && r.Group.Class.Lecturer != null
+                ? (!string.IsNullOrEmpty(r.Group.Class.Lecturer.FullName) ? r.Group.Class.Lecturer.FullName : r.Group.Class.Lecturer.Email)
                 : null,
-            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null && r.Group.Class.Course.Lecturer != null
-                ? r.Group.Class.Course.Lecturer.Email
+            r.Group != null && r.Group.Class != null && r.Group.Class.Lecturer != null
+                ? r.Group.Class.Lecturer.Email
                 : null,
             r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
                 ? r.Group.Class.Course.Code
@@ -212,9 +209,9 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
                 ? r.Group.Class.Course.Name
                 : null,
-            r.Group != null && r.Group.Class != null && r.Group.Class.Course != null
-                ? r.Group.Class.Course.Semester
-                : (r.Group != null && r.Group.Class != null && r.Group.Class.Semester != null ? r.Group.Class.Semester.Name : null)));
+            r.Group != null && r.Group.Class != null && r.Group.Class.Semester != null
+                ? r.Group.Class.Semester.Name
+                : null));
 
     public async Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default)
     {
@@ -225,9 +222,9 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
 
         return await Context.Classes
             .Where(c => c.Id == classId)
-            .AnyAsync(c => c.Course.LecturerId == lecturerUserId
-                        || (lecturerCode != null && (c.Schedules.Any(s => s.LecturerCode == lecturerCode)
-                                                 || c.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct);
+            .AnyAsync(c => c.LecturerId == lecturerUserId
+                        || (!string.IsNullOrEmpty(lecturerCode) && (c.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                                                                 || c.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct);
     }
 
     public async Task<bool> IsLecturerOfRepoClassAsync(Guid repoId, Guid lecturerUserId, CancellationToken ct = default)
@@ -239,11 +236,11 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
 
         return await Context.Groups
             .Where(g => g.AnalysisRuns.Any(r => r.Id == repoId))
-            .AnyAsync(g => g.Class.Course.LecturerId == lecturerUserId
-                        || (lecturerCode != null && (g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
-                                                 || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct)
+            .AnyAsync(g => g.Class.LecturerId == lecturerUserId
+                        || (!string.IsNullOrEmpty(lecturerCode) && (g.Class.Schedules.Any(s => s.LecturerCode == lecturerCode)
+                                                                 || g.Class.Sessions.Any(s => s.LecturerCode == lecturerCode))), ct)
             || await Context.CourseProjects
-                .AnyAsync(cp => cp.AnalysisRunId == repoId && cp.Course.LecturerId == lecturerUserId, ct);
+                .AnyAsync(cp => cp.AnalysisRunId == repoId && cp.Course.Classes.Any(cl => cl.LecturerId == lecturerUserId), ct);
     }
 
     public async Task<List<Guid>> GetLecturerClassIdsAsync(Guid lecturerUserId, CancellationToken ct = default)
@@ -268,7 +265,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             : [];
 
         var courseClassIds = await Context.Classes
-            .Where(c => c.Course.LecturerId == lecturerUserId)
+            .Where(c => c.LecturerId == lecturerUserId)
             .Select(c => c.Id)
             .ToListAsync(ct);
 

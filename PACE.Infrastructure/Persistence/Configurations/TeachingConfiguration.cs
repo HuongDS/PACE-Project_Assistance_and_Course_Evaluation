@@ -7,10 +7,9 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
     public void Configure(EntityTypeBuilder<Course> e)
     {
         e.ToTable("courses"); e.HasKey(x => x.Id);
-        e.Property(x => x.Code).HasMaxLength(40); e.Property(x => x.Name).HasMaxLength(255); e.Property(x => x.Semester).HasMaxLength(40);
+        e.Property(x => x.Code).HasMaxLength(40); e.Property(x => x.Name).HasMaxLength(255);
         e.Property(x => x.Credits).HasColumnName("credits").HasDefaultValue(3);
-        e.HasIndex(x => new { x.Code, x.Semester, x.LecturerId }).IsUnique();
-        e.HasOne(x => x.Lecturer).WithMany().HasForeignKey(x => x.LecturerId).OnDelete(DeleteBehavior.Restrict);
+        e.HasIndex(x => x.Code).IsUnique();
     }
 }
 public class CourseProjectConfiguration : IEntityTypeConfiguration<CourseProject>
@@ -31,6 +30,8 @@ public class AssessmentSessionConfiguration : IEntityTypeConfiguration<Assessmen
         e.Property(x => x.OralExamId).HasColumnName("oral_exam_id");
         e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Restrict);
         e.HasOne(x => x.OralExam).WithMany(o => o.AssessmentSessions).HasForeignKey(x => x.OralExamId).OnDelete(DeleteBehavior.SetNull);
+        e.HasOne(x => x.AssessmentRoundRevision).WithMany().HasForeignKey(x => x.AssessmentRoundRevisionId)
+            .OnDelete(DeleteBehavior.Restrict);
         e.HasIndex(x => new { x.ProjectId, x.ScheduledStart });
     }
 }

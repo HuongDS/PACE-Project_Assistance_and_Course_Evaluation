@@ -10,8 +10,6 @@ public class Class
     public DateOnly StartDate { get; set; }
     public DateOnly ActualStartDate { get; set; }
     public DateOnly EndDate { get; set; }
-    public DateTime? GroupRegistrationDeadline { get; set; }
-    public bool IsGroupLocked { get; set; } = false;
     public int MaxGroupMembers { get; set; } = 5;
     public int MinGroupMembers { get; set; } = 3;
 
@@ -23,5 +21,6 @@ public class Class
     public ICollection<ClassSchedule> Schedules { get; set; } = new List<ClassSchedule>();
     public ICollection<ClassSession> Sessions { get; set; } = new List<ClassSession>();
     public ICollection<OralExam> OralExams { get; set; } = new List<OralExam>();
+    public ICollection<Milestone> Milestones { get; set; } = new List<Milestone>();
 }
 

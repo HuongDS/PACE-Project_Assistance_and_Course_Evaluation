@@ -43,6 +43,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<CourseTopic> CourseTopics => Set<CourseTopic>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<GroupChangeRequest> GroupChangeRequests => Set<GroupChangeRequest>();
+    public DbSet<Milestone> Milestones => Set<Milestone>();
 
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

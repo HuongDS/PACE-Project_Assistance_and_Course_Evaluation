@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<ITopicManagementService, TopicManagementService>();
         services.AddScoped<IGroupChangeRequestService, GroupChangeRequestService>();
+        services.AddScoped<IMilestoneService, MilestoneService>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IProfileService, ProfileService>();

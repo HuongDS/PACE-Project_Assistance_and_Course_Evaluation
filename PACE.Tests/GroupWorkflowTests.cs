@@ -42,7 +42,6 @@ public class GroupWorkflowTests
         {
             Id = classId,
             Name = "SE1701",
-            IsGroupLocked = false,
             MaxGroupMembers = 5
         };
 
@@ -50,9 +49,20 @@ public class GroupWorkflowTests
         {
             object res = m.Name switch
             {
+                "ClassExistsAsync" => Task.FromResult(true),
                 "GetByIdAsync" => Task.FromResult<Class?>(targetClass),
                 "GetStudentCodeByUserIdAsync" => Task.FromResult<string?>(studentCode),
                 "IsStudentOfClassAsync" => Task.FromResult(true),
+                _ => null!
+            };
+            return res;
+        });
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetClassMilestoneByTypeAsync" => Task.FromResult<Milestone?>(null),
                 _ => null!
             };
             return res;
@@ -81,6 +91,7 @@ public class GroupWorkflowTests
             {
                 "get_Classes" => classRepo,
                 "get_Groups" => groupRepo,
+                "get_Milestones" => milestoneRepo,
                 "SaveChangesAsync" => Task.FromResult(1),
                 _ => null!
             };
@@ -113,15 +124,26 @@ public class GroupWorkflowTests
         var studentUserId = Guid.NewGuid();
         var user = MockUser(UserRole.Student, studentUserId);
 
-        var targetClass = new Class { Id = classId, IsGroupLocked = false };
+        var targetClass = new Class { Id = classId };
 
         var classRepo = Stub<IClassRepository>.Create((m, a) =>
         {
             object res = m.Name switch
             {
+                "ClassExistsAsync" => Task.FromResult(true),
                 "GetByIdAsync" => Task.FromResult<Class?>(targetClass),
                 "GetStudentCodeByUserIdAsync" => Task.FromResult<string?>("SE170001"),
                 "IsStudentOfClassAsync" => Task.FromResult(true),
+                _ => null!
+            };
+            return res;
+        });
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetClassMilestoneByTypeAsync" => Task.FromResult<Milestone?>(null),
                 _ => null!
             };
             return res;
@@ -143,6 +165,7 @@ public class GroupWorkflowTests
             {
                 "get_Classes" => classRepo,
                 "get_Groups" => groupRepo,
+                "get_Milestones" => milestoneRepo,
                 _ => null!
             };
             return res;
@@ -155,19 +178,38 @@ public class GroupWorkflowTests
     }
 
     [Fact]
-    public async Task Student_Cannot_Create_Group_When_Class_Is_Locked()
+    public async Task Student_Cannot_Create_Group_When_Milestone_Is_Locked()
     {
         var classId = Guid.NewGuid();
         var studentUserId = Guid.NewGuid();
         var user = MockUser(UserRole.Student, studentUserId);
 
-        var targetClass = new Class { Id = classId, IsGroupLocked = true }; // Bị khóa!
+        var targetClass = new Class { Id = classId };
 
         var classRepo = Stub<IClassRepository>.Create((m, a) =>
         {
             object res = m.Name switch
             {
+                "ClassExistsAsync" => Task.FromResult(true),
                 "GetByIdAsync" => Task.FromResult<Class?>(targetClass),
+                _ => null!
+            };
+            return res;
+        });
+
+        var lockedMilestone = new Milestone
+        {
+            ClassId = classId,
+            Type = MilestoneType.GroupRegistration,
+            IsLocked = true,
+            Deadline = DateTime.UtcNow.AddDays(7)
+        };
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetClassMilestoneByTypeAsync" => Task.FromResult<Milestone?>(lockedMilestone),
                 _ => null!
             };
             return res;
@@ -178,6 +220,7 @@ public class GroupWorkflowTests
             object res = m.Name switch
             {
                 "get_Classes" => classRepo,
+                "get_Milestones" => milestoneRepo,
                 _ => null!
             };
             return res;
@@ -190,24 +233,38 @@ public class GroupWorkflowTests
     }
 
     [Fact]
-    public async Task Student_Cannot_Create_Group_When_Registration_Deadline_Passed()
+    public async Task Student_Cannot_Create_Group_When_Milestone_Deadline_Passed()
     {
         var classId = Guid.NewGuid();
         var studentUserId = Guid.NewGuid();
         var user = MockUser(UserRole.Student, studentUserId);
 
-        var targetClass = new Class
-        {
-            Id = classId,
-            IsGroupLocked = false,
-            GroupRegistrationDeadline = DateTime.UtcNow.AddDays(-1) // Đã quá hạn 1 ngày!
-        };
+        var targetClass = new Class { Id = classId };
 
         var classRepo = Stub<IClassRepository>.Create((m, a) =>
         {
             object res = m.Name switch
             {
+                "ClassExistsAsync" => Task.FromResult(true),
                 "GetByIdAsync" => Task.FromResult<Class?>(targetClass),
+                _ => null!
+            };
+            return res;
+        });
+
+        var expiredMilestone = new Milestone
+        {
+            ClassId = classId,
+            Type = MilestoneType.GroupRegistration,
+            IsLocked = false,
+            Deadline = DateTime.UtcNow.AddDays(-1) // Đã quá hạn!
+        };
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetClassMilestoneByTypeAsync" => Task.FromResult<Milestone?>(expiredMilestone),
                 _ => null!
             };
             return res;
@@ -218,6 +275,7 @@ public class GroupWorkflowTests
             object res = m.Name switch
             {
                 "get_Classes" => classRepo,
+                "get_Milestones" => milestoneRepo,
                 _ => null!
             };
             return res;
@@ -238,7 +296,17 @@ public class GroupWorkflowTests
         var user = MockUser(UserRole.Student, currentLeaderId);
 
         var group = new Group { Id = groupId, ClassId = classId, Name = "Nhóm Test" };
-        var targetClass = new Class { Id = classId, IsGroupLocked = false };
+        var targetClass = new Class { Id = classId };
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetClassMilestoneByTypeAsync" => Task.FromResult<Milestone?>(null),
+                _ => null!
+            };
+            return res;
+        });
 
         var member1 = new GroupMember { GroupId = groupId, StudentCode = "SE170001", Role = "Leader" };
         var member2 = new GroupMember { GroupId = groupId, StudentCode = "SE170002", Role = "Member" };
@@ -277,6 +345,7 @@ public class GroupWorkflowTests
             {
                 "get_Groups" => groupRepo,
                 "get_Classes" => classRepo,
+                "get_Milestones" => milestoneRepo,
                 "SaveChangesAsync" => Task.FromResult(1),
                 _ => null!
             };
@@ -527,5 +596,108 @@ public class GroupWorkflowTests
         Assert.Equal("Approved", result.Status);
         Assert.True(memberRemoved);
         Assert.Equal(0, updatedStatus); // Đã chuyển status = 0 (Rớt môn)!
+    }
+
+    [Fact]
+    public async Task MilestoneService_CreateAndGet_Succeeds()
+    {
+        var classId = Guid.NewGuid();
+        var admin = MockUser(UserRole.Admin, Guid.NewGuid());
+        Milestone? storedMilestone = null;
+
+        var classRepo = Stub<IClassRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "ClassExistsAsync" => Task.FromResult(true),
+                _ => null!
+            };
+            return res;
+        });
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "AddAsync" => Task.Run(() => { storedMilestone = (Milestone)a[0]; }),
+                "GetByClassIdAsync" => Task.FromResult(storedMilestone != null ? new List<Milestone> { storedMilestone } : new List<Milestone>()),
+                _ => null!
+            };
+            return res;
+        });
+
+        var uow = Stub<IUnitOfWork>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "get_Classes" => classRepo,
+                "get_Milestones" => milestoneRepo,
+                "SaveChangesAsync" => Task.FromResult(1),
+                _ => null!
+            };
+            return res;
+        });
+
+        var service = new MilestoneService(uow, admin);
+
+        var created = await service.CreateAsync(classId, new CreateMilestoneRequest(
+            "Đăng ký đề tài",
+            "Nộp tên đề tài và phân chia công việc",
+            MilestoneType.TopicSubmission,
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(14),
+            1));
+
+        Assert.NotNull(created);
+        Assert.Equal("Đăng ký đề tài", created.Title);
+        Assert.Equal(MilestoneType.TopicSubmission, created.Type);
+
+        var list = await service.GetByClassIdAsync(classId);
+        Assert.Single(list);
+        Assert.Equal("Đăng ký đề tài", list[0].Title);
+    }
+
+    [Fact]
+    public async Task MilestoneService_ToggleLock_Succeeds()
+    {
+        var milestoneId = Guid.NewGuid();
+        var admin = MockUser(UserRole.Admin, Guid.NewGuid());
+        var milestone = new Milestone
+        {
+            Id = milestoneId,
+            ClassId = Guid.NewGuid(),
+            Title = "Đăng ký nhóm",
+            Type = MilestoneType.GroupRegistration,
+            Deadline = DateTime.UtcNow.AddDays(7),
+            IsLocked = false
+        };
+
+        var milestoneRepo = Stub<IMilestoneRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetByIdAsync" => Task.FromResult<Milestone?>(milestone),
+                "Update" => null!,
+                _ => null!
+            };
+            return res;
+        });
+
+        var uow = Stub<IUnitOfWork>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "get_Milestones" => milestoneRepo,
+                "SaveChangesAsync" => Task.FromResult(1),
+                _ => null!
+            };
+            return res;
+        });
+
+        var service = new MilestoneService(uow, admin);
+        var updated = await service.ToggleLockAsync(milestoneId, true);
+
+        Assert.NotNull(updated);
+        Assert.True(updated.IsLocked);
     }
 }

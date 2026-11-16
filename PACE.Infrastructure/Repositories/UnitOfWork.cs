@@ -25,6 +25,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     private IAttendanceRepository? _attendances;
     private IProfileRepository? _profiles;
     private IOralPracticeRepository? _oralPractices;
+    private IMilestoneRepository? _milestones;
 
     public IAnalysisRunRepository AnalysisRuns => _analysisRuns ??= new AnalysisRunRepository(context);
     public IBusinessRepository Businesses => _businesses ??= new BusinessRepository(context);
@@ -44,6 +45,7 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     public IAttendanceRepository Attendances => _attendances ??= new AttendanceRepository(context);
     public IProfileRepository Profiles => _profiles ??= new ProfileRepository(context);
     public IOralPracticeRepository OralPractices => _oralPractices ??= new OralPracticeRepository(context);
+    public IMilestoneRepository Milestones => _milestones ??= new MilestoneRepository(context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
         => context.SaveChangesAsync(ct);

@@ -94,15 +94,20 @@ public class GroupService(
 
         if (currentUser.Role == UserRole.Student)
         {
-            var targetClass = await uow.Classes.GetByIdAsync(request.ClassId, ct)
-                ?? throw new NotFoundException("Lớp học không tồn tại.");
+            var classExists = await uow.Classes.ClassExistsAsync(request.ClassId, ct);
+            if (!classExists)
+                throw new NotFoundException("Lớp học không tồn tại.");
 
-            // Kiểm tra trạng thái khóa nhóm hoặc deadline của lớp
-            if (targetClass.IsGroupLocked)
-                throw new BadRequestException("Lớp học đã chốt danh sách nhóm và không cho phép tạo nhóm mới.");
+            // Kiểm tra mốc tiến độ đăng ký nhóm (Milestone: GroupRegistration)
+            var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(request.ClassId, MilestoneType.GroupRegistration, ct);
+            if (groupMilestone != null)
+            {
+                if (groupMilestone.IsLocked)
+                    throw new BadRequestException("Giai đoạn đăng ký nhóm cho lớp học này đã bị khóa.");
 
-            if (targetClass.GroupRegistrationDeadline.HasValue && DateTime.UtcNow > targetClass.GroupRegistrationDeadline.Value)
-                throw new BadRequestException($"Đã hết thời hạn đăng ký nhóm cho lớp học này (Hạn: {targetClass.GroupRegistrationDeadline.Value:dd/MM/yyyy HH:mm}).");
+                if (DateTime.UtcNow > groupMilestone.Deadline)
+                    throw new BadRequestException($"Đã hết thời hạn đăng ký nhóm cho lớp học này (Hạn: {groupMilestone.Deadline:dd/MM/yyyy HH:mm}).");
+            }
 
             creatorStudentCode = await uow.Classes.GetStudentCodeByUserIdAsync(currentUser.UserId, ct);
             if (string.IsNullOrEmpty(creatorStudentCode))
@@ -180,9 +185,9 @@ public class GroupService(
 
         if (!currentUser.IsAdmin && currentUser.Role != UserRole.Lecturer)
         {
-            var targetClass = await uow.Classes.GetByIdAsync(group.ClassId, ct);
-            if (targetClass != null && targetClass.IsGroupLocked)
-                throw new BadRequestException("Lớp học đã chốt nhóm, không thể chỉnh sửa thông tin nhóm trực tiếp.");
+            var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(group.ClassId, MilestoneType.GroupRegistration, ct);
+            if (groupMilestone != null && groupMilestone.IsLocked)
+                throw new BadRequestException("Giai đoạn đăng ký nhóm đã bị khóa, không thể chỉnh sửa thông tin nhóm trực tiếp.");
         }
 
         var trimmedName = request.Name.Trim();
@@ -238,8 +243,12 @@ public class GroupService(
         // Quyền: Leader của nhóm hoặc Staff
         await EnsureLeaderOrStaffAccessAsync(group, ct);
 
-        if (targetClass.IsGroupLocked && currentUser.Role == UserRole.Student)
-            throw new BadRequestException("Lớp học đã chốt danh sách nhóm, không thể thêm thành viên trực tiếp.");
+        if (currentUser.Role == UserRole.Student)
+        {
+            var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(group.ClassId, MilestoneType.GroupRegistration, ct);
+            if (groupMilestone != null && groupMilestone.IsLocked)
+                throw new BadRequestException("Giai đoạn đăng ký nhóm đã bị khóa, không thể thêm thành viên trực tiếp.");
+        }
 
         var currentMembers = await uow.Groups.GetGroupMembersAsync(groupId, ct);
         if (currentMembers.Count >= targetClass.MaxGroupMembers && currentUser.Role == UserRole.Student)
@@ -331,11 +340,15 @@ public class GroupService(
 
         await EnsureLeaderOrStaffAccessAsync(group, ct);
 
-        if (targetClass.IsGroupLocked)
-            throw new BadRequestException("Lớp học đã chốt danh sách nhóm, không thể gửi thêm lời mời.");
+        var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(group.ClassId, MilestoneType.GroupRegistration, ct);
+        if (groupMilestone != null)
+        {
+            if (groupMilestone.IsLocked)
+                throw new BadRequestException("Giai đoạn đăng ký nhóm đã bị khóa, không thể gửi thêm lời mời.");
 
-        if (targetClass.GroupRegistrationDeadline.HasValue && DateTime.UtcNow > targetClass.GroupRegistrationDeadline.Value)
-            throw new BadRequestException("Đã hết thời hạn đăng ký/mời thành viên cho lớp học này.");
+            if (DateTime.UtcNow > groupMilestone.Deadline)
+                throw new BadRequestException("Đã hết thời hạn đăng ký/mời thành viên cho lớp học này.");
+        }
 
         var currentMembers = await uow.Groups.GetGroupMembersAsync(groupId, ct);
         if (currentMembers.Count >= targetClass.MaxGroupMembers)
@@ -433,11 +446,15 @@ public class GroupService(
         var targetClass = inv.Group?.Class;
         if (targetClass != null)
         {
-            if (targetClass.IsGroupLocked)
-                throw new BadRequestException("Lớp học đã chốt danh sách nhóm, không thể chấp nhận lời mời.");
+            var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(targetClass.Id, MilestoneType.GroupRegistration, ct);
+            if (groupMilestone != null)
+            {
+                if (groupMilestone.IsLocked)
+                    throw new BadRequestException("Giai đoạn đăng ký nhóm đã bị khóa, không thể chấp nhận lời mời.");
 
-            if (targetClass.GroupRegistrationDeadline.HasValue && DateTime.UtcNow > targetClass.GroupRegistrationDeadline.Value)
-                throw new BadRequestException("Đã hết thời hạn đăng ký nhóm cho lớp học này.");
+                if (DateTime.UtcNow > groupMilestone.Deadline)
+                    throw new BadRequestException("Đã hết thời hạn đăng ký nhóm cho lớp học này.");
+            }
 
             var currentMembers = await uow.Groups.GetGroupMembersAsync(inv.GroupId, ct);
             if (currentMembers.Count >= targetClass.MaxGroupMembers)
@@ -489,9 +506,12 @@ public class GroupService(
 
         await EnsureStaffOrMemberAccessAsync(group.ClassId, group.Id, ct);
 
-        var targetClass = await uow.Classes.GetByIdAsync(group.ClassId, ct);
-        if (targetClass != null && targetClass.IsGroupLocked && currentUser.Role == UserRole.Student)
-            throw new BadRequestException("Lớp học đã chốt nhóm, việc đổi nhóm trưởng phải thông qua yêu cầu thay đổi (Change Request).");
+        if (currentUser.Role == UserRole.Student)
+        {
+            var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(group.ClassId, MilestoneType.GroupRegistration, ct);
+            if (groupMilestone != null && groupMilestone.IsLocked)
+                throw new BadRequestException("Lớp học đã chốt nhóm, việc đổi nhóm trưởng phải thông qua yêu cầu thay đổi (Change Request).");
+        }
 
         var members = await uow.Groups.GetGroupMembersAsync(groupId, ct);
         var targetMember = members.FirstOrDefault(m => m.StudentCode.Equals(request.NewLeaderStudentCode, StringComparison.OrdinalIgnoreCase))
@@ -569,13 +589,36 @@ public class GroupService(
     {
         await EnsureStaffAccessAsync(classId, ct);
 
-        var targetClass = await uow.Classes.GetByIdAsync(classId, ct)
-            ?? throw new NotFoundException("Lớp học không tồn tại.");
+        var classExists = await uow.Classes.ClassExistsAsync(classId, ct);
+        if (!classExists)
+            throw new NotFoundException("Lớp học không tồn tại.");
 
-        targetClass.IsGroupLocked = request.IsLocked;
-        if (request.RegistrationDeadline.HasValue)
+        var milestone = await uow.Milestones.GetClassMilestoneByTypeAsync(classId, MilestoneType.GroupRegistration, ct);
+        if (milestone == null)
         {
-            targetClass.GroupRegistrationDeadline = request.RegistrationDeadline.Value;
+            milestone = new Milestone
+            {
+                Id = Guid.NewGuid(),
+                ClassId = classId,
+                Title = "Đăng ký nhóm",
+                Description = "Thời hạn đăng ký và chốt danh sách nhóm đồ án",
+                Type = MilestoneType.GroupRegistration,
+                Deadline = request.RegistrationDeadline ?? DateTime.UtcNow.AddDays(7),
+                IsLocked = request.IsLocked,
+                OrderIndex = 1,
+                CreatedAt = DateTime.UtcNow
+            };
+            await uow.Milestones.AddAsync(milestone, ct);
+        }
+        else
+        {
+            milestone.IsLocked = request.IsLocked;
+            if (request.RegistrationDeadline.HasValue)
+            {
+                milestone.Deadline = request.RegistrationDeadline.Value;
+            }
+            milestone.UpdatedAt = DateTime.UtcNow;
+            uow.Milestones.Update(milestone);
         }
 
         await uow.SaveChangesAsync(ct);

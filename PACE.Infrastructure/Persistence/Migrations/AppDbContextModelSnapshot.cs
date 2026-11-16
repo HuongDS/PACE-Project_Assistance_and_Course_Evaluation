@@ -292,16 +292,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("end_date");
 
-                    b.Property<DateTime?>("GroupRegistrationDeadline")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("group_registration_deadline");
-
-                    b.Property<bool>("IsGroupLocked")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_group_locked");
-
                     b.Property<Guid?>("LecturerId")
                         .HasColumnType("uuid")
                         .HasColumnName("lecturer_id");
@@ -933,6 +923,67 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasIndex("AnalysisRunId", "ClassName", "MethodName");
 
                     b.ToTable("method_sources", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.Milestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("Deadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deadline");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
+                    b.Property<int>("OrderIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("order_index");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClassId", "Type");
+
+                    b.ToTable("milestones", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
@@ -1782,6 +1833,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("AnalysisRun");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.Milestone", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Class", "Class")
+                        .WithMany("Milestones")
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Class");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.OralExam", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.Class", "Class")
@@ -1993,6 +2055,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PACE.Domain.Entities.Class", b =>
                 {
                     b.Navigation("Groups");
+
+                    b.Navigation("Milestones");
 
                     b.Navigation("OralExams");
 

@@ -148,7 +148,22 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
             lecturerId = cl.LecturerId,
             lecturerName = cl.Lecturer != null ? (cl.Lecturer.FullName ?? cl.Lecturer.Email) : ""
         }),
-        milestones = new object[0],
+        milestones = c.Classes.SelectMany(cl => cl.Milestones)
+            .OrderBy(m => m.OrderIndex)
+            .ThenBy(m => m.Deadline)
+            .Select(m => new
+            {
+                id = m.Id,
+                classId = m.ClassId,
+                title = m.Title,
+                description = m.Description,
+                type = (int)m.Type,
+                typeName = m.Type.ToString(),
+                startDate = m.StartDate,
+                deadline = m.Deadline,
+                isLocked = m.IsLocked,
+                orderIndex = m.OrderIndex
+            }),
         projects = c.Classes.SelectMany(cl => cl.Groups).Any(g => g.AnalysisRuns.Any())
             ? c.Classes.SelectMany(cl => cl.Groups)
                 .SelectMany(g => g.AnalysisRuns.Select(r => new

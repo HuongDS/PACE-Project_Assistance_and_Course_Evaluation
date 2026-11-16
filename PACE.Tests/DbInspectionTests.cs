@@ -1010,6 +1010,44 @@ public class DbInspectionTests
     }
 
     [Fact]
+    public async Task InspectStudentGroupsAndClasses()
+    {
+        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        _output.WriteLine("=== CLASSES FOR SE170001 ===");
+        await using var clCmd = new NpgsqlCommand(@"
+            SELECT c.id, c.name, c.course_id, co.""Code"", co.""Name""
+            FROM student_classes sc
+            JOIN classes c ON c.id = sc.class_id
+            LEFT JOIN courses co ON co.""Id"" = c.course_id
+            WHERE sc.student_code = 'SE170001';", conn);
+        await using (var r = await clCmd.ExecuteReaderAsync())
+        {
+            while (await r.ReadAsync())
+            {
+                _output.WriteLine($"ClassId: {r[0]} | Name: {r[1]} | CourseId: {r[2]} | CourseCode: {r[3]} - {r[4]}");
+            }
+        }
+
+        _output.WriteLine("\n=== GROUPS FOR SE170001 ===");
+        await using var gCmd = new NpgsqlCommand(@"
+            SELECT g.id, g.class_id, c.name as class_name, g.name as group_name, g.topic_name, gm.role
+            FROM group_members gm
+            JOIN groups g ON g.id = gm.group_id
+            LEFT JOIN classes c ON c.id = g.class_id
+            WHERE gm.student_code = 'SE170001';", conn);
+        await using (var r2 = await gCmd.ExecuteReaderAsync())
+        {
+            while (await r2.ReadAsync())
+            {
+                _output.WriteLine($"GroupId: {r2[0]} | ClassId: {r2[1]} ({r2[2]}) | GroupName: {r2[3]} | Topic: {r2[4]} | Role: {r2[5]}");
+            }
+        }
+    }
+
+    [Fact]
     public async Task SeedGroupAndTopicWorkflowData()
     {
         var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";

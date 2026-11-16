@@ -95,11 +95,13 @@ public class GroupsController(
 
     /// <summary>Nhóm trưởng chọn đề tài có sẵn từ danh mục môn học.</summary>
     [HttpPost("{id:guid}/topics/select")]
+    [HttpPost("{id:guid}/select-topic")]
     public async Task<ActionResult<GroupDetailDto>> SelectTopic(Guid id, [FromBody] SelectTopicRequest request, CancellationToken ct)
         => Ok(await topicService.SelectTopicAsync(id, request, ct));
 
     /// <summary>Nhóm trưởng đề xuất đề tài mới gửi giảng viên phê duyệt.</summary>
     [HttpPost("{id:guid}/topics/propose")]
+    [HttpPost("{id:guid}/propose-topic")]
     public async Task<ActionResult<GroupDetailDto>> ProposeTopic(Guid id, [FromBody] ProposeTopicRequest request, CancellationToken ct)
         => Ok(await topicService.ProposeTopicAsync(id, request, ct));
 

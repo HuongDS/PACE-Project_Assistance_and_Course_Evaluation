@@ -12,6 +12,7 @@ public class StudentGroupsController(IGroupService groupService) : ControllerBas
 {
     /// <summary>Lấy danh sách các nhóm sinh viên hiện đang tham gia.</summary>
     [HttpGet("my-groups")]
+    [HttpGet("groups")]
     public async Task<ActionResult<List<GroupDto>>> GetMyGroups(CancellationToken ct)
         => Ok(await groupService.GetMyGroupsAsync(ct));
 
@@ -27,6 +28,7 @@ public class StudentGroupsController(IGroupService groupService) : ControllerBas
 
     /// <summary>Lấy danh sách sinh viên cùng lớp chưa có nhóm để mời vào nhóm.</summary>
     [HttpGet("classes/{classId:guid}/available-students")]
+    [HttpGet("classes/{classId:guid}/available-peers")]
     public async Task<ActionResult<List<AvailableStudentDto>>> GetAvailableStudents(Guid classId, CancellationToken ct)
         => Ok(await groupService.GetAvailableStudentsInClassAsync(classId, ct));
 }

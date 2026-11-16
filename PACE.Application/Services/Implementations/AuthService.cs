@@ -24,6 +24,12 @@ public class AuthService(
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await uow.Users.GetByEmailAsync(normalizedEmail, ct)
                    ?? await uow.Users.GetByEmailAsync(request.Email.Trim(), ct)
+                   ?? await uow.Users.GetByStudentCodeAsync(request.Email.Trim(), ct)
+                   ?? await uow.Users.FirstOrDefaultAsync(u =>
+                       (normalizedEmail == "admin" && (u.Email.ToLower() == "admin@pace.edu.vn" || u.Email.ToLower() == "manager" || u.Role == PACE.Domain.Enums.UserRole.Admin)) ||
+                       (normalizedEmail == "lecturer" && (u.Email.ToLower() == "lecturer@pace.edu.vn" || u.Role == PACE.Domain.Enums.UserRole.Lecturer)) ||
+                       (normalizedEmail == "student" && (u.Email.ToLower() == "student@pace.edu.vn" || u.StudentCode == "SE170001")),
+                       asNoTracking: false, ct: ct)
                    ?? throw new UnauthorizedException("Tài khoản hoặc mật khẩu không chính xác.");
 
         // Kiểm tra mật khẩu mã hóa BCrypt

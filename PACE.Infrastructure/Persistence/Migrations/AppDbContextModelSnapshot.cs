@@ -75,6 +75,54 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("analysis_runs", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.AssessmentRoundRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublishedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoundId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("assessment_round_revisions", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1345,6 +1393,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.AssessmentRoundRevision", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.ClassAssessmentRound", "Round")
+                        .WithMany()
+                        .HasForeignKey("RoundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Round");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>

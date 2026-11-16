@@ -41,3 +41,17 @@ public class CourseAnnouncementConfiguration : IEntityTypeConfiguration<CourseAn
         entity.HasOne(x => x.Class).WithMany().HasForeignKey(x => x.ClassId);
     }
 }
+
+public class AssessmentRoundRevisionConfiguration : IEntityTypeConfiguration<AssessmentRoundRevision>
+{
+    public void Configure(EntityTypeBuilder<AssessmentRoundRevision> entity)
+    {
+        entity.ToTable("assessment_round_revisions");
+        entity.Property(x => x.Title).HasMaxLength(255);
+        entity.Property(x => x.Weight).HasPrecision(5, 2);
+        entity.Property(x => x.ConfigurationJson).HasColumnType("jsonb");
+        entity.HasIndex(x => new { x.RoundId, x.Version }).IsUnique();
+        entity.HasOne(x => x.Round).WithMany().HasForeignKey(x => x.RoundId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

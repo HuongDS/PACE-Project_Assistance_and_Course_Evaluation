@@ -47,6 +47,13 @@ public record ClassAssessmentRoundView(
     Guid Id, Guid MilestoneId, string Title, decimal Weight,
     DateTime OpensAt, DateTime ClosesAt, AssessmentRoundConfiguration Configuration);
 
+public record AssessmentRoundRevisionView(
+    Guid Id, Guid RoundId, int Version, string Title, decimal Weight,
+    DateTime OpensAt, DateTime ClosesAt, DateTime DueAt, Guid PublishedBy, DateTime PublishedAt,
+    AssessmentRoundConfiguration Configuration);
+
+public record PublishAssessmentRound([Range(0, int.MaxValue - 1)] int PreviousVersion);
+
 [ApiController, Authorize, Route("api/classes/{classId:guid}")]
 public class ClassPlanningController(AppDbContext db, TeachingAccess access) : ControllerBase
 {
@@ -202,9 +209,48 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
     {
         await RequireClassAccess(classId, write: true, ct);
         await RequireMilestone(classId, id, ct);
-        db.ClassAssessmentRounds.Remove(await FindRound(id, roundId, ct));
+        var round = await FindRound(id, roundId, ct);
+        if (await db.AssessmentRoundRevisions.AnyAsync(x => x.RoundId == roundId, ct))
+            throw new ConflictException("Published rounds must remain available for assessment history.");
+
+        db.ClassAssessmentRounds.Remove(round);
         await access.Save(ct);
         return NoContent();
+    }
+
+    [HttpGet("milestones/{id:guid}/assessment-rounds/{roundId:guid}/revisions"), Authorize(Roles = Roles.Staff)]
+    public async Task<ActionResult<IReadOnlyList<AssessmentRoundRevisionView>>> Revisions(
+        Guid classId, Guid id, Guid roundId, CancellationToken ct)
+    {
+        await RequireClassAccess(classId, write: true, ct);
+        await RequireMilestone(classId, id, ct);
+        await FindRound(id, roundId, ct);
+        var revisions = await db.AssessmentRoundRevisions.AsNoTracking()
+            .Where(x => x.RoundId == roundId).OrderByDescending(x => x.Version).ToListAsync(ct);
+        return Ok(revisions.Select(RevisionView));
+    }
+
+    [HttpPost("milestones/{id:guid}/assessment-rounds/{roundId:guid}/publish"), Authorize(Roles = Roles.Staff)]
+    public async Task<ActionResult<AssessmentRoundRevisionView>> Publish(
+        Guid classId, Guid id, Guid roundId, PublishAssessmentRound request, CancellationToken ct)
+    {
+        var user = await RequireClassAccess(classId, write: true, ct);
+        var milestone = await RequireMilestone(classId, id, ct);
+        var round = await FindRound(id, roundId, ct);
+        var version = await db.AssessmentRoundRevisions.Where(x => x.RoundId == roundId)
+            .MaxAsync(x => (int?)x.Version, ct) ?? 0;
+        if (version != request.PreviousVersion)
+            throw new ConflictException("The round already has a newer published revision. Refresh before publishing.");
+
+        var revision = new AssessmentRoundRevision
+        {
+            RoundId = roundId, Version = version + 1, Title = round.Title, Weight = round.Weight,
+            OpensAt = round.OpensAt, ClosesAt = round.ClosesAt, DueAt = milestone.DueAt,
+            PublishedBy = user.Id, PublishedAt = DateTime.UtcNow, ConfigurationJson = round.ConfigurationJson
+        };
+        db.AssessmentRoundRevisions.Add(revision);
+        await access.Save(ct);
+        return CreatedAtAction(nameof(Revisions), new { classId, id, roundId }, RevisionView(revision));
     }
 
     [HttpGet("announcements")]
@@ -285,10 +331,12 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
         await db.ClassMilestones.SingleOrDefaultAsync(x => x.ClassId == classId && x.Id == id, ct)
         ?? throw new NotFoundException("Schedule item unavailable.");
 
-    private async Task RequireMilestone(Guid classId, Guid id, CancellationToken ct)
+    private async Task<ClassMilestone> RequireMilestone(Guid classId, Guid id, CancellationToken ct)
     {
-        if ((await FindScheduleItem(classId, id, ct)).Kind != ClassScheduleItemKind.Milestone)
+        var milestone = await FindScheduleItem(classId, id, ct);
+        if (milestone.Kind != ClassScheduleItemKind.Milestone)
             throw new BadRequestException("Assessment rounds must be linked to a milestone.");
+        return milestone;
     }
 
     private async Task<ClassAssessmentRound> FindRound(Guid milestoneId, Guid id, CancellationToken ct) =>
@@ -323,8 +371,9 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
 
         var configuration = request.Configuration;
         if (configuration.Rubric.Any(x => x == null || x.Id == Guid.Empty) ||
-            configuration.Rubric.Select(x => x.Id).Distinct().Count() != configuration.Rubric.Count)
-            throw new BadRequestException("Rubric criterion IDs must be nonempty and unique.");
+            configuration.Rubric.Select(x => x.Id).Distinct().Count() != configuration.Rubric.Count ||
+            configuration.Rubric.Sum(x => x.Weight) != 100)
+            throw new BadRequestException("Rubric criterion IDs must be nonempty and unique, with weights totaling 100.");
 
         ValidateEntries(configuration.Deliverables, 500, "Deliverables");
         ValidateEntries(configuration.Clos, 100, "CLOs");
@@ -349,6 +398,11 @@ public class ClassPlanningController(AppDbContext db, TeachingAccess access) : C
     private static ClassAssessmentRoundView RoundView(ClassAssessmentRound round) =>
         new(round.Id, round.MilestoneId, round.Title, round.Weight, round.OpensAt, round.ClosesAt,
             JsonSerializer.Deserialize<AssessmentRoundConfiguration>(round.ConfigurationJson)!);
+
+    private static AssessmentRoundRevisionView RevisionView(AssessmentRoundRevision revision) =>
+        new(revision.Id, revision.RoundId, revision.Version, revision.Title, revision.Weight,
+            revision.OpensAt, revision.ClosesAt, revision.DueAt, revision.PublishedBy, revision.PublishedAt,
+            JsonSerializer.Deserialize<AssessmentRoundConfiguration>(revision.ConfigurationJson)!);
 
     private static CourseAnnouncementView AnnouncementView(CourseAnnouncement item) =>
         new(item.Id, item.ClassId, item.Title, item.Body, item.CreatedBy, item.CreatedAt, item.UpdatedAt);

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Security.Claims;
@@ -9,6 +10,7 @@ using PACE.Application.Common.Interfaces;
 using PACE.Application;
 using PACE.Infrastructure;
 using PACE.Infrastructure.Identity;
+using PACE.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -147,6 +149,13 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
 }).AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
+
+if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await database.Database.MigrateAsync();
+}
 
 await app.SeedAdminsAsync();
 await app.SeedAcademicDataAsync();

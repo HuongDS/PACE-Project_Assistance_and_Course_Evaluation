@@ -76,9 +76,16 @@ actually serve requests, not just a healthy old instance.
 Express is single-revision; rollback may involve a brief interruption. This is
 not a zero-downtime blue/green guarantee. If Azure's management API is unavailable
 or the runner is killed during rollback, automatic restoration cannot be guaranteed;
-the run reports failure and requires operator inspection. Runtime secrets and
-schema are never modified by the workflow. No destructive migrations run.
+the run reports failure and requires operator inspection. The deployed API applies
+pending EF Core migrations before seeding or serving traffic. A migration failure
+stops startup. Image rollback disables startup migration and leaves applied schema
+changes in place, so migrations must remain compatible with the previous image.
 The health check verifies process startup, not every business flow or AI balance.
+
+CI migrates a fresh PostgreSQL 16 database before running backend tests. To run
+the full suite locally, point `PACE_TEST_POSTGRES` at a disposable database and
+apply the EF migrations first. The database inspection tests write fixture data
+and execute schema maintenance SQL, so use a dedicated test database.
 
 Monitor: GitHub repository → Actions → Backend CI and Azure deployment. Old image
 tags are retained for rollback and may incur registry storage charges. Configure

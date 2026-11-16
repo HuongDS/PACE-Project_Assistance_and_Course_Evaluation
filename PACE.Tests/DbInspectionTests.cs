@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Npgsql;
 using PACE.Domain.Entities;
 using Xunit;
@@ -21,15 +20,14 @@ public class DbInspectionTests
         _output = output;
     }
 
+    private static string ConnectionString =>
+        Environment.GetEnvironmentVariable("PACE_TEST_POSTGRES")
+        ?? throw new InvalidOperationException("Set PACE_TEST_POSTGRES to a disposable PostgreSQL database migrated with EF Core.");
+
     [Fact]
     public async Task DropRubricTables()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -67,12 +65,7 @@ public class DbInspectionTests
     [Fact]
     public async Task SeedLecturerAccount()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -226,7 +219,7 @@ public class DbInspectionTests
     [Fact]
     public async Task SeedClassAndProjectData()
     {
-        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
 
@@ -347,12 +340,11 @@ public class DbInspectionTests
             else
             {
                 await using var insC = new NpgsqlCommand(@"
-                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""credits"", ""Semester"", ""LecturerId"")
-                    VALUES (@cid, @code, @name, 3, 'FA26', @lid)", conn);
+                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""credits"")
+                    VALUES (@cid, @code, @name, 3)", conn);
                 insC.Parameters.AddWithValue("cid", cid);
                 insC.Parameters.AddWithValue("code", cCode);
                 insC.Parameters.AddWithValue("name", cName);
-                insC.Parameters.AddWithValue("lid", lecturerId);
                 await insC.ExecuteNonQueryAsync();
             }
 
@@ -509,12 +501,7 @@ public class DbInspectionTests
     [Fact]
     public async Task MigrateToMultipleReposPerGroup()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -567,12 +554,7 @@ public class DbInspectionTests
     [Fact]
     public async Task MigrateAddOralExamToAssessmentSessions()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -652,12 +634,7 @@ public class DbInspectionTests
     [Fact]
     public async Task VerifyAssessmentSessionsQuery()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         var options = new DbContextOptionsBuilder<PACE.Infrastructure.Persistence.AppDbContext>()
             .UseNpgsql(connStr)
@@ -684,12 +661,7 @@ public class DbInspectionTests
     [Fact]
     public async Task MigrateAndDropLecturerIdFromCourses()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -818,12 +790,7 @@ public class DbInspectionTests
     [Fact]
     public async Task SeedAccountsForLecturerAdminAndStudent()
     {
-        var config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
-
-        var connStr = config.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
 
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
@@ -1012,7 +979,7 @@ public class DbInspectionTests
     [Fact]
     public async Task InspectStudentGroupsAndClasses()
     {
-        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
 
@@ -1050,7 +1017,7 @@ public class DbInspectionTests
     [Fact]
     public async Task SeedGroupAndTopicWorkflowData()
     {
-        var connStr = "Host=ep-rapid-silence-azrlmoxx-pooler.c-3.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_rF8HIqysK0RA;SSL Mode=Require;Channel Binding=Require";
+        var connStr = ConnectionString;
         await using var conn = new NpgsqlConnection(connStr);
         await conn.OpenAsync();
 
@@ -1141,8 +1108,8 @@ public class DbInspectionTests
             else
             {
                 await using var insC = new NpgsqlCommand(@"
-                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""credits"", ""Semester"")
-                    VALUES (@id, @c, @n, 3, 'FA26')", conn);
+                    INSERT INTO courses (""Id"", ""Code"", ""Name"", ""credits"")
+                    VALUES (@id, @c, @n, 3)", conn);
                 insC.Parameters.AddWithValue("id", cid);
                 insC.Parameters.AddWithValue("c", code);
                 insC.Parameters.AddWithValue("n", name);

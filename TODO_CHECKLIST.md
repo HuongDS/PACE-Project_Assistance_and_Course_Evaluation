@@ -28,8 +28,10 @@
     - Trạng thái kết nối sinh viên (`isAudioActive = false, isVideoActive = false, connectionQuality = "disconnected"`) -> kết nối với trạng thái phiên trực tuyến thực tế.
 - [ ] **3. Mở rộng Phân tích AST/CFG (`/api/evidence/projects/{projectId}/ast-cfg`)**:
   - Trong [EvidenceController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/EvidenceController.cs):
-    - Tính toán và trả về độ phức tạp `cyclomaticComplexity` thực tế (hiện đang để `null`).
-    - Xử lý trường hợp hàm C# có tham chiếu đến kiểu dữ liệu ngoài hàm (tránh trả lỗi `422`) và mở rộng hỗ trợ AST/CFG cho Java, JS/TS (bằng Tree-sitter đã có sẵn trong project).
+    - [x] Tính toán và trả về độ phức tạp `cyclomaticComplexity` thực tế (tổng theo file, kèm `methodComplexities` từng hàm; `null` nếu mã hàm bị cắt khi lưu). Hỗ trợ C#, Java, JS/TS.
+    - [x] Hàm C# tham chiếu kiểu của project không còn trả `422`: vẫn dựng CFG từ cú pháp và báo số lỗi ngữ nghĩa ở `semanticErrors`. Chỉ lỗi cú pháp, mã bị cắt hoặc hàm không có thân (abstract/interface) mới trả `422`.
+    - [x] AST cho Java, JS/TS bằng Tree-sitter (`graphKind=AST`).
+    - [ ] CFG cho Java, JS/TS: chưa làm (hiện trả `422` kèm hướng dẫn dùng `graphKind=AST`).
 - [ ] **4. Hoàn thiện Health Check thực tế cho `/health` (`Program.cs`)**:
   - Trong [Program.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Program.cs#L99), đăng ký kiểm tra kết nối thực tế cho `builder.Services.AddHealthChecks()`: PostgreSQL (`AppDbContext`), Upstash Redis, Git CLI, và trạng thái cấu hình các AI Providers.
 

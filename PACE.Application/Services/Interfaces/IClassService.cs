@@ -21,6 +21,10 @@ public interface IClassService
 
     Task<ClassDto> CreateClassAsync(CreateClassRequest request, CancellationToken ct = default);
 
+    Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request, CancellationToken ct = default);
+
+    Task DeleteClassAsync(Guid id, CancellationToken ct = default);
+
     Task<ImportClassesResult> ImportClassesAsync(Stream excelStream, CancellationToken ct = default);
 
     Task<(byte[] FileBytes, string FileName)> ExportClassTemplateAsync(CancellationToken ct = default);

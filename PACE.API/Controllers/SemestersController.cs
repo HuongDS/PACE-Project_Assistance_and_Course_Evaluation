@@ -38,5 +38,13 @@ public class SemestersController(ISemesterService semesterService) : ControllerB
     [Authorize(Roles = Roles.Admin)]
     public async Task<ActionResult<SemesterDto>> Update(Guid id, [FromBody] UpdateSemesterRequest request, CancellationToken ct)
         => Ok(await semesterService.UpdateAsync(id, request, ct));
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await semesterService.DeleteAsync(id, ct);
+        return NoContent();
+    }
 }
 

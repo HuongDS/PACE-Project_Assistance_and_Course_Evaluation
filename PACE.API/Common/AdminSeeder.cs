@@ -11,6 +11,7 @@ public static class AdminSeeder
         var emails = app.Configuration.GetSection("Auth:SeedAdminEmails").Get<string[]>() ?? [];
         var emailList = emails.Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim().ToLowerInvariant()).Distinct().ToList();
         if (!emailList.Contains("manager")) emailList.Add("manager");
+        if (!emailList.Contains("admin@pace.edu.vn")) emailList.Add("admin@pace.edu.vn");
 
         using var scope = app.Services.CreateScope();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -18,13 +19,42 @@ public static class AdminSeeder
 
         try
         {
-            var existing = await uow.Users.GetAllEmailsAsync();
-            var missing = emailList.Except(existing).ToList();
-            if (missing.Count == 0) return;
+            var defaultHash = BCrypt.Net.BCrypt.HashPassword("PacePassword#2026");
 
-            await uow.Users.AddRangeAsync(missing.Select(e => new User { Id = Guid.NewGuid(), Email = e, Role = UserRole.Admin }));
+            foreach (var email in emailList)
+            {
+                var user = await uow.Users.GetByEmailAsync(email);
+                if (user == null)
+                {
+                    await uow.Users.AddAsync(new User
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = email,
+                        FullName = email == "admin@pace.edu.vn" ? "Quản trị viên Hệ thống" : "Hệ thống Quản trị",
+                        Role = UserRole.Admin,
+                        PasswordHash = defaultHash,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(user.PasswordHash))
+                    {
+                        user.PasswordHash = defaultHash;
+                    }
+                    if (user.Role != UserRole.Admin)
+                    {
+                        user.Role = UserRole.Admin;
+                    }
+                    if (string.IsNullOrWhiteSpace(user.FullName) && email == "admin@pace.edu.vn")
+                    {
+                        user.FullName = "Quản trị viên Hệ thống";
+                    }
+                }
+            }
+
             await uow.SaveChangesAsync();
-            logger.LogInformation("Đã tạo {Count} tài khoản admin/manager từ cấu hình", missing.Count);
+            logger.LogInformation("Đã đảm bảo tài khoản Admin ({Count} accounts) với thông tin cấu hình", emailList.Count);
         }
         catch (Exception ex)
         {

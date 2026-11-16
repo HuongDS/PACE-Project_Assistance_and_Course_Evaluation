@@ -2,7 +2,7 @@ namespace PACE.API.Controllers;
 // Explicit OpenAPI response contracts for the teaching APIs. Anonymous EF projections implement these wire shapes.
 public record CourseStudentView(Guid Id, string Email);
 public record CourseProjectView(Guid Id, string? Name, bool? IsApproved, string? Notes, DateTime? DecidedAt, IReadOnlyList<CourseStudentView> Students);
-public record CourseView(Guid Id, string Code, string Name, string Semester, Guid LecturerId, string LecturerName, int TotalGroups, IReadOnlyList<object> Milestones, IReadOnlyList<CourseProjectView> Projects);
+public record CourseView(Guid Id, string Code, string Name, string? Semester, Guid? LecturerId, string? LecturerName, int TotalGroups, IReadOnlyList<object> Milestones, IReadOnlyList<CourseProjectView> Projects);
 public record ResourceCreated(Guid Id);
 public record SessionSummaryView(Guid Id, string Title, string Status, Guid ProjectId, DateTime ScheduledStart, DateTime ScheduledEnd, Guid? OralExamId = null);
 public record SessionStartView(Guid Id, string Status, DateTime? ActualStartTime);

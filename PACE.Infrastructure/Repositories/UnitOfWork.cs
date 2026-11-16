@@ -20,6 +20,11 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     private IClassRepository? _classes;
     private ISemesterRepository? _semesters;
     private ICourseRepository? _courses;
+    private IGroupRepository? _groups;
+    private ITimetableRepository? _timetables;
+    private IAttendanceRepository? _attendances;
+    private IProfileRepository? _profiles;
+    private IOralPracticeRepository? _oralPractices;
 
     public IAnalysisRunRepository AnalysisRuns => _analysisRuns ??= new AnalysisRunRepository(context);
     public IBusinessRepository Businesses => _businesses ??= new BusinessRepository(context);
@@ -34,6 +39,11 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
     public IClassRepository Classes => _classes ??= new ClassRepository(context);
     public ISemesterRepository Semesters => _semesters ??= new SemesterRepository(context);
     public ICourseRepository Courses => _courses ??= new CourseRepository(context);
+    public IGroupRepository Groups => _groups ??= new GroupRepository(context);
+    public ITimetableRepository Timetables => _timetables ??= new TimetableRepository(context);
+    public IAttendanceRepository Attendances => _attendances ??= new AttendanceRepository(context);
+    public IProfileRepository Profiles => _profiles ??= new ProfileRepository(context);
+    public IOralPracticeRepository OralPractices => _oralPractices ??= new OralPracticeRepository(context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default)
         => context.SaveChangesAsync(ct);

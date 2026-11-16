@@ -44,9 +44,7 @@ public class LecturerCreateClassTests
         Id = _courseId,
         Code = "SWP391",
         Name = "Software Project",
-        Credits = 3,
-        LecturerId = _lecturerId,
-        Lecturer = new User { Id = _lecturerId, FullName = "Thầy Giảng", Email = "lecturer@pace.edu.vn" }
+        Credits = 3
     };
 
     private Course GetOtherLecturerCourse() => new()
@@ -54,9 +52,7 @@ public class LecturerCreateClassTests
         Id = _otherCourseId,
         Code = "PRN231",
         Name = "DotNet Apps",
-        Credits = 3,
-        LecturerId = _otherLecturerId,
-        Lecturer = new User { Id = _otherLecturerId, FullName = "Thầy Khác", Email = "other@pace.edu.vn" }
+        Credits = 3
     };
 
     private ClassService CreateClassService(
@@ -92,16 +88,26 @@ public class LecturerCreateClassTests
         {
             object res = m.Name switch
             {
+                "GetByIdAsync" => Task.FromResult<Course?>((Guid)a[0]! == _courseId ? GetLecturerCourse() : ((Guid)a[0]! == _otherCourseId ? GetOtherLecturerCourse() : null)),
                 "GetByIdWithLecturerAsync" => Task.FromResult<Course?>((Guid)a[0]! == _courseId ? GetLecturerCourse() : GetOtherLecturerCourse()),
                 "GetByLecturerIdAsync" => Task.FromResult(new List<Course> { GetLecturerCourse() }),
                 "GetAllWithLecturerAsync" => Task.FromResult(new List<Course> { GetLecturerCourse(), GetOtherLecturerCourse() }),
-                "GetByCodeAsync" => Task.FromResult<Course?>((string)a[0]! == "SWP391" ? GetLecturerCourse() : null),
+                "GetAllAsync" => Task.FromResult(new List<Course> { GetLecturerCourse(), GetOtherLecturerCourse() }),
+                "GetByCodeAsync" => Task.FromResult<Course?>((string)a[0]! == "SWP391" ? GetLecturerCourse() : ((string)a[0]! == "PRN231" ? GetOtherLecturerCourse() : null)),
                 _ => throw new InvalidOperationException($"ICourseRepository method {m.Name} not mocked")
             };
             return res;
         });
 
-        var userRepo = Stub<IUserRepository>.Create((m, a) => Task.FromResult<User?>(null));
+        var userRepo = Stub<IUserRepository>.Create((m, a) =>
+        {
+            object res = m.Name switch
+            {
+                "GetByIdAsync" => Task.FromResult<User?>(new User { Id = (Guid)a[0]!, FullName = "Thầy Giảng", Email = "lecturer@pace.edu.vn" }),
+                _ => Task.FromResult<User?>(null)
+            };
+            return res;
+        });
 
         var uow = Stub<IUnitOfWork>.Create((m, a) =>
         {
@@ -124,6 +130,7 @@ public class LecturerCreateClassTests
                 "get_IsAuthenticated" => true,
                 "get_Role" => role,
                 "get_UserId" => userId,
+                "get_Email" => "lecturer@pace.edu.vn",
                 "get_IsAdmin" => role == UserRole.Admin,
                 _ => throw new InvalidOperationException($"CurrentUserService {m.Name} not mocked")
             };
@@ -168,17 +175,36 @@ public class LecturerCreateClassTests
     }
 
     [Fact]
-    public async Task Lecturer_CannotCreateClass_ForOtherLecturersCourse()
+    public async Task Lecturer_CannotAssignOtherLecturer_WhenCreatingClass()
     {
         var service = CreateClassService(UserRole.Lecturer, _lecturerId);
 
         var request = new CreateClassRequest
         {
             Name = "SE1704",
-            CourseId = _otherCourseId // thuộc về _otherLecturerId
+            CourseId = _otherCourseId,
+            LecturerId = _otherLecturerId
         };
 
         await Assert.ThrowsAsync<ForbiddenException>(() => service.CreateClassAsync(request));
+    }
+
+    [Fact]
+    public async Task Lecturer_CanCreateClass_ForAnyCourseInCatalog()
+    {
+        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+
+        var request = new CreateClassRequest
+        {
+            Name = "SE1704",
+            CourseId = _otherCourseId
+        };
+
+        var created = await service.CreateClassAsync(request);
+        Assert.NotNull(created);
+        Assert.Equal("SE1704", created.Name);
+        Assert.Equal(_otherCourseId, created.CourseId);
+        Assert.Equal(_lecturerId, created.LecturerId);
     }
 
     [Fact]

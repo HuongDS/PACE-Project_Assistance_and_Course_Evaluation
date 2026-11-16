@@ -135,6 +135,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ActualStartTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("AssessmentRoundRevisionId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("OralExamId")
                         .HasColumnType("uuid")
                         .HasColumnName("oral_exam_id");
@@ -170,6 +173,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssessmentRoundRevisionId");
 
                     b.HasIndex("OralExamId");
 
@@ -1432,6 +1437,11 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
+                    b.HasOne("PACE.Domain.Entities.AssessmentRoundRevision", "AssessmentRoundRevision")
+                        .WithMany()
+                        .HasForeignKey("AssessmentRoundRevisionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PACE.Domain.Entities.OralExam", "OralExam")
                         .WithMany("AssessmentSessions")
                         .HasForeignKey("OralExamId")
@@ -1442,6 +1452,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("AssessmentRoundRevision");
 
                     b.Navigation("OralExam");
 

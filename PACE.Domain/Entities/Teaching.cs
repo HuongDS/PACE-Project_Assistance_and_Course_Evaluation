@@ -26,6 +26,8 @@ public class AssessmentSession
     public CourseProject Project { get; set; } = null!;
     public Guid? OralExamId { get; set; }
     public OralExam? OralExam { get; set; }
+    public Guid? AssessmentRoundRevisionId { get; set; }
+    public AssessmentRoundRevision? AssessmentRoundRevision { get; set; }
     public string Title { get; set; } = "";
     public string Status { get; set; } = "CREATED";
     public DateTime ScheduledStart { get; set; }

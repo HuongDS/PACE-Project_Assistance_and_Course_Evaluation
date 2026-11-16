@@ -91,6 +91,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("oral_exam_id");
 
+                    b.Property<string>("OralQuestionsJson")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
@@ -866,6 +869,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("EvaluatorId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("OralEvidenceJson")
+                        .HasColumnType("text");
 
                     b.HasKey("SessionId", "StudentId");
 

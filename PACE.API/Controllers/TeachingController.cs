@@ -18,6 +18,11 @@ public record CreateSessionRequest(Guid ProjectId, [Required, MaxLength(255)] st
 public record ScoreInput(Guid CriterionId, [Range(0, 1000)] decimal Score, [MaxLength(4000)] string? Feedback);
 public record EvaluateRequest([Required, MinLength(1), MaxLength(100)] List<ScoreInput> Evaluations);
 
+public record OralQuestionSnapshot(Guid Id, string Content, string? ReferenceCommit);
+public record OralEvidenceInput(Guid QuestionId, [Required, MaxLength(8000)] string AnswerNotes,
+    [MaxLength(4000)] string? FollowUp = null);
+public record SaveOralEvidenceRequest([Required, MinLength(1), MaxLength(100)] List<OralEvidenceInput> Answers);
+
 public static class SessionRules
 {
     public static void Require(string current, string expected) { if (current != expected) throw new ConflictException($"Session must be {expected}; current status is {current}."); }
@@ -233,7 +238,13 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             s.ActualEndTime,
             rubric = new { id = s.Id, courseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = new object[0] }), totalScore = 100 },
             participants = s.Students.Select(x => new { user = new { id = x.Student.Id, email = x.Student.Email, fullName = x.Student.Email, role = "STUDENT", createdAt = x.Student.CreatedAt }, role = "CANDIDATE", isAudioActive = false, isVideoActive = false, isSpeaking = false, connectionQuality = "disconnected" }),
-            studentEvaluations = s.Students.Where(x => x.EvaluationJson != null && (!student || x.StudentId == current.UserId)).ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<ScoreInput>>(x.EvaluationJson!, Json))
+            oralQuestions = student || s.OralQuestionsJson is null
+                ? null : JsonSerializer.Deserialize<List<OralQuestionSnapshot>>(s.OralQuestionsJson, Json),
+            oralEvidence = student || s.OralQuestionsJson is null ? null : s.Students
+                .Where(x => x.OralEvidenceJson != null)
+                .ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<OralEvidenceInput>>(x.OralEvidenceJson!, Json)),
+            studentEvaluations = s.Students.Where(x => x.EvaluationJson != null &&
+                (!student || (x.StudentId == current.UserId && (s.OralQuestionsJson == null || s.Status == "COMPLETED")))).ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<ScoreInput>>(x.EvaluationJson!, Json))
         };
     }
     [ProducesResponseType(typeof(SessionSummaryView[]), 200)]
@@ -269,6 +280,10 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             return BadRequest(new { error = "Students must belong to this project." });
 
         if (request.Criteria.Select(c => c.Id).Distinct().Count() != request.Criteria.Count || request.Criteria.Sum(c => c.Weight) != 100) return BadRequest(new { error = "Use distinct criteria with weights totaling 100." });
+        if (request.OralExamId is Guid examId)
+            await LoadOralQuestions(examId, p, ct);
+
+        if (db.Entry(p).State == EntityState.Detached) db.CourseProjects.Add(p);
         var s = new AssessmentSession
         {
             ProjectId = request.ProjectId,
@@ -285,12 +300,71 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
     [HttpPost("{id:guid}/start"), Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> Start(Guid id, CancellationToken ct)
     {
-        var s = await Load(id, ct); await access.Staff(await access.Project(s.ProjectId, ct), ct); SessionRules.Require(s.Status, "CREATED"); s.Status = "IN_PROGRESS"; s.ActualStartTime = DateTime.UtcNow; s.Version = Guid.NewGuid(); access.Audit(id, "SESSION_START", s.Title); await access.Save(ct); return Ok(new { s.Id, s.Status, s.ActualStartTime });
+        var s = await Load(id, ct);
+        var project = await access.Project(s.ProjectId, ct);
+        await access.Staff(project, ct);
+        SessionRules.Require(s.Status, "CREATED");
+
+        if (s.OralExamId is Guid examId)
+            s.OralQuestionsJson = JsonSerializer.Serialize(await LoadOralQuestions(examId, project, ct), Json);
+
+        s.Status = "IN_PROGRESS";
+        s.ActualStartTime = DateTime.UtcNow;
+        s.Version = Guid.NewGuid();
+        access.Audit(id, "SESSION_START", s.Title);
+        await access.Save(ct);
+        return Ok(new { s.Id, s.Status, s.ActualStartTime });
+    }
+
+    private async Task<List<OralQuestionSnapshot>> LoadOralQuestions(Guid examId, CourseProject project, CancellationToken ct)
+    {
+        var classId = project.AnalysisRun.Group?.ClassId
+            ?? throw new BadRequestException("Assign the project to a class before using an oral exam.");
+        var questions = await db.OralExams.AsNoTracking().Where(exam => exam.Id == examId && exam.ClassId == classId)
+            .Select(exam => exam.Questions.OrderBy(question => question.Id)
+                .Select(question => new OralQuestionSnapshot(question.Id, question.Content, question.ReferenceContext)).ToList())
+            .SingleOrDefaultAsync(ct);
+        if (questions is null || questions.Count == 0)
+            throw new BadRequestException("Select a non-empty oral exam from the project's class.");
+        return questions;
+    }
+
+    [HttpPut("{id:guid}/students/{studentId:guid}/oral-evidence"), Authorize(Roles = "Admin,Lecturer")]
+    public async Task<IActionResult> SaveOralEvidence(Guid id, Guid studentId, SaveOralEvidenceRequest request, CancellationToken ct)
+    {
+        var session = await Load(id, ct);
+        await access.Staff(await access.Project(session.ProjectId, ct), ct);
+        SessionRules.Require(session.Status, "IN_PROGRESS");
+        var student = session.Students.SingleOrDefault(x => x.StudentId == studentId)
+            ?? throw new NotFoundException("Student not assigned to session.");
+        if (session.OralQuestionsJson is null)
+            throw new ConflictException("The session has no oral exam snapshot.");
+
+        var questionIds = JsonSerializer.Deserialize<List<OralQuestionSnapshot>>(session.OralQuestionsJson, Json)!
+            .Select(question => question.Id).ToHashSet();
+        if (request.Answers.Any(answer => answer is null || !questionIds.Contains(answer.QuestionId))
+            || request.Answers.Select(answer => answer.QuestionId).Distinct().Count() != request.Answers.Count)
+            throw new BadRequestException("Provide one entry per question asked from this session's oral exam.");
+
+        var evidenceJson = JsonSerializer.Serialize(request.Answers, Json);
+        if (student.OralEvidenceJson == evidenceJson) return NoContent();
+
+        student.OralEvidenceJson = evidenceJson;
+        // Scores based on earlier evidence must be reviewed before publication.
+        student.EvaluationJson = null;
+        student.EvaluatorId = null;
+        student.EvaluatedAt = null;
+        session.Version = Guid.NewGuid();
+        access.Audit(id, "ORAL_EVIDENCE_RECORDED", studentId.ToString());
+        await access.Save(ct);
+        return NoContent();
     }
     [HttpPost("{id:guid}/students/{studentId:guid}/evaluate"), Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> Evaluate(Guid id, Guid studentId, EvaluateRequest request, CancellationToken ct)
     {
         var s = await Load(id, ct); await access.Staff(await access.Project(s.ProjectId, ct), ct); SessionRules.Require(s.Status, "IN_PROGRESS"); var student = s.Students.SingleOrDefault(x => x.StudentId == studentId) ?? throw new NotFoundException("Student not assigned to session.");
+        if (s.OralQuestionsJson is not null && student.OralEvidenceJson is null)
+            throw new ConflictException("Record this student's oral evidence before scoring.");
         SessionRules.ValidateScores(JsonSerializer.Deserialize<List<SessionCriterion>>(s.RubricJson, Json)!, request.Evaluations);
         student.EvaluationJson = JsonSerializer.Serialize(request.Evaluations, Json); student.EvaluatorId = current.UserId; student.EvaluatedAt = DateTime.UtcNow; s.Version = Guid.NewGuid(); access.Audit(id, "SCORE_RECORDED", studentId.ToString()); await access.Save(ct); return NoContent();
     }

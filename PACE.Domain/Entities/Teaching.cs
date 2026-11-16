@@ -35,6 +35,7 @@ public class AssessmentSession
     public DateTime ScheduledEnd { get; set; }
     public DateTime? ActualStartTime { get; set; }
     public DateTime? ActualEndTime { get; set; }
+    public string? OralQuestionsJson { get; set; }
     public string RubricJson { get; set; } = "[]";
     public Guid Version { get; set; } = Guid.NewGuid();
     public ICollection<SessionStudent> Students { get; set; } = new List<SessionStudent>();
@@ -45,6 +46,7 @@ public class SessionStudent
     public AssessmentSession Session { get; set; } = null!;
     public Guid StudentId { get; set; }
     public User Student { get; set; } = null!;
+    public string? OralEvidenceJson { get; set; }
     public string? EvaluationJson { get; set; }
     public Guid? EvaluatorId { get; set; }
     public DateTime? EvaluatedAt { get; set; }

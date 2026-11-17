@@ -19,7 +19,8 @@ public record AnalysisRunSummary(
     string? LecturerEmail = null,
     string? CourseCode = null,
     string? CourseName = null,
-    string? Semester = null);
+    string? Semester = null,
+    Guid? GroupId = null);
 
 public record BusinessSummary(
     Guid Id,

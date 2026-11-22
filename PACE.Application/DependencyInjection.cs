@@ -32,7 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IOralPracticeService, OralPracticeService>();
-        services.AddSingleton<IDrawioSpecificationStorage, FileDrawioSpecificationStorage>();
+        services.AddSingleton<FileDrawioSpecificationStorage>();
         return services;
     }
 }

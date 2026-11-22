@@ -27,12 +27,15 @@ public sealed class RepoAnalysisService(
     ICurrentUserService? currentUser = null,
     ITemplateGenerationService? templateGen = null) : IRepoAnalysisService
 {
+    private sealed record ApiSync(Guid BusinessId, string? Description, List<BusinessApi> Apis);
+
     private sealed record AnalysisModel(
         List<MethodSource> Methods,
         List<Business> Businesses,
         List<BusinessMethod> BusinessMethods,
         List<BusinessFlow> Flows,
-        List<DataFlowEdge> Edges);
+        List<DataFlowEdge> Edges,
+        List<ApiSync> ApiSyncs);
 
     public async Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, CancellationToken ct = default)
     {
@@ -159,8 +162,6 @@ public sealed class RepoAnalysisService(
         var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
         if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
         if (run.IsArchived) throw new BadRequestException("Không thể phân tích lại bản lịch sử.");
-        if (!replaceExisting && await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, ct))
-            throw new ConflictException("Repo đã có câu hỏi. Hãy xác nhận cập nhật nghiệp vụ để phân tích lại và lưu dữ liệu cũ vào lịch sử.");
 
         if (!AnalysisRunLock.TryAcquire(analysisRunId))
             throw new ConflictException("Repo này đang được phân tích, vui lòng đợi lần chạy trước xong.");
@@ -171,8 +172,15 @@ public sealed class RepoAnalysisService(
             using var clone = await git.CloneAsync(run.RepoUrl, ct);
 
             // Ưu tiên: template gửi kèm request > template admin đã chốt trong DB > file trong repo.
+            var existing = await uow.Businesses.GetWithApisByRepoAsync(analysisRunId, ct);
             var templates = confirmed;
             var templateSource = BusinessTemplateSource.Confirmed;
+            var syncApis = true;
+            if (templates is null && existing.Any(b => b.Apis.Count > 0))
+            {
+                templates = BusinessTemplateLoader.Normalize(DeclaredBusinessTemplate.Build(existing));
+                syncApis = false;
+            }
             if (templates is null && run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
                 templates = BusinessTemplateLoader.Parse(run.BusinessTemplateJson);
             if (templates is null)
@@ -210,15 +218,13 @@ public sealed class RepoAnalysisService(
             if (parsed.Methods.Count == 0)
                 throw new UnprocessableException("Parse xong nhưng không tìm thấy hàm nào trong mã nguồn.");
 
-            var model = BuildModel(run.Id, templates, parsed, warnings);
+            var model = BuildModel(run.Id, templates, parsed, warnings, existing, syncApis);
 
             await uow.ExecuteInTransactionAsync(async token =>
             {
-                if (replaceExisting) await uow.AnalysisRuns.ArchiveCurrentAsync(analysisRunId, token);
-                else if (await uow.AnalysisRuns.HasQuestionsAsync(analysisRunId, token))
-                    throw new ConflictException("Repo vừa có thêm câu hỏi. Vui lòng xác nhận phân tích lại.");
-                await uow.Businesses.DeleteByRepoAsync(analysisRunId, token);
                 await uow.MethodSources.DeleteByRepoAsync(analysisRunId, token);
+                foreach (var sync in model.ApiSyncs)
+                    await uow.Businesses.SyncApisAsync(sync.BusinessId, sync.Description, sync.Apis, token);
 
                 await uow.MethodSources.AddRangeAsync(model.Methods, token);
                 await uow.Businesses.AddRangeAsync(model.Businesses, token);
@@ -235,9 +241,9 @@ public sealed class RepoAnalysisService(
             }, ct);
 
             logger.LogInformation("Phân tích {RepoUrl}: {Methods} hàm, {Businesses} nghiệp vụ, {Flows} luồng",
-                run.RepoUrl, model.Methods.Count, model.Businesses.Count, model.Flows.Count);
+                run.RepoUrl, model.Methods.Count, templates.Count, model.Flows.Count);
 
-            return new AnalyzeResultDto(run.Id, string.Join(", ", scan.Stacks), model.Methods.Count, model.Businesses.Count,
+            return new AnalyzeResultDto(run.Id, string.Join(", ", scan.Stacks), model.Methods.Count, templates.Count,
                 model.Flows.Count, model.Edges.Count, warnings);
         }
         catch (Exception ex)
@@ -251,7 +257,8 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    private AnalysisModel BuildModel(Guid runId, List<BusinessTemplate> templates, ParseResult parsed, List<string> warnings)
+    private AnalysisModel BuildModel(Guid runId, List<BusinessTemplate> templates, ParseResult parsed, List<string> warnings,
+        IReadOnlyList<Business> existing, bool syncApis)
     {
         var settings = options.Value;
         var resolver = new CallResolver(parsed.Classes, parsed.Methods);
@@ -278,16 +285,30 @@ public sealed class RepoAnalysisService(
         var businessMethods = new List<BusinessMethod>();
         var flows = new List<BusinessFlow>();
         var edges = new List<DataFlowEdge>();
+        var apiSyncs = new List<ApiSync>();
+        var usedBusinessIds = new HashSet<Guid>();
+        var nextOrder = existing.Count == 0 ? 0 : existing.Max(b => b.OrderIndex) + 1;
 
         foreach (var template in templates)
         {
-            var business = new Business
+            var current = (template.BusinessId is { } templateBusinessId
+                    ? existing.FirstOrDefault(b => b.Id == templateBusinessId && !usedBusinessIds.Contains(b.Id))
+                    : null)
+                ?? existing.FirstOrDefault(b => !usedBusinessIds.Contains(b.Id)
+                    && string.Equals(b.BusinessName.Trim(), template.BusinessName, StringComparison.OrdinalIgnoreCase));
+            var apis = syncApis ? ToBusinessApis(template) : new List<BusinessApi>();
+            var business = current ?? new Business
             {
                 Id = Guid.NewGuid(),
                 AnalysisRunId = runId,
-                BusinessName = template.BusinessName
+                BusinessName = template.BusinessName,
+                Description = template.Description,
+                OrderIndex = nextOrder++,
+                Apis = apis
             };
-            businesses.Add(business);
+            usedBusinessIds.Add(business.Id);
+            if (current is null) businesses.Add(business);
+            else if (syncApis) apiSyncs.Add(new ApiSync(current.Id, template.Description, apis));
 
             var methodIds = new HashSet<Guid>();
             var entries = new HashSet<Guid>();
@@ -344,8 +365,25 @@ public sealed class RepoAnalysisService(
             businessMethods.AddRange(methodIds.Select(id => new BusinessMethod { BusinessId = business.Id, MethodSourceId = id }));
         }
 
-        return new AnalysisModel(methods, businesses, businessMethods, flows, edges);
+        return new AnalysisModel(methods, businesses, businessMethods, flows, edges, apiSyncs);
     }
+
+    private static List<BusinessApi> ToBusinessApis(BusinessTemplate template)
+        => template.Apis
+            .GroupBy(a => (a.Controller.Trim().ToLowerInvariant(), a.ResolveFunctionName().ToLowerInvariant()))
+            .Select((g, index) =>
+            {
+                var api = g.First();
+                return new BusinessApi
+                {
+                    Controller = Truncate(api.Controller.Trim(), 255)!,
+                    Function = Truncate(api.ResolveFunctionName(), 255)!,
+                    HttpMethod = Truncate(api.ResolveHttpVerb(), 10),
+                    Path = Truncate(api.Path?.Trim(), 500),
+                    OrderIndex = index
+                };
+            })
+            .ToList();
 
     private static string? Truncate(string? value, int max) => value is null || value.Length <= max ? value : value[..max];
 }

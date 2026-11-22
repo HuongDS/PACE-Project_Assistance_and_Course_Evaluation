@@ -6,6 +6,9 @@ namespace PACE.Application.Analysis.Template;
 
 public sealed class BusinessTemplate
 {
+    [JsonPropertyName("business_id")]
+    public Guid? BusinessId { get; set; }
+
     [JsonPropertyName("business_name")]
     public string BusinessName { get; set; } = string.Empty;
 

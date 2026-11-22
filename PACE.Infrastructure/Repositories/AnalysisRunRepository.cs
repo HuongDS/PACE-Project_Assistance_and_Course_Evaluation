@@ -156,30 +156,7 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
     public Task<List<AnalysisRun>> GetAllWithRepoUrlAsync(CancellationToken ct = default)
         => DbSet.Where(r => !r.IsArchived && r.RepoUrl != null).ToListAsync(ct);
 
-    // Must run in the same transaction as insertion of the replacement analysis.
-    public async Task ArchiveCurrentAsync(Guid analysisRunId, CancellationToken ct = default)
-    {
-        if (!await Context.Businesses.AnyAsync(b => b.AnalysisRunId == analysisRunId, ct)
-            && !await Context.MethodSources.AnyAsync(m => m.AnalysisRunId == analysisRunId, ct)) return;
-        var current = await DbSet.AsNoTracking().SingleAsync(r => r.Id == analysisRunId, ct);
-        var archiveId = Guid.NewGuid();
-        var name = (current.RepoName ?? "Repository");
-        if (name.Length > 210) name = name[..210];
-        DbSet.Add(new AnalysisRun { Id = archiveId, IsArchived = true,
-            RepoName = name + " (Lịch sử " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") + ")",
-            RepoUrl = current.AnalyzedRepoUrl ?? current.RepoUrl, AnalyzedRepoUrl = current.AnalyzedRepoUrl ?? current.RepoUrl,
-            AnalyzedAt = current.AnalyzedAt, AnalyzedCommitSha = current.AnalyzedCommitSha,
-            BusinessTemplateJson = current.BusinessTemplateJson, TemplateSource = current.TemplateSource,
-            TemplateUpdatedAt = current.TemplateUpdatedAt });
-        await Context.SaveChangesAsync(ct);
-        await Context.Businesses.Where(b => b.AnalysisRunId == analysisRunId)
-            .ExecuteUpdateAsync(set => set.SetProperty(b => b.AnalysisRunId, archiveId), ct);
-        await Context.MethodSources.Where(m => m.AnalysisRunId == analysisRunId)
-            .ExecuteUpdateAsync(set => set.SetProperty(m => m.AnalysisRunId, archiveId), ct);
-        // Empty drafts can continue with the new questions. Work already started stays with its source snapshot.
-        await Context.StudentSubmissions.Where(s => s.AnalysisRunId == analysisRunId && (s.SubmittedAt != null || s.Answers.Any()))
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.AnalysisRunId, archiveId), ct);
-    }
+   
 
     public Task<List<string>> GetAllRepoNamesAsync(CancellationToken ct = default)
         => DbSet.AsNoTracking().Where(r => r.RepoName != null).Select(r => r.RepoName!).ToListAsync(ct);
@@ -371,4 +348,6 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
             .Select(m => (Guid?)m.GroupId)
             .FirstOrDefaultAsync(ct);
     }
+
+    
 }

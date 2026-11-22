@@ -273,11 +273,141 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("OrderIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("OwnerStudentCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AnalysisRunId");
+                    b.HasIndex("OwnerStudentCode");
+
+                    b.HasIndex("AnalysisRunId", "OrderIndex");
 
                     b.ToTable("businesses", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.BusinessApi", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_id");
+
+                    b.Property<string>("Controller")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("controller");
+
+                    b.Property<string>("Function")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("function");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("http_method");
+
+                    b.Property<int>("OrderIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("order_index");
+
+                    b.Property<string>("Path")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("path");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Controller", "Function")
+                        .IsUnique();
+
+                    b.ToTable("business_apis", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.BusinessDiagram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("business_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("format");
+
+                    b.Property<string>("PreviewUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("preview_url");
+
+                    b.Property<string>("SourceXml")
+                        .HasColumnType("text")
+                        .HasColumnName("source_xml");
+
+                    b.Property<string>("SpecificationJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("specification_json");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Title");
+
+                    b.ToTable("business_diagrams", (string)null);
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.BusinessFlow", b =>
@@ -1759,7 +1889,36 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PACE.Domain.Entities.StudentProfile", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerStudentCode")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AnalysisRun");
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.BusinessApi", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Business", "Business")
+                        .WithMany("Apis")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.BusinessDiagram", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Business", "Business")
+                        .WithMany("Diagrams")
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.BusinessFlow", b =>
@@ -2344,7 +2503,11 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.Business", b =>
                 {
+                    b.Navigation("Apis");
+
                     b.Navigation("BusinessMethods");
+
+                    b.Navigation("Diagrams");
 
                     b.Navigation("Flows");
 

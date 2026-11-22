@@ -36,19 +36,22 @@ public class RepositoryLinkTests
         await Assert.ThrowsAsync<ConflictException>(() => f.Edit.UpdateAsync(f.Run.Id, new() { RepoUrl = "https://github.com/team/other" }));
         Assert.Equal(before, f.Run.RepoUrl);
     }
-    [Fact] public async Task ExistingQuestionsRequireExplicitReplacement()
+    [Fact] public async Task ReanalysisWithExistingQuestionsKeepsBusinessesAndReplacesCode()
     {
         var f = new Fixture();
-        await Assert.ThrowsAsync<ConflictException>(() => f.Analyze.CreateAndAnalyzeAsync(f.Request(false)));
-        Assert.Empty(f.Events); Assert.Equal(0, f.CloneCalls);
+        await f.Analyze.CreateAndAnalyzeAsync(f.Request(false));
+        Assert.Equal(1, f.CloneCalls);
+        Assert.DoesNotContain("archive", f.Events);
+        Assert.DoesNotContain("delete-businesses", f.Events);
+        Assert.Contains("insert-businesses", f.Events);
     }
-    [Fact] public async Task ConfirmedReplacementArchivesBeforeDeletingAndInsertingCurrentAnalysis()
+    [Fact] public async Task ReanalysisDeletesMethodsBeforeInsertingNewCodeWithoutArchiving()
     {
         var f = new Fixture();
         var result = await f.Analyze.CreateAndAnalyzeAsync(f.Request(true));
         Assert.Equal(f.Run.Id, result.AnalysisRunId);
-        Assert.True(f.Events.IndexOf("archive") < f.Events.IndexOf("delete-businesses"));
-        Assert.True(f.Events.IndexOf("archive") < f.Events.IndexOf("insert-methods"));
+        Assert.DoesNotContain("archive", f.Events);
+        Assert.True(f.Events.IndexOf("delete-methods") < f.Events.IndexOf("insert-methods"));
         Assert.Equal("new-commit", f.Run.AnalyzedCommitSha);
         Assert.Equal(f.Run.RepoUrl, f.Run.AnalyzedRepoUrl);
     }
@@ -81,7 +84,9 @@ public class RepositoryLinkTests
                 _ => Task.FromResult(new List<string>())
             });
             var businesses = Stub<IBusinessRepository>.Create((m,a) => m.Name switch {
-                "DeleteByRepoAsync" => Delete("delete-businesses"), "AddRangeAsync" => Event("insert-businesses"), _ => throw new InvalidOperationException(m.Name) });
+                "DeleteByRepoAsync" => Delete("delete-businesses"), "AddRangeAsync" => Event("insert-businesses"),
+                "GetWithApisByRepoAsync" => Task.FromResult(new List<Business>()), "SyncApisAsync" => Event("sync-apis"),
+                _ => throw new InvalidOperationException(m.Name) });
             var methods = Stub<IMethodSourceRepository>.Create((m,a) => m.Name switch {
                 "DeleteByRepoAsync" => Delete("delete-methods"), "AddRangeAsync" => Event("insert-methods"), _ => throw new InvalidOperationException(m.Name) });
             var uow = Stub<IUnitOfWork>.Create((m,a) => m.Name switch {

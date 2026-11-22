@@ -14,6 +14,8 @@ public class MethodSourceConfiguration : IEntityTypeConfiguration<MethodSource>
         e.Property(x => x.FilePath).HasMaxLength(500);
         e.Property(x => x.ClassName).IsRequired().HasMaxLength(255);
         e.Property(x => x.MethodName).IsRequired().HasMaxLength(255);
+        e.Property(x => x.HttpVerb).HasMaxLength(10);
+        e.Property(x => x.Route).HasMaxLength(500);
         e.Property(x => x.SourceCode).IsRequired();
         e.Property(x => x.Language).HasConversion<string>().HasMaxLength(20);
         e.Property(x => x.NodeType).HasConversion<string>().HasMaxLength(30);

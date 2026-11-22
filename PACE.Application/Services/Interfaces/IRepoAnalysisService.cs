@@ -5,4 +5,5 @@ namespace PACE.Application.Services.Interfaces;
 public interface IRepoAnalysisService
 {
     Task<AnalyzeResultDto> CreateAndAnalyzeAsync(CreateAnalysisRunRequest request, CancellationToken ct = default);
+    Task<AnalyzeResultDto> ReanalyzeAsync(Guid analysisRunId, CancellationToken ct = default);
 }

@@ -141,6 +141,9 @@ public sealed class RepoAnalysisService(
         }
     }
 
+    public Task<AnalyzeResultDto> ReanalyzeAsync(Guid analysisRunId, CancellationToken ct = default)
+        => AnalyzeAsync(analysisRunId, null, true, ct);
+
     private async Task RemoveRunAsync(Guid runId)
     {
         try
@@ -276,6 +279,8 @@ public sealed class RepoAnalysisService(
             ClassName = Truncate(m.ClassName, 255)!,
             MethodName = Truncate(m.MethodName, 255)!,
             Parameters = m.Parameters.Count == 0 ? null : string.Join(", ", m.Parameters.Select(p => p.ToString())),
+            HttpVerb = Truncate(m.HttpVerb, 10),
+            Route = Truncate(m.Route, 500),
             SourceCode = m.SourceCode,
             Language = m.Language,
             NodeType = m.IsDecision ? NodeType.DecisionGateway : NodeType.Activity

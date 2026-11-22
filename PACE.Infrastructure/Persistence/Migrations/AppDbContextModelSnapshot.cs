@@ -1254,6 +1254,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("HttpVerb")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<string>("Language")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1271,6 +1275,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Parameters")
                         .HasColumnType("text");
+
+                    b.Property<string>("Route")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("SourceCode")
                         .IsRequired()

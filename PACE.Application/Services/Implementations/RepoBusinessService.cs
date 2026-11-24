@@ -265,8 +265,9 @@ public class RepoBusinessService(
         {
             UserRole.Admin => true,
             UserRole.Lecturer => await uow.AnalysisRuns.IsLecturerOfRepoClassAsync(info.AnalysisRunId, currentUser.UserId, ct),
-            UserRole.Student => info.GroupId is { } groupId
-                && await uow.RepoBusinesses.IsGroupMemberAsync(groupId, currentUser.UserId, ct),
+            UserRole.Student => await uow.AnalysisRuns.IsStudentOfRepoAsync(info.AnalysisRunId, currentUser.UserId, ct)
+                || (info.GroupId is { } groupId
+                    && await uow.RepoBusinesses.IsGroupMemberAsync(groupId, currentUser.UserId, ct)),
             _ => false
         };
 

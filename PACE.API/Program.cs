@@ -7,6 +7,8 @@ using System.Text.Json.Serialization;
 using PACE.API.Common;
 using PACE.Application.Common.Interfaces;
 using PACE.Application;
+using PACE.Application.Services.Implementations;
+using PACE.Application.Services.Interfaces;
 using PACE.Infrastructure;
 using PACE.Infrastructure.Identity;
 
@@ -25,6 +27,15 @@ builder.Services.AddProblemDetails();
 var authEnabled = builder.Configuration.GetValue("Auth:Enabled", true);
 if (!authEnabled && !builder.Environment.IsDevelopment()) throw new InvalidOperationException("Authentication cannot be disabled outside Development.");
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+
+// Dev Login: chỉ cho phép ở Development. Bật ở môi trường khác thì dừng app ngay khi khởi động.
+// Khi tắt: không đăng ký DevLoginService và gỡ DevAuthController, nên /api/auth/dev-login không tồn tại (404).
+var devLoginEnabled = builder.Configuration.GetValue("Auth:DevLoginEnabled", false);
+if (devLoginEnabled && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException("Auth:DevLoginEnabled chỉ được bật trong môi trường Development.");
+if (devLoginEnabled && !authEnabled)
+    throw new InvalidOperationException("Auth:DevLoginEnabled yêu cầu Auth:Enabled = true.");
+if (devLoginEnabled) builder.Services.AddScoped<IDevLoginService, DevLoginService>();
 if (authEnabled)
 {
     builder.Services
@@ -78,6 +89,10 @@ builder.Services.AddCors(options =>
 
 builder.Services
     .AddControllers()
+    .ConfigureApplicationPartManager(parts =>
+    {
+        if (!devLoginEnabled) parts.FeatureProviders.Add(new ExcludeDevAuthControllerFeatureProvider());
+    })
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -122,6 +137,7 @@ var app = builder.Build();
 
 if (authEnabled) _ = JwtTokenService.SigningKey(jwt.Key);
 else app.Logger.LogWarning("Auth:Enabled = false: mọi endpoint đang mở, không cần đăng nhập (chỉ dùng khi test).");
+if (devLoginEnabled) app.Logger.LogWarning("DEV LOGIN ENABLED – DO NOT USE IN PRODUCTION (POST /api/auth/dev-login, môi trường: {Environment})", app.Environment.EnvironmentName);
 
 app.UseExceptionHandler();
 

@@ -51,3 +51,10 @@ public class RegisterRequest
 
 public record StudentLoginInfo(Guid UserId, string? StudentId, string Email);
 public record GoogleStudentLoginResponse(string AccessToken, DateTime ExpiresAt, StudentLoginInfo Student);
+
+/// <summary>Chỉ dùng cho Dev Login (môi trường Development).</summary>
+public class DevLoginRequest
+{
+    [Required, MaxLength(255)]
+    public string Email { get; set; } = null!;
+}

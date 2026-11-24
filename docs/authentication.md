@@ -55,3 +55,26 @@ Invalid or unverified Google credentials, unknown students, and non-Student acco
 `POST /api/auth/login` retains the existing email-based Admin login and response shape. It now rejects Student accounts to prevent bypassing Google verification. The existing Admin flow still relies on email alone; its authentication mechanism is unchanged.
 
 No frontend application exists in this solution; the endpoint accepts the Google Sign-In credential from the consuming frontend. No database migrations are required.
+
+## Dev Login (chỉ dùng khi dev)
+
+Cho phép đăng nhập bằng một email **đã có trong DB** mà không qua Google. Backend tìm user theo email (không phân biệt hoa thường) và phát JWT bằng đúng `IJwtTokenService.CreateToken` của luồng login thật (cùng key, issuer, audience, claims, thời hạn). Role lấy từ DB. Không tạo user mới, không trả refresh token (giống `google/staff`).
+
+```http
+POST /api/auth/dev-login
+Content-Type: application/json
+
+{ "email": "lecturer@fpt.edu.vn" }
+```
+
+Trả về `LoginResponse` giống `/api/auth/login`. Email không tồn tại trả 401.
+
+Bật bằng `Auth:DevLoginEnabled = true` (đã đặt trong `appsettings.Development.json`). Khi bật, lúc khởi động app log cảnh báo `DEV LOGIN ENABLED – DO NOT USE IN PRODUCTION`.
+
+An toàn cho Production:
+
+- `appsettings.json` đặt `Auth:DevLoginEnabled = false`.
+- Nếu bật cờ này mà môi trường khác Development, app **throw lúc khởi động** và không chạy.
+- Khi tắt, `DevLoginService` không được đăng ký và `DevAuthController` bị gỡ khỏi app, nên `/api/auth/dev-login` trả 404 và không hiện trong Swagger. Luồng Google không có nhánh bỏ qua verify.
+
+Frontend chỉ hiện ô Dev Login khi `NEXT_PUBLIC_DEV_LOGIN=true` (xem `PACE-FE/.env.example`).

@@ -20,7 +20,7 @@ public record ReviewGroupTopic([Required] string Decision, [MaxLength(4000)] str
 public record GroupTopicView(
     Guid GroupId, string GroupName, int Version, string Title, string? Description,
     string Status, Guid SubmittedBy, DateTime SubmittedAt, Guid? ReviewedBy,
-    DateTime? ReviewedAt, string? Notes);
+    DateTime? ReviewedAt, string? Notes, string? ProposalFileName, long? ProposalFileSize);
 
 [ApiController, Authorize]
 public class GroupTopicsController(AppDbContext db, TeachingAccess access) : ControllerBase
@@ -28,7 +28,7 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
     private static readonly Expression<Func<GroupTopicSubmission, GroupTopicView>> View = topic =>
         new(topic.GroupId, topic.Group.Name, topic.Version, topic.Title, topic.Description,
             topic.Status.ToString(), topic.SubmittedBy, topic.SubmittedAt,
-            topic.ReviewedBy, topic.ReviewedAt, topic.Notes);
+            topic.ReviewedBy, topic.ReviewedAt, topic.Notes, topic.ProposalFileName, topic.ProposalFileSize);
 
     private static readonly Func<GroupTopicSubmission, GroupTopicView> ToView = View.Compile();
 
@@ -95,7 +95,39 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
 
     [HttpPost("api/groups/{groupId:guid}/topics")]
     [Authorize(Roles = "Student")]
-    public async Task<IActionResult> Submit(Guid groupId, SubmitGroupTopic request, CancellationToken ct)
+    public IActionResult Submit(Guid groupId, SubmitGroupTopic request)
+        => throw new BadRequestException(ProposalFileRules.RequiredMessage);
+
+    [HttpPost("api/groups/{groupId:guid}/topics/with-proposal")]
+    [Authorize(Roles = "Student")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ProposalFileRules.MaxRequestBytes)]
+    public async Task<IActionResult> SubmitWithProposal(Guid groupId, [FromForm] SubmitGroupTopicForm form, CancellationToken ct)
+    {
+        var proposal = await ProposalFileRules.ReadAsync(form.Proposal, ct);
+        return await CreateSubmission(groupId, new SubmitGroupTopic(form.Title, form.Description, form.PreviousVersion), proposal, ct);
+    }
+
+    [HttpGet("api/groups/{groupId:guid}/topics/{version:int}/proposal")]
+    public async Task<IActionResult> DownloadProposal(Guid groupId, int version, CancellationToken ct)
+    {
+        var user = await access.User(ct);
+        var group = await LoadGroup(groupId, ct);
+        if (user.Role == UserRole.Student)
+            await RequireMember(user, groupId, ct);
+        else
+            RequireReviewer(user, group.Class);
+
+        var file = await db.GroupTopicSubmissions.AsNoTracking()
+            .Where(topic => topic.GroupId == groupId && topic.Version == version && topic.ProposalFile != null)
+            .Select(topic => new { topic.ProposalFile, topic.ProposalContentType, topic.ProposalFileName })
+            .SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Phiên bản đề tài này không có file proposal.");
+
+        return File(file.ProposalFile!, file.ProposalContentType ?? "application/octet-stream", file.ProposalFileName ?? "proposal");
+    }
+
+    private async Task<IActionResult> CreateSubmission(Guid groupId, SubmitGroupTopic request, ProposalFile proposal, CancellationToken ct)
     {
         var user = await access.User(ct);
         var group = await LoadGroup(groupId, ct);
@@ -117,7 +149,11 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
             Description = request.Description?.Trim(),
             Status = GroupTopicStatus.Pending,
             SubmittedBy = user.Id,
-            SubmittedAt = DateTime.UtcNow
+            SubmittedAt = DateTime.UtcNow,
+            ProposalFileName = proposal.FileName,
+            ProposalContentType = proposal.ContentType,
+            ProposalFileSize = proposal.Content.LongLength,
+            ProposalFile = proposal.Content
         };
         db.GroupTopicSubmissions.Add(topic);
         await access.Save(ct);

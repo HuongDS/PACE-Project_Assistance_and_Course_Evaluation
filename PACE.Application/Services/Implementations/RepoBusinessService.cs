@@ -373,51 +373,31 @@ public class RepoBusinessService(
 
     private static void ApplyContent(BusinessDiagram diagram, SaveBusinessDiagramRequest request, Guid businessId)
     {
-        if (!Enum.IsDefined(request.Format))
-            throw new BadRequestException("Định dạng diagram không hợp lệ.");
+        if (request.Format != DiagramFormat.Drawio)
+            throw new BadRequestException("Chỉ nhận sơ đồ draw.io (.drawio hoặc .xml) để AI đọc được nội dung khi sinh câu hỏi.");
 
-        diagram.Format = request.Format;
-        diagram.PreviewUrl = ValidateUrl(request.PreviewUrl);
-        diagram.Description = Clean(request.Description);
+        var xml = request.SourceXml?.Trim();
+        if (string.IsNullOrEmpty(xml))
+            throw new BadRequestException("Diagram draw.io cần có nội dung XML.");
+        if (xml.Length > MaxSourceXmlLength)
+            throw new BadRequestException("File draw.io quá lớn, tối đa 2 MB.");
 
-        if (request.Format == DiagramFormat.Drawio)
+        DrawioProcessDiagram parsed;
+        try
         {
-            var xml = request.SourceXml?.Trim();
-            if (string.IsNullOrEmpty(xml))
-                throw new BadRequestException("Diagram draw.io cần có nội dung XML.");
-            if (xml.Length > MaxSourceXmlLength)
-                throw new BadRequestException("File draw.io quá lớn, tối đa 2 MB.");
-
-            DrawioProcessDiagram parsed;
-            try
-            {
-                parsed = DrawioXmlParser.Parse(xml, businessId, diagram.Title);
-            }
-            catch (Exception ex) when (ex is ArgumentException or XmlException or InvalidOperationException
-                or FormatException or InvalidDataException)
-            {
-                throw new BadRequestException($"Không đọc được XML draw.io: {ex.Message}", ex);
-            }
-
-            diagram.SourceXml = xml;
-            diagram.SpecificationJson = JsonSerializer.Serialize(parsed, JsonOpts);
-            return;
+            parsed = DrawioXmlParser.Parse(xml, businessId, diagram.Title);
+        }
+        catch (Exception ex) when (ex is ArgumentException or XmlException or InvalidOperationException
+            or FormatException or InvalidDataException)
+        {
+            throw new BadRequestException($"Không đọc được XML draw.io: {ex.Message}", ex);
         }
 
-        if (diagram.PreviewUrl is null && diagram.Description is null)
-            throw new BadRequestException("Diagram dạng ảnh cần có link ảnh hoặc phần mô tả.");
-
-        diagram.SourceXml = null;
-        diagram.SpecificationJson = null;
-    }
-
-    private static string? ValidateUrl(string? url)
-    {
-        var value = Clean(url);
-        if (value is null) return null;
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
-            throw new BadRequestException("Link ảnh diagram phải là địa chỉ http hoặc https.");
-        return value;
+        diagram.Format = DiagramFormat.Drawio;
+        diagram.PreviewUrl = null;
+        diagram.Description = Clean(request.Description);
+        diagram.SourceXml = xml;
+        diagram.SpecificationJson = JsonSerializer.Serialize(parsed, JsonOpts);
     }
 
     private static DrawioProcessDiagram? Deserialize(string? json)

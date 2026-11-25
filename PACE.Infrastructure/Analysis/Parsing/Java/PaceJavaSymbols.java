@@ -49,6 +49,7 @@ public class PaceJavaSymbols {
         private final Elements elements;
         private final Types types;
         private final Set<TypeElement> sourceTypes = new LinkedHashSet<>();
+        private final Map<TypeElement, Map<String, List<ExecutableElement>>> inherited = new HashMap<>();
         private final Set<String> sourceMethods = new HashSet<>();
         private final Map<TypeElement, Map<String, List<ExecutableElement>>> members = new HashMap<>();
         private final Map<String, List<TypeElement>> subtypes = new HashMap<>();
@@ -80,7 +81,9 @@ public class PaceJavaSymbols {
                         String symbol = symbol(method);
                         if (symbol != null) {
                             sourceMethods.add(symbol);
-                            System.out.printf(Locale.ROOT, "D\t%s\t%d\t%s%n", fileId(unit), start(unit, node), symbol);
+                            var parentSymbols = overridden(method);
+                            System.out.printf(Locale.ROOT, "D\t%s\t%d\t%s%s%n", fileId(unit), start(unit, node), symbol,
+                                parentSymbols.isEmpty() ? "" : "\t" + String.join("\t", parentSymbols));
                         }
                     }
                     return super.visitMethod(node, unused);
@@ -151,6 +154,31 @@ public class PaceJavaSymbols {
                 }
                 return List.copyOf(found);
             });
+        }
+
+        private List<String> overridden(ExecutableElement method) {
+            var owner = (TypeElement) method.getEnclosingElement();
+            if (method.getModifiers().contains(Modifier.STATIC) || method.getModifiers().contains(Modifier.PRIVATE))
+                return List.of();
+            return inherited.computeIfAbsent(owner, this::parentMethods)
+                .getOrDefault(method.getSimpleName().toString(), List.of()).stream()
+                .filter(parent -> elements.overrides(method, parent, owner))
+                .map(this::symbol).filter(Objects::nonNull).distinct().sorted().toList();
+        }
+
+        private Map<String, List<ExecutableElement>> parentMethods(TypeElement owner) {
+            var pending = new ArrayDeque<TypeMirror>(types.directSupertypes(owner.asType()));
+            var visited = new HashSet<Element>();
+            var byName = new HashMap<String, List<ExecutableElement>>();
+            while (!pending.isEmpty()) {
+                var type = pending.removeFirst();
+                if (invalid(type) || !(types.asElement(type) instanceof TypeElement parent) ||
+                    !visited.add(parent) || trees.getPath(parent) == null) continue;
+                for (var method : ElementFilter.methodsIn(parent.getEnclosedElements()))
+                    byName.computeIfAbsent(method.getSimpleName().toString(), ignored -> new ArrayList<>()).add(method);
+                pending.addAll(types.directSupertypes(type));
+            }
+            return byName;
         }
 
         private String symbol(ExecutableElement method) {

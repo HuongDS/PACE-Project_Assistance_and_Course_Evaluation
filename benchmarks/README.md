@@ -52,6 +52,19 @@ python3 benchmarks/run.py --stage B1 --suite signatures --compare benchmarks/loc
 python3 benchmarks/run.py --stage B1 --compare benchmarks/local/runs/20261125T044805621095Z-B0
 ```
 
+### B2 · Tìm route và handler Spring
+
+B2 ghép các path ở cấp class và cấp method, giữ các alias và HTTP verb khai báo, rồi ưu tiên mapping khớp verb và path khi chọn handler. Nó kiểm tra import Spring và dùng quan hệ override do `javac` xác định để lấy mapping từ interface hoặc lớp cha trong source. Khi có nhiều handler khớp, một hint controller và method chính xác có thể phân biệt chúng. Ca vẫn mơ hồ được ghi cảnh báo. Quy tắc dựa trên [Spring Mapping Requests](https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html) và cách đánh giá endpoint từ source trong [AutoOAS](https://doi.org/10.1016/j.jss.2026.113122).
+
+Phạm vi là mapping annotation chuẩn với path literal trong controller có stereotype Spring trực tiếp. PACE ghi cảnh báo và bỏ ngỏ handler vượt 4.096 tổ hợp mapping. Route đăng ký bằng code, path lấy từ config hoặc biểu thức, custom annotation và điều kiện phân giải lúc chạy cần phép phân tích bổ sung. AutoOAS và microSecEnD đánh giá route. [15 ca kiểm tra B1/B2](results/spring-routes-b1-b2.json) kiểm tra thêm handler đích và trường hợp cần để ngỏ.
+
+B1 có tag `pace-graph-b1` và báo cáo từng ca trong `benchmarks/results/b1/`. Runner có thể dùng trực tiếp bản đối chứng trong Git.
+
+```bash
+python3 benchmarks/run.py --stage B2 --compare benchmarks/results/b1
+dotnet test PACE.Tests/PACE.Tests.csproj --filter FullyQualifiedName~SpringRouteBenchmarkTests
+```
+
 ## Nguồn công khai và đơn vị chấm
 
 Đặt JCG tại `benchmarks/local/jcg` ở commit `4737aac8c2652acded1c4505961b6af52d06ceeb`.

@@ -1,0 +1,135 @@
+{
+  "baseline_commit": "1d98fd714c593268e3bd9456d107416b8d244fd3",
+  "candidate_run": "20261125T053903128722Z-B2",
+  "input_hashes": {
+    "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+    "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+  },
+  "production_source_sha256": "b0fb67501767d6d6ab8ba874a0cb2fd84cece68f9077f53bc4b45e654da164cd",
+  "previous_stage": "B1",
+  "before": {
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 279,
+        "matched": 30,
+        "missing": 31,
+        "gold_keys": 61,
+        "reported_keys": 309
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    }
+  },
+  "after": {
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 467,
+        "matched": 35,
+        "missing": 26,
+        "gold_keys": 61,
+        "reported_keys": 502
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    }
+  },
+  "jcg_paired_delta": {
+    "scored_annotations": 79,
+    "cases": 74,
+    "required_targets": {
+      "total": 81,
+      "baseline_found": 68,
+      "candidate_found": 68
+    },
+    "prohibited_targets": {
+      "total": 11,
+      "baseline_reported": 1,
+      "candidate_reported": 1
+    },
+    "required_target_recall_delta_pp": 0.0,
+    "paired_case_bootstrap_95_percent_interval_pp": [
+      0.0,
+      0.0
+    ],
+    "bootstrap_samples": 10000
+  },
+  "research_repository_timings": {
+    "repositories": 25,
+    "sum_repository_duration_ms": 74118,
+    "median_repository_duration_ms": 2397
+  },
+  "local_spring_route_fixtures": {
+    "b1": {
+      "cases": 15,
+      "correct": 5
+    },
+    "b2": {
+      "cases": 15,
+      "correct": 15
+    }
+  }
+}

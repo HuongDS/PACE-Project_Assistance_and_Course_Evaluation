@@ -30,6 +30,7 @@ public sealed class ParsedCall
 }
 
 public sealed record JavaCallBinding(string Declaration, IReadOnlyList<string> SourceTargets);
+public sealed record EndpointMapping(string Verb, string Path);
 
 public sealed class ParsedMethod
 {
@@ -49,6 +50,10 @@ public sealed class ParsedMethod
     public string? Route { get; set; }
     public List<ParsedCall> Calls { get; } = [];
     public string? JavaSymbol { get; set; }
+    public IReadOnlyList<string> JavaOverriddenSymbols { get; set; } = [];
+    public List<EndpointMapping> SpringEndpoints { get; } = [];
+
+    public string JavaOwner => JavaSymbol is { } symbol ? symbol[..symbol.IndexOf('#')] : ClassName;
 
     public string Label => JavaSymbol?.Replace('#', '.') ?? $"{ClassName}.{MethodName}";
 }

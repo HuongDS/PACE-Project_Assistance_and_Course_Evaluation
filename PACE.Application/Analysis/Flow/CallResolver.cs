@@ -78,7 +78,7 @@ public sealed class CallResolver
 
     public static bool IsTrivialAccessor(ParsedMethod method)
     {
-        if (method.IsDecision || method.Calls.Count > 0 || method.HttpVerb is not null) return false;
+        if (method.IsDecision || method.Calls.Count > 0 || method.HttpVerb is not null || method.SpringEndpoints.Count > 0) return false;
         var name = method.MethodName;
         var isAccessorName = (name.Length > 3 && (name.StartsWith("get") || name.StartsWith("set")) && char.IsUpper(name[3]))
                              || (name.Length > 2 && name.StartsWith("is") && char.IsUpper(name[2]));

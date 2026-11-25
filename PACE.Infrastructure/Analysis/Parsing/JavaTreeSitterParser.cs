@@ -19,16 +19,6 @@ public sealed class JavaTreeSitterParser : ILanguageParser
         "for_statement", "enhanced_for_statement", "do_statement"
     ];
 
-    private static readonly Dictionary<string, string> MappingAnnotations = new(StringComparer.Ordinal)
-    {
-        ["GetMapping"] = "GET",
-        ["PostMapping"] = "POST",
-        ["PutMapping"] = "PUT",
-        ["DeleteMapping"] = "DELETE",
-        ["PatchMapping"] = "PATCH",
-        ["RequestMapping"] = "ANY"
-    };
-
     public string Name => "Java (tree-sitter)";
 
     public SourceKind Kind => SourceKind.Java;
@@ -56,8 +46,9 @@ public sealed class JavaTreeSitterParser : ILanguageParser
                 }
 
                 var positions = new JavaSourcePositions(file);
+                var mappings = new JavaSpringMappings(tree.RootNode);
                 foreach (var type in tree.RootNode.Descendants().Where(n => TypeDeclarations.Contains(n.Type)))
-                    ParseType(type, positions, result);
+                    ParseType(type, positions, mappings, result);
                 sources.Add(positions);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -67,23 +58,28 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             }
         }
 
-        if (sources.Any(source => source.Calls.Count > 0)) JavaCompilerBindings.Apply(sources, result, ct);
+        if (sources.Any(source => source.Calls.Count > 0 || source.SpringMethods.Values.Any(mapping => mapping.IsController)))
+            JavaCompilerBindings.Apply(sources, result, ct);
+        JavaSpringMappings.Apply(sources, result);
         return result;
     }
 
-    private static void ParseType(Node type, JavaSourcePositions positions, ParseResult result)
+    private static void ParseType(Node type, JavaSourcePositions positions, JavaSpringMappings mappings, ParseResult result)
     {
         var className = type.FieldText("name");
         if (string.IsNullOrEmpty(className)) return;
 
         var modifiers = type.NamedChildren.FirstOrDefault(c => c.Type == "modifiers");
+        var typeMapping = mappings.Read(modifiers);
+        var isController = type.Type != "interface_declaration" && mappings.IsController(modifiers) &&
+            modifiers?.Children.Any(node => node.Type == "abstract") != true;
         var parsedClass = new ParsedClass
         {
             Name = className,
             Kind = type.Type.Replace("_declaration", string.Empty),
             FilePath = positions.Source.RelativePath,
             Language = ProgrammingLanguage.Java,
-            RoutePrefix = modifiers is null ? null : FindMapping(modifiers).Route
+            RoutePrefix = typeMapping?.Paths.FirstOrDefault()
         };
 
         var superclass = type.Field("superclass");
@@ -104,6 +100,8 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             var parsed = ParseMethod(method, parsedClass, positions);
             result.Methods.Add(parsed);
             positions.Methods[method.StartIndex] = parsed;
+            positions.SpringMethods[parsed] = new SpringMethodMapping(isController, typeMapping,
+                mappings.Read(method.NamedChildren.FirstOrDefault(node => node.Type == "modifiers")));
         }
     }
 
@@ -123,8 +121,6 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             }
         }
 
-        var modifiers = method.NamedChildren.FirstOrDefault(c => c.Type == "modifiers");
-        var (verb, route) = modifiers is null ? (null, null) : FindMapping(modifiers);
         var body = method.Field("body");
 
         var parsed = new ParsedMethod
@@ -138,9 +134,7 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             Parameters = parameters,
             ReturnType = method.FieldText("type"),
             IsAbstract = body is null,
-            IsDecision = body is not null && body.Descendants().Any(n => BranchNodes.Contains(n.Type)),
-            HttpVerb = verb,
-            Route = verb is null ? null : ParserText.CombineRoute(owner.RoutePrefix, route)
+            IsDecision = body is not null && body.Descendants().Any(n => BranchNodes.Contains(n.Type))
         };
 
         if (body is null) return parsed;
@@ -204,51 +198,6 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             }
         }
         return null;
-    }
-
-    private static (string? Verb, string? Route) FindMapping(Node modifiers)
-    {
-        foreach (var annotation in modifiers.NamedChildren.Where(c => c.Type is "annotation" or "marker_annotation"))
-        {
-            var annotationName = ParserText.SimpleTypeName(annotation.FieldText("name"));
-            if (!MappingAnnotations.TryGetValue(annotationName, out var verb)) continue;
-
-            string? route = null;
-            var args = annotation.Field("arguments");
-            if (args is not null)
-            {
-                foreach (var arg in args.NamedChildren)
-                {
-                    if (arg.Type == "string_literal")
-                    {
-                        route ??= ParserText.StringLiteralValue(arg.Text);
-                    }
-                    else if (arg.Type == "element_value_pair")
-                    {
-                        var key = arg.FieldText("key");
-                        var value = arg.Field("value");
-                        if (key is "value" or "path")
-                        {
-                            var literal = value?.Type == "string_literal" ? value : value?.Descendants().FirstOrDefault(d => d.Type == "string_literal");
-                            route ??= ParserText.StringLiteralValue(literal?.Text);
-                        }
-                        else if (key == "method" && value is not null)
-                        {
-                            var methodText = value.Text;
-                            foreach (var candidate in new[] { "GET", "POST", "PUT", "DELETE", "PATCH" })
-                                if (methodText.Contains(candidate, StringComparison.Ordinal)) { verb = candidate; break; }
-                        }
-                    }
-                    else if (arg.Type == "element_value_array_initializer")
-                    {
-                        route ??= ParserText.StringLiteralValue(arg.NamedChildren.FirstOrDefault(c => c.Type == "string_literal")?.Text);
-                    }
-                }
-            }
-
-            return (verb, route);
-        }
-        return (null, null);
     }
 
     private static IEnumerable<string> TypeNames(Node node)

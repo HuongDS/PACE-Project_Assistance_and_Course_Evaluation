@@ -1,0 +1,228 @@
+{
+  "b1": {
+    "cases": 15,
+    "correct": 5,
+    "rows": [
+      {
+        "Key": "base-and-path-aliases",
+        "Expected": "inventory",
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "all-explicit-verbs",
+        "Expected": "inventory",
+        "Observed": "inventory",
+        "Note": null
+      },
+      {
+        "Key": "missing-verb",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "case-sensitive",
+        "Expected": null,
+        "Observed": "exactCase",
+        "Note": null
+      },
+      {
+        "Key": "exact-case",
+        "Expected": "exactCase",
+        "Observed": "exactCase",
+        "Note": null
+      },
+      {
+        "Key": "route-over-name",
+        "Expected": "create",
+        "Observed": "custom",
+        "Note": null
+      },
+      {
+        "Key": "explicit-over-any",
+        "Expected": "create",
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "any-fallback",
+        "Expected": "anyJob",
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "ambiguous-route",
+        "Expected": null,
+        "Observed": "conflictOne",
+        "Note": "API GET . khớp 2 hàm, chọn Catalog.conflictOne (Catalog.java)."
+      },
+      {
+        "Key": "named-ambiguity",
+        "Expected": "conflictTwo",
+        "Observed": "conflictTwo",
+        "Note": null
+      },
+      {
+        "Key": "variable-alias",
+        "Expected": "animal",
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "no-suffix-fallback",
+        "Expected": null,
+        "Observed": "exactCase",
+        "Note": null
+      },
+      {
+        "Key": "skip-unresolved-path",
+        "Expected": null,
+        "Observed": "dynamicValue",
+        "Note": null
+      },
+      {
+        "Key": "inherited-mapping",
+        "Expected": "lookup",
+        "Observed": "lookup",
+        "Note": null
+      },
+      {
+        "Key": "recognize-spring-annotation",
+        "Expected": null,
+        "Observed": "fake",
+        "Note": null
+      }
+    ],
+    "knownRoutes": [
+      "ANY /v1/job",
+      "GET /fake",
+      "GET /v1",
+      "GET /v1/animals/{id}",
+      "GET /v1/Case",
+      "GET /v1/conflict",
+      "GET /v1/custom",
+      "GET /v1/items",
+      "POST /v1/job"
+    ]
+  },
+  "b2": {
+    "cases": 15,
+    "correct": 15,
+    "rows": [
+      {
+        "Key": "base-and-path-aliases",
+        "Expected": "inventory",
+        "Observed": "inventory",
+        "Note": null
+      },
+      {
+        "Key": "all-explicit-verbs",
+        "Expected": "inventory",
+        "Observed": "inventory",
+        "Note": null
+      },
+      {
+        "Key": "missing-verb",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Không tìm thấy mapping Spring cho DELETE /v1/items."
+      },
+      {
+        "Key": "case-sensitive",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "exact-case",
+        "Expected": "exactCase",
+        "Observed": "exactCase",
+        "Note": null
+      },
+      {
+        "Key": "route-over-name",
+        "Expected": "create",
+        "Observed": "create",
+        "Note": null
+      },
+      {
+        "Key": "explicit-over-any",
+        "Expected": "create",
+        "Observed": "create",
+        "Note": null
+      },
+      {
+        "Key": "any-fallback",
+        "Expected": "anyJob",
+        "Observed": "anyJob",
+        "Note": null
+      },
+      {
+        "Key": "ambiguous-route",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Route Spring GET /v1/conflict có 2 handler phù hợp."
+      },
+      {
+        "Key": "named-ambiguity",
+        "Expected": "conflictTwo",
+        "Observed": "conflictTwo",
+        "Note": null
+      },
+      {
+        "Key": "variable-alias",
+        "Expected": "animal",
+        "Observed": "animal",
+        "Note": null
+      },
+      {
+        "Key": "no-suffix-fallback",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Không tìm thấy mapping Spring cho GET /wrong/v1/Case."
+      },
+      {
+        "Key": "skip-unresolved-path",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "inherited-mapping",
+        "Expected": "lookup",
+        "Observed": "lookup",
+        "Note": null
+      },
+      {
+        "Key": "recognize-spring-annotation",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      }
+    ],
+    "knownRoutes": [
+      "ANY /v1/job",
+      "ANY /v2/job",
+      "GET /contract/lookup",
+      "GET /v1/animals/{id}",
+      "GET /v1/Case",
+      "GET /v1/conflict",
+      "GET /v1/custom",
+      "GET /v1/items",
+      "GET /v1/stock",
+      "GET /v2/animals/{id}",
+      "GET /v2/Case",
+      "GET /v2/conflict",
+      "GET /v2/custom",
+      "GET /v2/items",
+      "GET /v2/stock",
+      "HEAD /v1/items",
+      "HEAD /v1/stock",
+      "HEAD /v2/items",
+      "HEAD /v2/stock",
+      "POST /v1/job",
+      "POST /v2/job"
+    ]
+  }
+}

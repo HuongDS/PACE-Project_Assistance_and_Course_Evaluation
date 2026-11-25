@@ -10,6 +10,7 @@ internal sealed class JavaSourcePositions(SourceFile source)
 {
     public SourceFile Source { get; } = source;
     public Dictionary<int, ParsedMethod> Methods { get; } = [];
+    public Dictionary<ParsedMethod, SpringMethodMapping> SpringMethods { get; } = [];
     public Dictionary<(int Start, int End), ParsedCall> Calls { get; } = [];
 }
 
@@ -115,7 +116,7 @@ internal static class JavaCompilerBindings
 
     private static void ApplyOutput(string output, IReadOnlyList<JavaSourcePositions> sources, ParseResult result)
     {
-        var declarations = new List<(ParsedMethod Method, string Symbol)>();
+        var declarations = new List<(ParsedMethod Method, string Symbol, string[] Overrides)>();
         var bindings = new List<(ParsedCall Call, JavaCallBinding Binding)>();
         using var reader = new StringReader(output);
         var errors = -1;
@@ -129,10 +130,10 @@ internal static class JavaCompilerBindings
                 throw new IOException("Dữ liệu vị trí từ javac không hợp lệ.");
 
             var source = sources[fileId];
-            if (parts[0] == "D" && parts.Length == 4)
+            if (parts[0] == "D")
             {
                 if (source.Methods.TryGetValue(start, out var method))
-                    declarations.Add((method, parts[3]));
+                    declarations.Add((method, parts[3], parts[4..]));
             }
             else if (parts[0] == "C" && parts.Length >= 5 && int.TryParse(parts[3], out var end) &&
                      end > start && end <= source.Source.Content.Length)
@@ -147,7 +148,11 @@ internal static class JavaCompilerBindings
         }
 
         if (errors < 0) throw new IOException("Javac chưa trả về báo cáo hoàn chỉnh.");
-        foreach (var (method, symbol) in declarations) method.JavaSymbol = symbol;
+        foreach (var (method, symbol, overrides) in declarations)
+        {
+            method.JavaSymbol = symbol;
+            method.JavaOverriddenSymbols = overrides;
+        }
         foreach (var (call, binding) in bindings) call.JavaBinding = binding;
         if (errors > 0)
             result.Warnings.Add($"Javac báo {errors} lỗi trên source đầu vào; graph Java có thể thiếu cạnh.");

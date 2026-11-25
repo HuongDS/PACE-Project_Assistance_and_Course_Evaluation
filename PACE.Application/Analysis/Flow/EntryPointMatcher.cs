@@ -1,12 +1,20 @@
 using System.Text.RegularExpressions;
 using PACE.Application.Analysis.Models;
 using PACE.Application.Analysis.Template;
+using PACE.Domain.Enums;
 
 namespace PACE.Application.Analysis.Flow;
 
 public sealed partial class EntryPointMatcher(IReadOnlyCollection<ParsedMethod> methods)
 {
-    private readonly ILookup<string, ParsedMethod> _byClass = methods.ToLookup(m => NormalizeClass(m.ClassName));
+    private readonly ILookup<string, ParsedMethod> _byClass = methods.Where(m => m.Language != ProgrammingLanguage.Java)
+        .ToLookup(m => NormalizeClass(m.ClassName));
+    private readonly ILookup<string, (ParsedMethod Method, EndpointMapping Endpoint)> _springByRoute = methods
+        .SelectMany(method => method.SpringEndpoints.Select(endpoint => (Method: method, Endpoint: endpoint)))
+        .ToLookup(item => NormalizeSpringPattern(item.Endpoint.Path), StringComparer.Ordinal);
+    private readonly ILookup<string, ParsedMethod> _javaByFunction = methods
+        .Where(method => method.Language == ProgrammingLanguage.Java && !method.IsAbstract)
+        .ToLookup(method => method.MethodName, StringComparer.Ordinal);
 
     [GeneratedRegex("[^a-z0-9]")]
     private static partial Regex NonAlphanumeric();
@@ -14,11 +22,17 @@ public sealed partial class EntryPointMatcher(IReadOnlyCollection<ParsedMethod> 
     [GeneratedRegex(@"(\{[^}]*\}|:[A-Za-z_][A-Za-z0-9_]*)")]
     private static partial Regex RouteParameter();
 
+    [GeneratedRegex(@"\{(\*?)[\p{L}\p{Nd}_]+((?::(?:[^{}]|\{[^{}]*\})+)?)\}")]
+    private static partial Regex SpringVariable();
+
     public ParsedMethod? Match(ApiTemplate api, out string? note)
     {
         note = null;
         if (api.Controller.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal))
             return methods.FirstOrDefault(m => m.ClassName == api.Controller && m.MethodName == api.ResolveFunctionName());
+
+        var spring = MatchSpring(api, out var foundSpring, out note);
+        if (foundSpring) return spring;
 
         var function = NormalizeMethod(api.ResolveFunctionName());
         var controller = NormalizeClass(api.Controller);
@@ -55,13 +69,56 @@ public sealed partial class EntryPointMatcher(IReadOnlyCollection<ParsedMethod> 
         return candidates[0];
     }
 
+    private ParsedMethod? MatchSpring(ApiTemplate api, out bool matchedSpring, out string? note)
+    {
+        note = null;
+        var function = api.ResolveFunctionName();
+        var controller = api.Controller.Trim();
+        var named = _javaByFunction[function].Where(method => MatchesSpringHint(method, controller, function)).ToList();
+        if (string.IsNullOrWhiteSpace(api.Path))
+        {
+            matchedSpring = named.Count > 0;
+            if (named.Count > 1) note = $"Handler Java mơ hồ cho {api.DisplayName} ({named.Count} khai báo).";
+            return named.Count == 1 ? named[0] : null;
+        }
+
+        var path = NormalizeSpringPattern(api.Path);
+        var verb = api.ResolveHttpVerb();
+        var routes = _springByRoute[path].ToList();
+        var compatible = routes.Where(item => verb is null || item.Endpoint.Verb == verb || item.Endpoint.Verb == "ANY").ToList();
+        var exactVerb = compatible.Where(item => item.Endpoint.Verb == verb).ToList();
+        var candidates = (exactVerb.Count > 0 ? exactVerb : compatible).Select(item => item.Method).Distinct().ToList();
+        matchedSpring = routes.Count > 0 || named.Count > 0;
+        if (!matchedSpring) return null;
+
+        if (candidates.Count == 1) return candidates[0];
+        if (candidates.Count > 1)
+        {
+            var hinted = candidates.Where(method => MatchesSpringHint(method, controller, function)).ToList();
+            if (hinted.Count == 1) return hinted[0];
+            note = $"Route Spring {verb ?? "ANY"} {api.Path} có {candidates.Count} handler phù hợp.";
+        }
+        else
+        {
+            note = $"Không tìm thấy mapping Spring cho {verb ?? "ANY"} {api.Path}.";
+        }
+        return null;
+    }
+
+    private static bool MatchesSpringHint(ParsedMethod method, string controller, string function)
+        => controller.Length > 0 && function.Length > 0 && method.MethodName == function &&
+           (method.ClassName == controller || method.JavaOwner == controller);
+
+    private static string NormalizeSpringPattern(string path)
+        => "/" + SpringVariable().Replace(path.Trim().TrimStart('/'), "{$1$2}");
+
     private List<ParsedMethod> MatchByRoute(ApiTemplate api)
     {
         if (string.IsNullOrWhiteSpace(api.Path)) return [];
         var path = NormalizeRoute(api.Path);
         var verb = api.ResolveHttpVerb();
 
-        var withRoutes = methods.Where(m => m.Route is not null).ToList();
+        var withRoutes = methods.Where(m => m.Language != ProgrammingLanguage.Java && m.Route is not null).ToList();
         var exact = withRoutes.Where(m => NormalizeRoute(m.Route!) == path && VerbMatches(m, verb)).ToList();
         if (exact.Count > 0) return exact;
 

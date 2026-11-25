@@ -165,9 +165,13 @@ public class ClassServiceTests
     }
 
     [Fact]
-    public async Task Lecturer_CanAddAndRemoveStudent()
+    public async Task TrainingOffice_SeesEveryClass_AndManagesRoster()
     {
-        var service = CreateService(UserRole.Lecturer, _lecturerId, isLecturer: true);
+        var service = CreateService(UserRole.TrainingOffice, Guid.NewGuid(), isLecturer: false, isStudent: false);
+
+        Assert.Single((await service.GetPagedAsync(new ClassQuery())).Items);
+        Assert.Equal(_classId, (await service.GetDetailAsync(_classId)).Class.Id);
+        Assert.Single((await service.GetStudentsAsync(_classId, new ClassStudentQuery())).Items);
 
         var added = await service.AddStudentsAsync(_classId, new AddStudentsToClassRequest
         {
@@ -182,15 +186,30 @@ public class ClassServiceTests
     }
 
     [Fact]
-    public async Task ImportAndExportStudents_Success()
+    public async Task Lecturer_CannotChangeRosterOfOwnClass()
     {
         var service = CreateService(UserRole.Lecturer, _lecturerId, isLecturer: true);
 
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.AddStudentsAsync(_classId, new AddStudentsToClassRequest { StudentCodes = ["SE999999"] }));
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.RemoveStudentAsync(_classId, StudentCode));
+
         using var ms = new MemoryStream();
-        var importResult = await service.ImportStudentsAsync(_classId, ms);
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.ImportStudentsAsync(_classId, ms));
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.DeleteClassAsync(_classId));
+    }
+
+    [Fact]
+    public async Task ImportByTrainingOffice_AndExportByLecturer_Succeed()
+    {
+        var office = CreateService(UserRole.TrainingOffice, Guid.NewGuid());
+        using var ms = new MemoryStream();
+        var importResult = await office.ImportStudentsAsync(_classId, ms);
         Assert.Equal(2, importResult.TotalRows);
 
-        var exportResult = await service.ExportStudentsAsync(_classId);
+        var lecturer = CreateService(UserRole.Lecturer, _lecturerId, isLecturer: true);
+        var exportResult = await lecturer.ExportStudentsAsync(_classId);
         Assert.NotEmpty(exportResult.FileBytes);
         Assert.Contains("SE1701", exportResult.FileName);
     }

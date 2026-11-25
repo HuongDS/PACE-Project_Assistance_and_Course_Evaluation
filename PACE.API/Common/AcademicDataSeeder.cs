@@ -181,6 +181,24 @@ public static class AcademicDataSeeder
                 if (updated) await db.SaveChangesAsync();
             }
 
+            // Phòng đào tạo: training@pace.edu.vn (cùng mật khẩu seed). Chỉ tạo khi phát triển, để bản triển khai
+            // không có thêm một tài khoản quản lý lớp dùng mật khẩu công khai trong mã nguồn.
+            var trainingEmail = "training@pace.edu.vn";
+            if (app.Environment.IsDevelopment() && !await db.Users.AnyAsync(u => u.Email.ToLower() == trainingEmail))
+            {
+                db.Users.Add(new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = trainingEmail,
+                    FullName = "Phòng Đào tạo",
+                    Role = UserRole.TrainingOffice,
+                    PasswordHash = defaultHash,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+                logger.LogInformation("Seeded training office: training@pace.edu.vn");
+            }
+
             var existingLecProfile = await db.LecturerProfiles.FirstOrDefaultAsync(lp => lp.LecturerCode == "GV001");
             if (existingLecProfile == null)
             {

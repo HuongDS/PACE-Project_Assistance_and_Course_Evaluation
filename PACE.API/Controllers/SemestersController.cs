@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PACE.API.Common;
 using PACE.Application.Dtos;
 using PACE.Application.Services.Interfaces;
 
@@ -8,6 +9,7 @@ namespace PACE.API.Controllers;
 [ApiController]
 [Route("api/semesters")]
 [Authorize]
+[AllowTrainingOffice]
 public class SemestersController(ISemesterService semesterService) : ControllerBase
 {
     [HttpGet]
@@ -27,7 +29,7 @@ public class SemestersController(ISemesterService semesterService) : ControllerB
         => Ok(await semesterService.GetByIdAsync(id, ct));
 
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<ActionResult<SemesterDto>> Create([FromBody] CreateSemesterRequest request, CancellationToken ct)
     {
         var result = await semesterService.CreateAsync(request, ct);
@@ -35,12 +37,12 @@ public class SemestersController(ISemesterService semesterService) : ControllerB
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<ActionResult<SemesterDto>> Update(Guid id, [FromBody] UpdateSemesterRequest request, CancellationToken ct)
         => Ok(await semesterService.UpdateAsync(id, request, ct));
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await semesterService.DeleteAsync(id, ct);

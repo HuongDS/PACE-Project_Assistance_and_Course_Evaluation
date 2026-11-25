@@ -6,5 +6,8 @@ public enum UserRole
 
     Admin,
 
-    Lecturer
+    Lecturer,
+
+    /// <summary>Phòng đào tạo: quản lý học kỳ, môn học, lớp và danh sách sinh viên; không giảng dạy hay chấm điểm.</summary>
+    TrainingOffice
 }

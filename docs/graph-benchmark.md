@@ -36,7 +36,7 @@ Kết quả B0 trên mã phân tích commit `22351f5b3cc0fdc6d17602dfbb35063d9b7
 | Phiên bản | Thay đổi so với bản trước | Chỉ số cần nhìn đầu tiên |
 |---|---|---|
 | B0 | PACE hiện tại | Ghi đủ tất cả chỉ số có thể đo |
-| B1 | Định danh symbol và resolve overload | Cạnh dư, F1 cạnh CALL |
+| B1 | Định danh symbol và phân giải overload Java qua javac | Đích đúng, dư, thiếu theo chữ ký. JCG đo riêng đích bắt buộc tìm thấy và đích bị cấm xuất hiện. |
 | B2 | Khớp endpoint theo metadata, xử lý mơ hồ | Tỷ lệ đúng endpoint và tỷ lệ bỏ ngỏ |
 | B3 | Giữ từng call site, đệ quy và vị trí bằng chứng, lưu trạng thái bị cắt | Cạnh bị mất, tỷ lệ gộp nhầm, nhận diện đầu ra thiếu |
 | B4 | Thêm CFG và def-use cho một stack | Độ đúng điều kiện, nhánh và quan hệ truyền giá trị |

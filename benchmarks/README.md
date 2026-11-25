@@ -37,6 +37,21 @@ Thay `<thu-muc-B0>` bằng thư mục runner đã in. B0 kiểm tra mã sản ph
 | `summary.json` | Tóm tắt theo từng bộ và từng loại phép đo |
 | `comparison.json`, `comparison.csv`, `jcg-delta.json` | Chênh lệch so với lượt đã chỉ định bằng `--compare` |
 
+### B1 · Phân giải lời gọi Java
+
+PACE dùng Tree-sitter để đọc cấu trúc source và dùng `JavacTask.parse()/analyze()` để xác định khai báo mà Java chọn cho mỗi lời gọi. Với lời gọi có dispatch ảo, PACE xét các implementation trong source theo phân cấp kiểu. Symbol Java gồm tên binary đầy đủ của class và chữ ký tham số sau type erasure. Lời gọi thiếu bằng chứng được ghi nhận trong warning. Công cụ chỉ phân tích source đã quét, tắt annotation processing và dùng thư viện JDK theo mặc định. Ứng dụng cần JDK 17 trở lên. Có thể cấu hình `PACE_JAVA_CLASSPATH` bằng đường dẫn JAR hoặc thư mục class tin cậy đã có sẵn. Runner benchmark dùng JDK với classpath rỗng để giữ cấu hình B0/B1 có thể lặp lại.
+
+Các dự án thiếu dependency, generated source hoặc module đầy đủ có thể mất cạnh. Các cạnh DI/AOP do Spring tạo lúc chạy cần mô hình framework. Benchmark B1 dùng [đặc tả overload Java](https://docs.oracle.com/javase/specs/jls/se21/html/jls-15.html#jls-15.12), [API JavacTask](https://docs.oracle.com/en/java/javase/21/docs/api/jdk.compiler/com/sun/source/util/JavacTask.html) và nguyên tắc tách phân giải khai báo khỏi dispatch trong [Unimocg](https://doi.org/10.1145/3650212.3652109).
+
+Bộ `signatures` đo chính xác tập đích gọi theo file và chữ ký. Đây là 10 ca kiểm tra có source và nhãn ghi trong [java-signatures.json](fixtures/java-signatures.json), chạy riêng ngoài bốn benchmark công khai. B0 của bộ này được đo trước khi đổi mã sản phẩm. Kết quả và hash fixture có trong [java-signatures-b0-b1.json](results/java-signatures-b0-b1.json).
+
+[Kết quả B1 trên bốn bộ công khai](results/public-b1-summary.json) ghi lại chênh lệch JCG với cùng nhãn và cùng 79 điểm đo, cùng số liệu thời gian quan sát được trong hai lượt chạy. Trên 25 repo của ba bộ Spring/microservice, tổng thời gian phân tích quan sát được là 2,47 giây ở B0 và 71,83 giây ở B1. Đây là hai lượt chạy, mỗi repo ở B1 khởi động một tiến trình Java.
+
+```bash
+python3 benchmarks/run.py --stage B1 --suite signatures --compare benchmarks/local/runs/20261125T050456681020Z-B0
+python3 benchmarks/run.py --stage B1 --compare benchmarks/local/runs/20261125T044805621095Z-B0
+```
+
 ## Nguồn công khai và đơn vị chấm
 
 Đặt JCG tại `benchmarks/local/jcg` ở commit `4737aac8c2652acded1c4505961b6af52d06ceeb`.

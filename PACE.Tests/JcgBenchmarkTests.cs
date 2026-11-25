@@ -64,7 +64,7 @@ public sealed class JcgBenchmarkTests(ITestOutputHelper output)
                 {
                     status = "no-source-invocation-at-annotated-line";
                 }
-                else if (parsed.Warnings.Count > 0)
+                else if (parsed.HasSyntaxReadFailure)
                 {
                     status = "parse-failure";
                 }

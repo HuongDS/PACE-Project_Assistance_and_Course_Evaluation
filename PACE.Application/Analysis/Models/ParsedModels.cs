@@ -26,7 +26,10 @@ public sealed class ParsedCall
     public required string MethodName { get; init; }
     public string? Condition { get; init; }
     public int ArgumentCount { get; init; } = -1;
+    public JavaCallBinding? JavaBinding { get; set; }
 }
+
+public sealed record JavaCallBinding(string Declaration, IReadOnlyList<string> SourceTargets);
 
 public sealed class ParsedMethod
 {
@@ -45,8 +48,9 @@ public sealed class ParsedMethod
     public string? HttpVerb { get; set; }
     public string? Route { get; set; }
     public List<ParsedCall> Calls { get; } = [];
+    public string? JavaSymbol { get; set; }
 
-    public string Label => $"{ClassName}.{MethodName}";
+    public string Label => JavaSymbol?.Replace('#', '.') ?? $"{ClassName}.{MethodName}";
 }
 
 public sealed class ParseResult
@@ -54,11 +58,13 @@ public sealed class ParseResult
     public List<ParsedClass> Classes { get; } = [];
     public List<ParsedMethod> Methods { get; } = [];
     public List<string> Warnings { get; } = [];
+    public bool HasSyntaxReadFailure { get; set; }
 
     public void Merge(ParseResult other)
     {
         Classes.AddRange(other.Classes);
         Methods.AddRange(other.Methods);
         Warnings.AddRange(other.Warnings);
+        HasSyntaxReadFailure |= other.HasSyntaxReadFailure;
     }
 }

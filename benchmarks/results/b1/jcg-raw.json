@@ -1,0 +1,1699 @@
+[
+  {
+    "case": "Classloading/CL4",
+    "file": "cl4/Demo.java",
+    "line": 15,
+    "annotationLine": 8,
+    "method": "callback",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "cl4.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "DynamicProxies/DP1",
+    "file": "dp/Main.java",
+    "line": 17,
+    "annotationLine": 7,
+    "method": "bar",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "dp.FooImpl"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "DynamicProxies/DP1",
+    "file": "dp/Main.java",
+    "line": 17,
+    "annotationLine": 11,
+    "method": "invoke",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "dp.DebugProxy"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "JVMCalls/JVMC1",
+    "file": "jvmc/Demo.java",
+    "line": 22,
+    "annotationLine": 20,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "jvmc.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "jvmc.Demo"
+    ]
+  },
+  {
+    "case": "JVMCalls/JVMC2",
+    "file": "jvmc/Demo.java",
+    "line": 18,
+    "annotationLine": 16,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "jvmc.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "jvmc.Demo"
+    ]
+  },
+  {
+    "case": "JVMCalls/JVMC3",
+    "file": "jvmc/Demo.java",
+    "line": 19,
+    "annotationLine": 17,
+    "method": "verifyReachability",
+    "status": "scored",
+    "required": [
+      "jvmc.TargetRunnable"
+    ],
+    "prohibited": [],
+    "observed": [
+      "jvmc.TargetRunnable"
+    ]
+  },
+  {
+    "case": "JVMCalls/JVMC4",
+    "file": "jvmc/Demo.java",
+    "line": 12,
+    "annotationLine": 7,
+    "method": "exit",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "java.lang.Thread"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "JVMCalls/JVMC5",
+    "file": "jvmc/Demo.java",
+    "line": 29,
+    "annotationLine": 27,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "jvmc.ExceptionalExceptionHandler"
+    ],
+    "prohibited": [],
+    "observed": [
+      "jvmc.ExceptionalExceptionHandler"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM1",
+    "file": "j8dim/Class.java",
+    "line": 10,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8dim.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "j8dim.Interface"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM2",
+    "file": "j8dim/SuperClass.java",
+    "line": 19,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8dim.SuperClass"
+    ],
+    "prohibited": [
+      "j8dim.Interface"
+    ],
+    "observed": [
+      "j8dim.Interface",
+      "j8dim.SuperClass"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM3",
+    "file": "j8dim/SuperClass.java",
+    "line": 19,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8dim.SuperClass"
+    ],
+    "prohibited": [
+      "j8dim.Interface"
+    ],
+    "observed": [
+      "j8dim.SuperClass"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM4",
+    "file": "j8dim/SuperClass.java",
+    "line": 14,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8dim.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "j8dim.Interface"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM5",
+    "file": "j8dim/SuperClass.java",
+    "line": 26,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8dim.DirectInterface"
+    ],
+    "prohibited": [
+      "j8dim.Interface1",
+      "j8dim.Interface2"
+    ],
+    "observed": [
+      "j8dim.DirectInterface"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM5",
+    "file": "j8dim/SuperClass.java",
+    "line": 27,
+    "annotationLine": 17,
+    "method": "compute",
+    "status": "scored",
+    "required": [
+      "j8dim.SuperClass"
+    ],
+    "prohibited": [
+      "j8dim.Interface1",
+      "j8dim.Interface2"
+    ],
+    "observed": [
+      "j8dim.SuperClass"
+    ]
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM6",
+    "file": "j8dim/Demo.java",
+    "line": 32,
+    "annotationLine": 28,
+    "method": "method",
+    "status": "ambiguous-method-level-projection",
+    "required": [
+      "j8dim.SomeInterface"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8InterfaceMethods/J8DIM6",
+    "file": "j8dim/Demo.java",
+    "line": 33,
+    "annotationLine": 29,
+    "method": "method",
+    "status": "ambiguous-method-level-projection",
+    "required": [
+      "j8dim.AnotherInterface"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8InterfaceMethods/J8SIM1",
+    "file": "j8sim/Class.java",
+    "line": 9,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "j8sim.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "j8sim.Interface"
+    ]
+  },
+  {
+    "case": "Java8Invokedynamics/MR1",
+    "file": "id/Class.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Interface"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR2",
+    "file": "id/Class.java",
+    "line": 14,
+    "annotationLine": 9,
+    "method": "getTypeName",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR3",
+    "file": "id/Class.java",
+    "line": 12,
+    "annotationLine": 7,
+    "method": "getTypeName",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.SuperClass"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR4",
+    "file": "id/Class.java",
+    "line": 13,
+    "annotationLine": 8,
+    "method": "getTypeName",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR5",
+    "file": "id/Class.java",
+    "line": 19,
+    "annotationLine": 14,
+    "method": "sum",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR6",
+    "file": "id/Class.java",
+    "line": 14,
+    "annotationLine": 10,
+    "method": "\u003Cinit\u003E",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/MR7",
+    "file": "id/Class.java",
+    "line": 13,
+    "annotationLine": 7,
+    "method": "version",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.SuperClass"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/Lambda1",
+    "file": "id/Class.java",
+    "line": 13,
+    "annotationLine": 7,
+    "method": "doSomething",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/Lambda2",
+    "file": "id/Class.java",
+    "line": 12,
+    "annotationLine": 9,
+    "method": "doSomething",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.LambdaProvider"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/Lambda3",
+    "file": "id/Class.java",
+    "line": 22,
+    "annotationLine": 17,
+    "method": "doSomething",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Java8Invokedynamics/Lambda4",
+    "file": "id/Class.java",
+    "line": 21,
+    "annotationLine": 18,
+    "method": "doSomething",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "id.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Library/LIB1",
+    "file": "lib1/Demo.java",
+    "line": 10,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "lib1.Type",
+      "lib1.Subtype"
+    ],
+    "prohibited": [
+      "lib1.SomeType"
+    ],
+    "observed": [
+      "lib1.Subtype",
+      "lib1.Type"
+    ]
+  },
+  {
+    "case": "Library/LIB2",
+    "file": "lib2/Demo.java",
+    "line": 12,
+    "annotationLine": 9,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "lib2.Type",
+      "lib2.Subtype"
+    ],
+    "prohibited": [
+      "lib2.SomeType"
+    ],
+    "observed": [
+      "lib2.Subtype",
+      "lib2.Type"
+    ]
+  },
+  {
+    "case": "Library/LIB3",
+    "file": "lib3/Demo.java",
+    "line": 10,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "lib3.PotentialSuperclass"
+    ],
+    "prohibited": [
+      "lib3.DismissedSuperlass"
+    ],
+    "observed": []
+  },
+  {
+    "case": "Library/LIB4",
+    "file": "lib4/collude/Demo.java",
+    "line": 10,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "lib4.collude.PotentialSuperclass"
+    ],
+    "prohibited": [
+      "lib4.internal.InternalClass"
+    ],
+    "observed": []
+  },
+  {
+    "case": "Library/LIB5",
+    "file": "lib5/collude/Demo.java",
+    "line": 9,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "lib5.internal.InternalClass"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR1",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR2",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR3",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 16,
+    "method": "verifyCall",
+    "status": "caller-missing",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR4",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tmr.Demo"
+    ]
+  },
+  {
+    "case": "ModernReflection/TMR5",
+    "file": "tmr/Demo.java",
+    "line": 22,
+    "annotationLine": 16,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tmr.Demo"
+    ]
+  },
+  {
+    "case": "ModernReflection/TMR6",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tmr.Superclass"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR7",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "ModernReflection/TMR8",
+    "file": "tmr/Demo.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tmr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "NonVirtualCalls/NVC1",
+    "file": "nvc/Class.java",
+    "line": 12,
+    "annotationLine": 10,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "nvc.Class"
+    ],
+    "prohibited": [],
+    "observed": [
+      "nvc.Class"
+    ]
+  },
+  {
+    "case": "NonVirtualCalls/NVC2",
+    "file": "nvc/Class.java",
+    "line": 13,
+    "annotationLine": 11,
+    "method": "\u003Cinit\u003E",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "nvc.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "NonVirtualCalls/NVC3",
+    "file": "nvc/Class.java",
+    "line": 13,
+    "annotationLine": 10,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "nvc.Class"
+    ],
+    "prohibited": [],
+    "observed": [
+      "nvc.Class"
+    ]
+  },
+  {
+    "case": "NonVirtualCalls/NVC4",
+    "file": "nvc/Class.java",
+    "line": 9,
+    "annotationLine": 7,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "nvc.Rootclass"
+    ],
+    "prohibited": [],
+    "observed": [
+      "nvc.Rootclass"
+    ]
+  },
+  {
+    "case": "NonVirtualCalls/NVC5",
+    "file": "nvc/Demo.java",
+    "line": 26,
+    "annotationLine": 24,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "nvc.Middle"
+    ],
+    "prohibited": [],
+    "observed": [
+      "nvc.Middle"
+    ]
+  },
+  {
+    "case": "Reflection/TR1",
+    "file": "tr/Demo.java",
+    "line": 13,
+    "annotationLine": 8,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR2",
+    "file": "tr/Demo.java",
+    "line": 13,
+    "annotationLine": 8,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR3",
+    "file": "tr/Demo.java",
+    "line": 13,
+    "annotationLine": 8,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR4",
+    "file": "tr/Demo.java",
+    "line": 13,
+    "annotationLine": 8,
+    "method": "target",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR5",
+    "file": "tr/Demo.java",
+    "line": 9,
+    "annotationLine": 8,
+    "method": "verifyCall",
+    "status": "caller-missing",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR6",
+    "file": "tr/Demo.java",
+    "line": 9,
+    "annotationLine": 8,
+    "method": "verifyCall",
+    "status": "caller-missing",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Reflection/TR7",
+    "file": "tr/Demo.java",
+    "line": 18,
+    "annotationLine": 9,
+    "method": "target",
+    "status": "scored",
+    "required": [
+      "tr.CallTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tr.CallTarget",
+      "tr.NeverInstantiated"
+    ]
+  },
+  {
+    "case": "Reflection/TR8",
+    "file": "tr/Demo.java",
+    "line": 18,
+    "annotationLine": 9,
+    "method": "target",
+    "status": "scored",
+    "required": [
+      "tr.CallTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tr.CallTarget",
+      "tr.NeverInstantiated"
+    ]
+  },
+  {
+    "case": "Reflection/TR9",
+    "file": "tr/Demo.java",
+    "line": 21,
+    "annotationLine": 19,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "tr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/LRR1",
+    "file": "lrr/Demo.java",
+    "line": 22,
+    "annotationLine": 20,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "lrr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "lrr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/LRR1",
+    "file": "lrr/Demo.java",
+    "line": 35,
+    "annotationLine": 33,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "lrr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "lrr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/LRR2",
+    "file": "lrr/Demo.java",
+    "line": 27,
+    "annotationLine": 25,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "lrr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "lrr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/LRR2",
+    "file": "lrr/Demo.java",
+    "line": 40,
+    "annotationLine": 38,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "lrr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "lrr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/LRR3",
+    "file": "lrr/Demo.java",
+    "line": 25,
+    "annotationLine": 23,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "lrr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "lrr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CSR1",
+    "file": "csr/Demo.java",
+    "line": 24,
+    "annotationLine": 22,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "csr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "csr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CSR2",
+    "file": "csr/Demo.java",
+    "line": 24,
+    "annotationLine": 22,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "csr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "csr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CSR3",
+    "file": "csr/Demo.java",
+    "line": 27,
+    "annotationLine": 25,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "csr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "csr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CSR4",
+    "file": "csr/Demo.java",
+    "line": 31,
+    "annotationLine": 29,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "csr.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "csr.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CFNE1",
+    "file": "cfne/Demo.java",
+    "line": 15,
+    "annotationLine": 9,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "cfne.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "cfne.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CFNE2",
+    "file": "cfne/Demo.java",
+    "line": 18,
+    "annotationLine": 9,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "cfne.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "cfne.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CFNE3",
+    "file": "cfne/Demo.java",
+    "line": 31,
+    "annotationLine": 29,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "cfne.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "cfne.Demo"
+    ]
+  },
+  {
+    "case": "Reflection/CFNE4",
+    "file": "cfne/Demo.java",
+    "line": 35,
+    "annotationLine": 33,
+    "method": "verifyCall",
+    "status": "scored",
+    "required": [
+      "cfne.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "cfne.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/Ser1",
+    "file": "ser/Demo.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "defaultWriteObject",
+    "status": "scored",
+    "required": [
+      "java.io.ObjectOutputStream"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/Ser2",
+    "file": "ser/Demo.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "defaultWriteObject",
+    "status": "scored",
+    "required": [
+      "java.io.ObjectOutputStream"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/Ser3",
+    "file": "ser/Demo.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "defaultWriteObject",
+    "status": "scored",
+    "required": [
+      "java.io.ObjectOutputStream"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/Ser4",
+    "file": "ser/Demo.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "defaultReadObject",
+    "status": "scored",
+    "required": [
+      "java.io.ObjectInputStream"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/Ser5",
+    "file": "ser/Demo.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "defaultReadObject",
+    "status": "scored",
+    "required": [
+      "java.io.ObjectInputStream"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/Ser6",
+    "file": "ser/Demo.java",
+    "line": 17,
+    "annotationLine": 15,
+    "method": "replace",
+    "status": "scored",
+    "required": [
+      "ser.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "ser.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/Ser7",
+    "file": "ser/Demo.java",
+    "line": 18,
+    "annotationLine": 16,
+    "method": "replace",
+    "status": "scored",
+    "required": [
+      "ser.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "ser.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/Ser8",
+    "file": "ser/Demo.java",
+    "line": 19,
+    "annotationLine": 17,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "ser.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "ser.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/Ser9",
+    "file": "ser/Superclass.java",
+    "line": 10,
+    "annotationLine": 8,
+    "method": "callback",
+    "status": "caller-missing",
+    "required": [
+      "ser.Superclass"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/ExtSer1",
+    "file": "extser/Demo.java",
+    "line": 17,
+    "annotationLine": 15,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "extser.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "extser.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/ExtSer2",
+    "file": "extser/Demo.java",
+    "line": 17,
+    "annotationLine": 15,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "extser.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "extser.Demo"
+    ]
+  },
+  {
+    "case": "Serialization/ExtSer3",
+    "file": "extser/Demo.java",
+    "line": 19,
+    "annotationLine": 17,
+    "method": "callback",
+    "status": "caller-missing",
+    "required": [
+      "extser.Demo"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/SerLam1",
+    "file": "serlam/DoSerialization.java",
+    "line": 33,
+    "annotationLine": 21,
+    "method": "writeReplace",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "java.lang.invoke.SerializedLambda"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Serialization/SerLam2",
+    "file": "serlam/DoDeserialization.java",
+    "line": 18,
+    "annotationLine": 10,
+    "method": "readResolve",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "java.lang.invoke.SerializedLambda"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM1",
+    "file": "spm1/Class.java",
+    "line": 26,
+    "annotationLine": 19,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm1.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM2",
+    "file": "spm2/Class.java",
+    "line": 26,
+    "annotationLine": 19,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm2.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM3",
+    "file": "spm3/Class.java",
+    "line": 26,
+    "annotationLine": 19,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm3.Class"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM4",
+    "file": "spm4/VirtualSPMCall.java",
+    "line": 19,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm4.SuperClassWithMethod"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM5",
+    "file": "spm5/VirtualSPMCall.java",
+    "line": 19,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm5.Class"
+    ],
+    "prohibited": [
+      "spm5.SuperClassWithMethod"
+    ],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM6",
+    "file": "spm6/VirtualSPMCall.java",
+    "line": 19,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm6.Interface"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "SignaturePolymorphicMethods/SPM7",
+    "file": "spm7/VirtualSPMCall.java",
+    "line": 18,
+    "annotationLine": 11,
+    "method": "method",
+    "status": "outside-direct-method-scope",
+    "required": [
+      "spm7.Superclass"
+    ],
+    "prohibited": [
+      "spm7.Interface"
+    ],
+    "observed": []
+  },
+  {
+    "case": "StaticInitializers/SI1",
+    "file": "si/NonConstantFieldRef.java",
+    "line": 10,
+    "annotationLine": 8,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.NonConstantFieldRef"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.NonConstantFieldRef"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI2",
+    "file": "si/Interface.java",
+    "line": 10,
+    "annotationLine": 8,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Interface"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI3",
+    "file": "si/Interface.java",
+    "line": 10,
+    "annotationLine": 8,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Interface"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI4",
+    "file": "si/Demo.java",
+    "line": 17,
+    "annotationLine": 15,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Interface"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Interface"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI5",
+    "file": "si/Main.java",
+    "line": 19,
+    "annotationLine": 17,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Demo"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI6",
+    "file": "si/Main.java",
+    "line": 16,
+    "annotationLine": 14,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Demo"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI7",
+    "file": "si/Main.java",
+    "line": 18,
+    "annotationLine": 16,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Demo"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Demo"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI8",
+    "file": "si/Main.java",
+    "line": 16,
+    "annotationLine": 14,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Subclass"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Subclass"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI8",
+    "file": "si/Main.java",
+    "line": 31,
+    "annotationLine": 29,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.Superclass"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.Superclass"
+    ]
+  },
+  {
+    "case": "StaticInitializers/SI8",
+    "file": "si/Main.java",
+    "line": 45,
+    "annotationLine": 43,
+    "method": "callback",
+    "status": "scored",
+    "required": [
+      "si.RootClass"
+    ],
+    "prohibited": [],
+    "observed": [
+      "si.RootClass"
+    ]
+  },
+  {
+    "case": "Types/TC1",
+    "file": "simplecast/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "target",
+    "status": "scored",
+    "required": [
+      "simplecast.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "simplecast.Target"
+    ]
+  },
+  {
+    "case": "Types/TC2",
+    "file": "castclassapi/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "castclassapi.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "castclassapi.Demo",
+      "castclassapi.Target"
+    ]
+  },
+  {
+    "case": "Types/TC3",
+    "file": "classeq/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "classeq.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "classeq.Demo",
+      "classeq.Target"
+    ]
+  },
+  {
+    "case": "Types/TC4",
+    "file": "instanceofcheck/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "instanceofcheck.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "instanceofcheck.Demo",
+      "instanceofcheck.Target"
+    ]
+  },
+  {
+    "case": "Types/TC5",
+    "file": "instanceofclassapi/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "instanceofclassapi.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "instanceofclassapi.Demo",
+      "instanceofclassapi.Target"
+    ]
+  },
+  {
+    "case": "Types/TC6",
+    "file": "tc/Demo.java",
+    "line": 18,
+    "annotationLine": 12,
+    "method": "toString",
+    "status": "scored",
+    "required": [
+      "tc.Target"
+    ],
+    "prohibited": [],
+    "observed": [
+      "tc.Demo",
+      "tc.Target"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe1",
+    "file": "unsafe/Demo.java",
+    "line": 22,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe2",
+    "file": "unsafe/Demo.java",
+    "line": 22,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe3",
+    "file": "unsafe/Demo.java",
+    "line": 23,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe4",
+    "file": "unsafe/Demo.java",
+    "line": 29,
+    "annotationLine": 13,
+    "method": "targetMethod",
+    "status": "ambiguous-method-level-projection",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Unsafe/Unsafe4",
+    "file": "unsafe/Demo.java",
+    "line": 30,
+    "annotationLine": 14,
+    "method": "targetMethod",
+    "status": "ambiguous-method-level-projection",
+    "required": [
+      "unsafe.SafeTarget"
+    ],
+    "prohibited": [],
+    "observed": []
+  },
+  {
+    "case": "Unsafe/Unsafe5",
+    "file": "unsafe/Demo.java",
+    "line": 25,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe6",
+    "file": "unsafe/Demo.java",
+    "line": 24,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.SafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "Unsafe/Unsafe7",
+    "file": "unsafe/Demo.java",
+    "line": 25,
+    "annotationLine": 11,
+    "method": "targetMethod",
+    "status": "scored",
+    "required": [
+      "unsafe.UnsafeTarget"
+    ],
+    "prohibited": [],
+    "observed": [
+      "unsafe.SafeTarget",
+      "unsafe.UnsafeTarget"
+    ]
+  },
+  {
+    "case": "VirtualCalls/VC1",
+    "file": "vc/Class.java",
+    "line": 12,
+    "annotationLine": 9,
+    "method": "target",
+    "status": "scored",
+    "required": [
+      "vc.Class"
+    ],
+    "prohibited": [],
+    "observed": [
+      "vc.Class"
+    ]
+  },
+  {
+    "case": "VirtualCalls/VC2",
+    "file": "vc/Class.java",
+    "line": 11,
+    "annotationLine": 9,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "vc.SubClass"
+    ],
+    "prohibited": [],
+    "observed": [
+      "vc.Class",
+      "vc.SubClass"
+    ]
+  },
+  {
+    "case": "VirtualCalls/VC3",
+    "file": "vc/Class.java",
+    "line": 15,
+    "annotationLine": 13,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "vc.ClassImpl"
+    ],
+    "prohibited": [
+      "vc.Class"
+    ],
+    "observed": [
+      "vc.ClassImpl"
+    ]
+  },
+  {
+    "case": "VirtualCalls/VC4",
+    "file": "vc/Class.java",
+    "line": 18,
+    "annotationLine": 15,
+    "method": "method",
+    "status": "scored",
+    "required": [
+      "vc.Class"
+    ],
+    "prohibited": [],
+    "observed": [
+      "vc.Class",
+      "vc.ClassImpl"
+    ]
+  }
+]

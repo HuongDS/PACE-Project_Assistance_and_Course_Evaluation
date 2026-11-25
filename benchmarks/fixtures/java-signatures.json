@@ -1,0 +1,25 @@
+{
+  "sources": {
+    "billing/UserService.java": "package billing; public class UserService { public static void save(String name) {} public static void save(Integer id) {} }",
+    "accounts/UserService.java": "package accounts; public class UserService { public static void save(String name) {} }",
+    "sample/Service.java": "package sample; interface Service { void apply(String value); }",
+    "sample/OddlyNamed.java": "package sample; class OddlyNamed implements Service { public void apply(String value) {} public void apply(Integer value) {} }",
+    "sample/ServiceImpl.java": "package sample; class ServiceImpl { public void apply(String value) {} }",
+    "sample/Parent.java": "package sample; class Parent { void send() {} }",
+    "sample/Child.java": "package sample; class Child extends Parent { @Override void send() {} void parentCall() { super.send(); } }",
+    "sample/Demo.java": "package sample; import billing.UserService; class Demo { void stringOverload() { UserService.save(\"Lan\"); } void integerOverload() { UserService.save(Integer.valueOf(1)); } void explicitPackage() { accounts.UserService.save(\"Lan\"); } void renamedService(Service arbitrary) { arbitrary.apply(\"Lan\"); } void caseSensitive() { call(); } void call() {} void Call() {} void Unicode() { /* tiếng Việt 😀 */ call(); } void externalOnly() { System.nanoTime(); } }",
+    "sample/Incomplete.java": "package sample; import missing.Provider; class Incomplete { void missingReceiver(Provider service) { service.save(\"Lan\"); } void localDespiteDependency() { local(); } void local() {} }"
+  },
+  "cases": [
+    {"id": "overload-string-and-import", "caller": "stringOverload", "expected": ["billing/UserService.java:save(String)"]},
+    {"id": "overload-boxed-and-import", "caller": "integerOverload", "expected": ["billing/UserService.java:save(Integer)"]},
+    {"id": "explicit-package", "caller": "explicitPackage", "expected": ["accounts/UserService.java:save(String)"]},
+    {"id": "override-by-type", "caller": "renamedService", "expected": ["sample/OddlyNamed.java:apply(String)"]},
+    {"id": "super-dispatch", "caller": "parentCall", "expected": ["sample/Parent.java:send()"]},
+    {"id": "case-sensitive-method", "caller": "caseSensitive", "expected": ["sample/Demo.java:call()"]},
+    {"id": "source-offset-with-unicode", "caller": "Unicode", "expected": ["sample/Demo.java:call()"]},
+    {"id": "external-method", "caller": "externalOnly", "expected": []},
+    {"id": "missing-type", "caller": "missingReceiver", "expected": []},
+    {"id": "partial-attribution", "caller": "localDespiteDependency", "expected": ["sample/Incomplete.java:local()"]}
+  ]
+}

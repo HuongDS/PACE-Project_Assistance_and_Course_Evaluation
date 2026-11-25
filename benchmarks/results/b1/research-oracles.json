@@ -1,0 +1,713 @@
+[
+  {
+    "id": "auto-proxyprint-kitchen",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "GET",
+        "/consumer/satisfied"
+      ],
+      [
+        "GET",
+        "/printshop"
+      ],
+      [
+        "HEAD",
+        "/consumer/subscribe"
+      ],
+      [
+        "POST",
+        "/admin/register"
+      ],
+      [
+        "POST",
+        "/admin/seed"
+      ],
+      [
+        "POST",
+        "/consumer/budget"
+      ],
+      [
+        "POST",
+        "/paypal/ipn/{param}"
+      ],
+      [
+        "POST",
+        "/printshops/requests/{param}"
+      ],
+      [
+        "PUT",
+        "/consumer/subscribe"
+      ],
+      [
+        "PUT",
+        "/printshops/{param}/reviews/{param}"
+      ]
+    ],
+    "specs": [
+      "proxyprint"
+    ]
+  },
+  {
+    "id": "auto-ocvn",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "GET",
+        "/api/ocds/organization/procuringEntity/id/{param}"
+      ],
+      [
+        "GET",
+        "/api/ocds/organization/supplier/id/{param}"
+      ],
+      [
+        "GET",
+        "/api/ocds/release/ocid/{param}"
+      ],
+      [
+        "GET",
+        "/api/qualityAverageTenderPeriod"
+      ],
+      [
+        "GET",
+        "/dummy"
+      ],
+      [
+        "OPTIONS",
+        "/dummy"
+      ],
+      [
+        "POST",
+        "/api/flags/i004/crosstab"
+      ],
+      [
+        "POST",
+        "/api/percentTendersAwardedWithTwoOrMoreTenderers"
+      ],
+      [
+        "POST",
+        "/api/totalCancelledTendersByYear"
+      ],
+      [
+        "POST",
+        "/userDashboards/saveDashboardForCurrentUser"
+      ]
+    ],
+    "specs": [
+      "ocvn"
+    ]
+  },
+  {
+    "id": "auto-ur-codebin-api",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "DELETE",
+        "/api/paste/{param}"
+      ],
+      [
+        "GET",
+        "/api/account/{param}"
+      ],
+      [
+        "GET",
+        "/api/paste/public"
+      ],
+      [
+        "GET",
+        "/api/paste/{param}"
+      ],
+      [
+        "POST",
+        "/api/account/signup"
+      ],
+      [
+        "POST",
+        "/api/paste"
+      ]
+    ],
+    "specs": [
+      "ur-codebin"
+    ]
+  },
+  {
+    "id": "auto-ohsome-api",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "GET",
+        "/contributions/count"
+      ],
+      [
+        "GET",
+        "/elements/area/ratio"
+      ],
+      [
+        "GET",
+        "/elements/area/ratio/groupBy/boundary"
+      ],
+      [
+        "GET",
+        "/elements/count"
+      ],
+      [
+        "GET",
+        "/elements/count/groupBy/type"
+      ],
+      [
+        "GET",
+        "/elements/perimeter/density"
+      ],
+      [
+        "POST",
+        "/contributions/latest/geometry"
+      ],
+      [
+        "POST",
+        "/elements/area/density/groupBy/tag"
+      ],
+      [
+        "POST",
+        "/elements/length/groupBy/tag"
+      ],
+      [
+        "POST",
+        "/elements/perimeter/groupBy/boundary/groupBy/tag"
+      ]
+    ],
+    "specs": [
+      "ohsome"
+    ]
+  },
+  {
+    "id": "auto-catwatch",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "GET",
+        "/config"
+      ],
+      [
+        "GET",
+        "/contributors"
+      ],
+      [
+        "GET",
+        "/export"
+      ],
+      [
+        "GET",
+        "/fetch"
+      ],
+      [
+        "GET",
+        "/init"
+      ],
+      [
+        "GET",
+        "/languages"
+      ],
+      [
+        "GET",
+        "/statistics"
+      ],
+      [
+        "GET",
+        "/statistics/contributors"
+      ],
+      [
+        "GET",
+        "/statistics/projects"
+      ],
+      [
+        "POST",
+        "/import"
+      ]
+    ],
+    "specs": [
+      "catwatch"
+    ]
+  },
+  {
+    "id": "auto-quartz-manager",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "GET",
+        "/quartz-manager/auth/whoami"
+      ],
+      [
+        "GET",
+        "/quartz-manager/jobs"
+      ],
+      [
+        "GET",
+        "/quartz-manager/scheduler"
+      ],
+      [
+        "GET",
+        "/quartz-manager/scheduler/resume"
+      ],
+      [
+        "GET",
+        "/quartz-manager/scheduler/run"
+      ],
+      [
+        "GET",
+        "/quartz-manager/scheduler/stop"
+      ],
+      [
+        "GET",
+        "/quartz-manager/triggers"
+      ],
+      [
+        "GET",
+        "/session/refresh"
+      ],
+      [
+        "POST",
+        "/quartz-manager/simple-triggers/{param}"
+      ],
+      [
+        "PUT",
+        "/quartz-manager/simple-triggers/{param}"
+      ]
+    ],
+    "specs": [
+      "quartz"
+    ]
+  },
+  {
+    "id": "auto-cwa-verification-server",
+    "dataset": "auto_oas",
+    "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "gold": [
+      [
+        "POST",
+        "/version/v1/registrationToken"
+      ],
+      [
+        "POST",
+        "/version/v1/tan"
+      ],
+      [
+        "POST",
+        "/version/v1/tan/teletan"
+      ],
+      [
+        "POST",
+        "/version/v1/tan/verify"
+      ],
+      [
+        "POST",
+        "/version/v1/testresult"
+      ]
+    ],
+    "specs": [
+      "cwa-internal",
+      "cwa-external"
+    ]
+  },
+  {
+    "id": "micro-anilallewar_microservices-basics-spring-boot",
+    "dataset": "microsecend",
+    "pin": "c1b9dc9d6f0346befa04db1b73d9099f5c397d70",
+    "gold": [
+      "/",
+      "/comments",
+      "/comments/{param}",
+      "/me",
+      "/usertask/{param}",
+      "/{param}"
+    ],
+    "labeled_service_paths": 8,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-apssouza22_java-microservice",
+    "dataset": "microsecend",
+    "pin": "69bee7a254c7de565ee3c02d4e5103b6b1b52416",
+    "gold": [
+      "/accounts",
+      "/accounts/me",
+      "/accounts/me/todos",
+      "/accounts/search",
+      "/accounts/{param}",
+      "/emails",
+      "/send",
+      "/send/email",
+      "/todo-changes",
+      "/todo-statistics",
+      "/todos",
+      "/todos/search",
+      "/todos/{param}",
+      "/todos/{param}/status",
+      "/users"
+    ],
+    "labeled_service_paths": 17,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-callistaenterprise_blog-microservices",
+    "dataset": "microsecend",
+    "pin": "960d822456b1b4475091c0719f1a1c4e63014117",
+    "gold": [
+      "/",
+      "/product/{param}",
+      "/recommendation",
+      "/review",
+      "/set-processing-time",
+      "/user",
+      "/{param}"
+    ],
+    "labeled_service_paths": 10,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-ewolff_microservice",
+    "dataset": "microsecend",
+    "pin": "84f12d9223e468306e2c0b1243fa803583cba3f0",
+    "gold": [
+      "/",
+      "/form.html",
+      "/line",
+      "/list.html",
+      "/searchByName.html",
+      "/searchForm.html",
+      "/{param}",
+      "/{param}.html"
+    ],
+    "labeled_service_paths": 12,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-ewolff_microservice-kafka",
+    "dataset": "microsecend",
+    "pin": "feb567053febae3dc73556f2fc87c424d1e98c35",
+    "gold": [
+      "/",
+      "/form.html",
+      "/line",
+      "/{param}"
+    ],
+    "labeled_service_paths": 8,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-fernandoabcampos_spring-netflix-oss-microservices",
+    "dataset": "microsecend",
+    "pin": "cd4c9376069a0ef802859679af76db64656aa6fa",
+    "gold": [
+      "/",
+      "/api",
+      "/api/card/{param}",
+      "/api/cards",
+      "/api/new-card",
+      "/api/statement",
+      "/api/statement-by-card",
+      "/api/statement/{param}",
+      "/api/statements"
+    ],
+    "labeled_service_paths": 17,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-georgwittberger_apache-spring-boot-microservice-example",
+    "dataset": "microsecend",
+    "pin": "7b32618ade84dd75190c3cad6063b6f82fd5dc99",
+    "gold": [
+      "/",
+      "/add/{param}",
+      "/count",
+      "/{param}"
+    ],
+    "labeled_service_paths": 6,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-jferrater_tap-and-eat-microservices",
+    "dataset": "microsecend",
+    "pin": "458728ab1ff2055da348a478ff150c6132934b0f",
+    "gold": [
+      "/accounts",
+      "/customers",
+      "/foodtrays",
+      "/foodtrays/item/{param}",
+      "/foodtrays/price/{param}",
+      "/foodtrays/{param}",
+      "/items/search/findByItemCode?itemCode={param}",
+      "/prices/search/findByItemCode?itemCode={param}",
+      "/stores"
+    ],
+    "labeled_service_paths": 9,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-koushikkothagal_spring-boot-microservices-workshop",
+    "dataset": "microsecend",
+    "pin": "672d73a3b71aed4584d516ac8a102a5a2b12c245",
+    "gold": [
+      "/catalog",
+      "/catalog/{param}",
+      "/movies",
+      "/movies/{param}",
+      "/ratingsdata",
+      "/ratingsdata/movies/{param}",
+      "/ratingsdata/user/{param}"
+    ],
+    "labeled_service_paths": 7,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-mdeket_spring-cloud-movie-recommendation",
+    "dataset": "microsecend",
+    "pin": "7d09c7c5c141fb6a028580868a160ff464f06d9c",
+    "gold": [
+      "/api",
+      "/api/recommendation/user/{param}",
+      "/api/userDetails/{param}",
+      "/movie",
+      "/movie/dummyData",
+      "/movie/list",
+      "/movie/{param}",
+      "/newuser",
+      "/recommendation",
+      "/recommendation/dummyData",
+      "/recommendation/movie",
+      "/recommendation/movie/{param}",
+      "/recommendation/recommend/user/{param}",
+      "/recommendation/user",
+      "/recommendation/user/{param}",
+      "/user",
+      "/user/{param}"
+    ],
+    "labeled_service_paths": 17,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-mudigal-technologies_microservices-sample",
+    "dataset": "microsecend",
+    "pin": "e8b734c324b55854610ee2bbabbd2abcb6c669ad",
+    "gold": [
+      "/"
+    ],
+    "labeled_service_paths": 3,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-piomin_sample-spring-oauth2-microservices",
+    "dataset": "microsecend",
+    "pin": "f15b2f3bca718f9919a2e994eb6b5df310616de2",
+    "gold": [
+      "/user"
+    ],
+    "labeled_service_paths": 1,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-rohitghatol_spring-boot-microservices",
+    "dataset": "microsecend",
+    "pin": "46db8e19564ae20cbc2c8fab0325909c37fa5b74",
+    "gold": [
+      "/",
+      "/comments",
+      "/comments/{param}",
+      "/me",
+      "/usertask/{param}",
+      "/{param}"
+    ],
+    "labeled_service_paths": 8,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-shabbirdwd53_springboot-microservice",
+    "dataset": "microsecend",
+    "pin": "c4aaaeda349f904417ee2cf2f43aff980052229c",
+    "gold": [
+      "/departmentServiceFallBack",
+      "/departments",
+      "/departments/{param}",
+      "/userServiceFallBack",
+      "/users",
+      "/users/{param}"
+    ],
+    "labeled_service_paths": 6,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-spring-petclinic_spring-petclinic-microservices",
+    "dataset": "microsecend",
+    "pin": "090b56aa3926e7d99d475257d1e8e156cc4b14a0",
+    "gold": [
+      "/api/gateway",
+      "/api/gatewayowners/{param}",
+      "/owners",
+      "/owners/*/pets/{param}",
+      "/owners/*/pets/{param}/visits",
+      "/owners/{param}",
+      "/owners/{param}/pets",
+      "/petTypes",
+      "/pets/visits",
+      "/vets"
+    ],
+    "labeled_service_paths": 10,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-sqshq_piggymetrics",
+    "dataset": "microsecend",
+    "pin": "7633844d48c575237a2f6039e63d3088288ad929",
+    "gold": [
+      "/",
+      "/accounts/{param}",
+      "/current",
+      "/recipients",
+      "/recipients/current",
+      "/statistics/{param}",
+      "/uaa/users",
+      "/{param}"
+    ],
+    "labeled_service_paths": 10,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "micro-yidongnan_spring-cloud-netflix-example",
+    "dataset": "microsecend",
+    "pin": "44724b94158c2fba22d20c16331506aa20f35713",
+    "gold": [
+      "/"
+    ],
+    "labeled_service_paths": 2,
+    "labels_commit": "63653e09177b6d757eada4521f8bace8a8c20766",
+    "source_manifest_commit": "bc21234b64f8cf55a181fe8d86a3632fe1234eec"
+  },
+  {
+    "id": "jasmine",
+    "dataset": "jasmine",
+    "pin": "79ad187a6f7ca07cfc6b874b05f5972ba9d64132",
+    "gold": [
+      [
+        "singleton1",
+        "/singletonDI/singleton1",
+        "SingletonDIController",
+        "SingletonDIServiceAImpl",
+        "print"
+      ],
+      [
+        "singleton2",
+        "/singletonDI/singleton2",
+        "SingletonDIController",
+        "SingletonDIServiceBImpl",
+        "print"
+      ],
+      [
+        "singleton3",
+        "/singletonDI/singleton3",
+        "SingletonDIController",
+        "SingletonDIServiceBImpl",
+        "print"
+      ],
+      [
+        "prototype1",
+        "/prototypeDI/prototype1",
+        "PrototypeDIController",
+        "PrototypeDIServiceCImpl",
+        "print"
+      ],
+      [
+        "prototype2",
+        "/prototypeDI/prototype2",
+        "PrototypeDIController",
+        "PrototypeDIServiceDImpl",
+        "print"
+      ],
+      [
+        "prototype3",
+        "/prototypeDI/prototype3",
+        "PrototypeDIController",
+        "PrototypeDIServiceDImpl",
+        "print"
+      ]
+    ],
+    "advice": [
+      [
+        "aop-1",
+        "GET",
+        "/aopTest/aop1",
+        "AOPAspectA",
+        "aroundMethod"
+      ],
+      [
+        "aop-1",
+        "GET",
+        "/aopTest/aop1",
+        "AOPAspectA",
+        "doBefore"
+      ],
+      [
+        "aop-1",
+        "GET",
+        "/aopTest/aop1",
+        "AOPAspectA",
+        "doAfter"
+      ],
+      [
+        "aop-2",
+        "GET",
+        "/aopTest/aop2",
+        "AOPAspectA",
+        "aroundMethod"
+      ],
+      [
+        "aop-2",
+        "GET",
+        "/aopTest/aop2",
+        "AOPAspectA",
+        "doBefore"
+      ],
+      [
+        "aop-2",
+        "GET",
+        "/aopTest/aop2",
+        "AOPAspectA",
+        "doAfter"
+      ],
+      [
+        "aop-4",
+        "ANY",
+        "/aopTest/aop4",
+        "AopXmlAspect",
+        "doBefore"
+      ],
+      [
+        "aop-4",
+        "ANY",
+        "/aopTest/aop4",
+        "AopXmlAspect",
+        "doAfter"
+      ]
+    ]
+  }
+]

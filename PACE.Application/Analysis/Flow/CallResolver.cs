@@ -1,4 +1,5 @@
 using PACE.Application.Analysis.Models;
+using PACE.Domain.Enums;
 
 namespace PACE.Application.Analysis.Flow;
 
@@ -8,24 +9,30 @@ public sealed class CallResolver
     private readonly Dictionary<string, List<ParsedClass>> _classesByName;
     private readonly Dictionary<string, HashSet<string>> _implementations;
     private readonly Dictionary<string, List<string>> _classesByFile;
+    private readonly Dictionary<string, ParsedMethod> _javaMethods;
 
     public CallResolver(IReadOnlyCollection<ParsedClass> classes, IReadOnlyCollection<ParsedMethod> methods)
     {
-        _methodsByClass = methods
+        _javaMethods = methods.Where(method => method.JavaSymbol is not null)
+            .GroupBy(method => method.JavaSymbol!, StringComparer.Ordinal)
+            .Where(group => group.Count() == 1)
+            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+        _methodsByClass = methods.Where(method => method.Language != ProgrammingLanguage.Java)
             .GroupBy(m => Key(m.ClassName))
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        _classesByName = classes
+        var legacyClasses = classes.Where(declaration => declaration.Language != ProgrammingLanguage.Java).ToArray();
+        _classesByName = legacyClasses
             .GroupBy(c => Key(c.Name))
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        _classesByFile = classes
+        _classesByFile = legacyClasses
             .Where(c => c.Kind != "module")
             .GroupBy(c => c.FilePath, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Select(c => c.Name).Distinct().ToList(), StringComparer.OrdinalIgnoreCase);
 
         _implementations = new Dictionary<string, HashSet<string>>();
-        foreach (var c in classes.Where(c => c.Kind is "class" or "record" or "struct"))
+        foreach (var c in legacyClasses.Where(c => c.Kind is "class" or "record" or "struct"))
         {
             foreach (var baseType in AllBaseTypes(c.Name))
                 AddImplementation(baseType, c.Name);
@@ -41,6 +48,13 @@ public sealed class CallResolver
 
     public IReadOnlyList<ParsedMethod> Resolve(ParsedCall call, ParsedMethod caller)
     {
+        if (caller.Language == ProgrammingLanguage.Java)
+        {
+            if (call.JavaBinding is not { } binding) return [];
+            return binding.SourceTargets.Select(symbol => _javaMethods.GetValueOrDefault(symbol))
+                .OfType<ParsedMethod>().Where(method => method.Id != caller.Id && !method.IsAbstract).ToArray();
+        }
+
         var receiver = string.IsNullOrWhiteSpace(call.ReceiverType) ? caller.ClassName : call.ReceiverType;
         var candidates = CandidateClasses(Key(receiver));
 

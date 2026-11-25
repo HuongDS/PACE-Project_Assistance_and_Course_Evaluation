@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -107,6 +108,16 @@ def table(path, rows, fields, delimiter=","):
 
 def export_reports(output):
     summary = {}
+    signature_path = output / "java-signatures-raw.json"
+    if signature_path.exists():
+        rows = json.loads(signature_path.read_text())["scores"]
+        summary["java_signatures"] = {
+            "cases": len(rows),
+            "exact": sum(row["expected"] == row["observed"] for row in rows),
+            "correct_targets": sum(len(set(row["expected"]) & set(row["observed"])) for row in rows),
+            "missing_targets": sum(len(set(row["expected"]) - set(row["observed"])) for row in rows),
+            "extra_targets": sum(len(set(row["observed"]) - set(row["expected"])) for row in rows),
+        }
     jcg_path = output / "jcg-raw.json"
     if jcg_path.exists():
         rows = json.loads(jcg_path.read_text())
@@ -155,7 +166,7 @@ def compare_runs(previous_path, output, previous, summary):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", required=True, help="B0, B1, B2, Final, etc.")
-    parser.add_argument("--suite", choices=("public", "jcg", "research"), default="public")
+    parser.add_argument("--suite", choices=("public", "jcg", "research", "signatures"), default="public")
     parser.add_argument("--compare", type=Path, help="Previous run directory using identical input hashes")
     parser.add_argument("--no-restore", action="store_true", help="Use already restored NuGet dependencies")
     args = parser.parse_args()
@@ -188,8 +199,24 @@ def main():
             metadata["status"] = "running"
             write_json(output / "run.json", metadata)
             env = os.environ.copy()
+            env.pop("PACE_JAVA_CLASSPATH", None)
+            java = shutil.which("java")
+            metadata["java_version"] = subprocess.run(
+                [java, "-version"], capture_output=True, text=True, check=True).stderr.splitlines()[0] if java else None
+            metadata["java_classpath"] = "JDK only"
+            if args.stage.upper() != "B0" and java is None:
+                raise RuntimeError("Install JDK 17 or newer before running the candidate benchmark.")
             filters = []
             required = []
+            if args.suite == "signatures":
+                fixture = HERE / "fixtures" / "java-signatures.json"
+                metadata["input_hashes"]["java_signatures"] = digest(fixture.read_bytes())
+                env.update(
+                    PACE_JAVA_SIGNATURE_FIXTURE=str(fixture),
+                    PACE_JAVA_SIGNATURE_REPORT=str(output / "java-signatures-raw.json"),
+                    PACE_JAVA_SIGNATURE_BASELINE="1" if args.stage.upper() == "B0" else "0")
+                filters.append("FullyQualifiedName~JavaSignatureBenchmarkTests")
+                required.append("java-signatures-raw.json")
             if args.suite in ("public", "jcg"):
                 jcg = Path(temp) / "jcg-input.json"
                 logged([sys.executable, str(HERE / "import-jcg.py"), str(LOCAL / "jcg"), str(jcg)], log)

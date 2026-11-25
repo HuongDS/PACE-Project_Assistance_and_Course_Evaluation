@@ -1,0 +1,478 @@
+dataset,project,case,expected,status
+auto_oas,auto-proxyprint-kitchen,,DELETE /consumer/requests/cancel/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,DELETE /consumer/{param}/notifications,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,DELETE /consumer/{param}/printingschemas/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,DELETE /notifications/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,DELETE /printshops/{param}/employees/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,DELETE /printshops/{param}/reviews/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /admin/printshops,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /api/secured,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/balance,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/info,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/notifications,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/requests,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/satisfied,matched
+auto_oas,auto-proxyprint-kitchen,,GET /consumer/{param}/printingschemas,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /documents/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printdocument/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshop,matched
+auto_oas,auto-proxyprint-kitchen,,GET /printshops,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/history,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/nearest,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/requests,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/requests/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/satisfied,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/stats,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/{param}/employees,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/{param}/pricetable,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /printshops/{param}/reviews,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,GET /requests/pending,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,HEAD /consumer/subscribe,missing
+auto_oas,auto-proxyprint-kitchen,,POST /admin/register,matched
+auto_oas,auto-proxyprint-kitchen,,POST /admin/seed,matched
+auto_oas,auto-proxyprint-kitchen,,POST /admin/useed,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /consumer/budget,matched
+auto_oas,auto-proxyprint-kitchen,,POST /consumer/printrequest/{param}/submit,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /consumer/register,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /consumer/{param}/notify,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /consumer/{param}/printingschemas,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /login,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /paypal/ipn/consumer/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /paypal/ipn/{param},matched
+auto_oas,auto-proxyprint-kitchen,,POST /printdocument,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printdocument/{param}/budget,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/requests/cancel/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/requests/{param},matched
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/employees,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/covers,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/deletecover,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/deletepaper,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/deletering,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/papers,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/pricetable/rings,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /printshops/{param}/reviews,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /request/accept/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /request/register,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,POST /request/reject/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /consumer/info/update,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /consumer/subscribe,missing
+auto_oas,auto-proxyprint-kitchen,,PUT /consumer/{param}/notifications,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /consumer/{param}/printingschemas/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /notifications/{param},unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/employees,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/pricetable/covers,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/pricetable/editstapling,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/pricetable/papers,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/pricetable/rings,unmatched_observation
+auto_oas,auto-proxyprint-kitchen,,PUT /printshops/{param}/reviews/{param},matched
+auto_oas,auto-ocvn,,GET /api/activeAwardsCount,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/averageAwardPeriod,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/averageNumberOfTenderers,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/averageTenderPeriod,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/avgTimeFromPlanToTenderPhase,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/awardValueInterval,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/awardsByLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/corruptionRiskOverviewTable,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/costEffectivenessAwardAmount,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/costEffectivenessTenderAmount,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/costEffectivenessTenderAwardAmount,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/countAwardsByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/countBidPlansByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/countTendersByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i002/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i002/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i002/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i003/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i003/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i003/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i004/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i004/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i004/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i007/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i007/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i007/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i019/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i019/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i019/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i038/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i038/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i038/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i077/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i077/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i077/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i085/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i085/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i085/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i171/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i171/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i171/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i180/crosstab,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i180/releases,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/flags/i180/stats,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/frequentSuppliersTimeInterval,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/frequentTenderers,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/fundingByTenderDeliveryLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/indicatorTypesMapping,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/averageNumberBidsExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/bidSelectionExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/bidSelectionMethod/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/bidTimelineExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/bidType/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/cancelledFundingExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/cancelledFundingPercentageExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/cancelledTendersByYearByRationaleExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/city/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/city/search,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/contrMethod/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/costEffectivenessExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/excelExport,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/location/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/location/search,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/numberCancelledFundingExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/numberTendersUsingEBidExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/orgDepartment/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/orgDepartment/search,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/orgGroup/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/orgGroup/search,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/buyer/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/buyer/id/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/id/{param},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/ids,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/procuringEntity/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/procuringEntity/id/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/procuringEntity/id/{param},missing
+auto_oas,auto-ocvn,,GET /api/ocds/organization/supplier/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/supplier/id/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/organization/supplier/id/{param},missing
+auto_oas,auto-ocvn,,GET /api/ocds/package/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/package/budgetProjectId/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/package/ocid/{param},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/package/planningBidNo/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/percentTendersUsingEBidExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/procurementActivityExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/procurementMethod/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/procurementMethodExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/release/all,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/release/budgetProjectId/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/release/ocid/{param},matched
+auto_oas,auto-ocvn,,GET /api/ocds/release/planningBidNo/{param:^[a-zA-Z0-9]*$},unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/tendersByItemExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/ocds/tendersWithLinkedProcurementPlanExcelChart,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentOfEligibleProjectsFlaggedByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersAwardedWithTwoOrMoreTenderers,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersCancelled,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersUsingEBid,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersUsingEgp,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersWithLinkedProcurementPlan,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTendersWithTwoOrMoreTenderers,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTotalProjectsEligibleByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentTotalProjectsFlaggedByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/percentageAwardsNarrowPublicationDates,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/plannedFundingByLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/planningByLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/qualityAverageAwardPeriod,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/qualityAverageTenderPeriod,matched
+auto_oas,auto-ocvn,,GET /api/qualityFundingByTenderDeliveryLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/qualityPlannedFundingByLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tenderPriceByAllBidSelectionMethods,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tenderPriceByBidSelectionMethod,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tenderPriceByProcurementMethod,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tenderValueInterval,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tendersAwardsYears,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tendersByItemClassification,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/tendersByLocation,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/topTenLargestAwards,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/topTenLargestTenders,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/topTenSuppliers,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalCancelledTendersByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalCancelledTendersByYearByRationale,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalEligibleIndicatorsByIndicatorType,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalEligibleIndicatorsByIndicatorTypeByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalEligibleProjectsByIndicatorTypeByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalFlaggedIndicatorsByIndicatorType,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalFlaggedIndicatorsByIndicatorTypeByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalFlaggedProjectsByIndicatorTypeByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalFlags,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/totalProjectsByYear,unmatched_observation
+auto_oas,auto-ocvn,,GET /api/translations/{param},unmatched_observation
+auto_oas,auto-ocvn,,GET /dummy,missing
+auto_oas,auto-ocvn,,GET /isAuthenticated,unmatched_observation
+auto_oas,auto-ocvn,,GET /userDashboards/getCurrentAuthenticatedUserDetails,unmatched_observation
+auto_oas,auto-ocvn,,GET /userDashboards/saveDashboard,unmatched_observation
+auto_oas,auto-ocvn,,GET /userDashboards/saveDashboardForCurrentUser,unmatched_observation
+auto_oas,auto-ocvn,,GET /userDashboards/search/getDashboardsForCurrentUser,unmatched_observation
+auto_oas,auto-ocvn,,GET /userDashboards/search/getDefaultDashboardForCurrentUser,unmatched_observation
+auto_oas,auto-ocvn,,OPTIONS /dummy,missing
+auto_oas,auto-ocvn,,POST /api/flags/i004/crosstab,missing
+auto_oas,auto-ocvn,,POST /api/percentTendersAwardedWithTwoOrMoreTenderers,missing
+auto_oas,auto-ocvn,,POST /api/totalCancelledTendersByYear,missing
+auto_oas,auto-ocvn,,POST /userDashboards/saveDashboardForCurrentUser,missing
+auto_oas,auto-ur-codebin-api,,DELETE /api/paste/{param},matched
+auto_oas,auto-ur-codebin-api,,GET /api/account/{param},matched
+auto_oas,auto-ur-codebin-api,,GET /api/paste/public,matched
+auto_oas,auto-ur-codebin-api,,GET /api/paste/{param},matched
+auto_oas,auto-ur-codebin-api,,POST /api/account/signup,matched
+auto_oas,auto-ur-codebin-api,,POST /api/paste,matched
+auto_oas,auto-ohsome-api,,GET /contributions/bbox,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/centroid,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/count,matched
+auto_oas,auto-ohsome-api,,GET /contributions/count/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/count/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/count/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/geometry,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/latest/bbox,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/latest/centroid,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/latest/count,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/latest/count/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /contributions/latest/geometry,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/density/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/density/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/density/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/groupBy/key,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/area/ratio,matched
+auto_oas,auto-ohsome-api,,GET /elements/area/ratio/groupBy/boundary,matched
+auto_oas,auto-ohsome-api,,GET /elements/bbox,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/centroid,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count,matched
+auto_oas,auto-ohsome-api,,GET /elements/count/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/density/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/density/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/density/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/groupBy/key,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/groupBy/type,matched
+auto_oas,auto-ohsome-api,,GET /elements/count/ratio,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/count/ratio/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/geometry,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/density/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/density/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/density/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/groupBy/key,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/ratio,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/length/ratio/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/density,matched
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/density/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/density/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/density/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/groupBy/boundary/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/groupBy/key,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/ratio,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elements/perimeter/ratio/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elementsFullHistory/bbox,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elementsFullHistory/centroid,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /elementsFullHistory/geometry,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /metadata,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/density,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/density/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/density/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/density/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/groupBy/boundary,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/groupBy/key,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/groupBy/tag,unmatched_observation
+auto_oas,auto-ohsome-api,,GET /users/count/groupBy/type,unmatched_observation
+auto_oas,auto-ohsome-api,,POST /contributions/latest/geometry,missing
+auto_oas,auto-ohsome-api,,POST /elements/area/density/groupBy/tag,missing
+auto_oas,auto-ohsome-api,,POST /elements/length/groupBy/tag,missing
+auto_oas,auto-ohsome-api,,POST /elements/perimeter/groupBy/boundary/groupBy/tag,missing
+auto_oas,auto-catwatch,,GET /,unmatched_observation
+auto_oas,auto-catwatch,,GET /config,matched
+auto_oas,auto-catwatch,,GET /contributors,matched
+auto_oas,auto-catwatch,,GET /delete,unmatched_observation
+auto_oas,auto-catwatch,,GET /export,matched
+auto_oas,auto-catwatch,,GET /fetch,matched
+auto_oas,auto-catwatch,,GET /init,matched
+auto_oas,auto-catwatch,,GET /languages,matched
+auto_oas,auto-catwatch,,GET /projects,unmatched_observation
+auto_oas,auto-catwatch,,GET /statistics,missing
+auto_oas,auto-catwatch,,GET /statistics/contributors,missing
+auto_oas,auto-catwatch,,GET /statistics/projects,missing
+auto_oas,auto-catwatch,,POST /config/scoring.project,unmatched_observation
+auto_oas,auto-catwatch,,POST /import,matched
+auto_oas,auto-quartz-manager,,GET /,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /pause,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /quartz-manager/auth/whoami,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/jobs,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/scheduler,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/scheduler/resume,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/scheduler/run,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/scheduler/stop,missing
+auto_oas,auto-quartz-manager,,GET /quartz-manager/triggers,missing
+auto_oas,auto-quartz-manager,,GET /resume,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /run,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /session/invalidate,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /session/refresh,matched
+auto_oas,auto-quartz-manager,,GET /stop,unmatched_observation
+auto_oas,auto-quartz-manager,,GET /{param},unmatched_observation
+auto_oas,auto-quartz-manager,,POST /quartz-manager/simple-triggers/{param},missing
+auto_oas,auto-quartz-manager,,POST /{param},unmatched_observation
+auto_oas,auto-quartz-manager,,PUT /quartz-manager/simple-triggers/{param},missing
+auto_oas,auto-quartz-manager,,PUT /{param},unmatched_observation
+auto_oas,auto-cwa-verification-server,,POST /version/v1,unmatched_observation
+auto_oas,auto-cwa-verification-server,,POST /version/v1/registrationToken,missing
+auto_oas,auto-cwa-verification-server,,POST /version/v1/tan,missing
+auto_oas,auto-cwa-verification-server,,POST /version/v1/tan/teletan,missing
+auto_oas,auto-cwa-verification-server,,POST /version/v1/tan/verify,missing
+auto_oas,auto-cwa-verification-server,,POST /version/v1/testresult,missing
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/,matched
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/comments,missing
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/comments/{param},matched
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/me,matched
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/usertask/{param},matched
+microsecend,micro-anilallewar_microservices-basics-spring-boot,,/{param},matched
+microsecend,micro-apssouza22_java-microservice,,/accounts,matched
+microsecend,micro-apssouza22_java-microservice,,/accounts/me,matched
+microsecend,micro-apssouza22_java-microservice,,/accounts/me/todos,matched
+microsecend,micro-apssouza22_java-microservice,,/accounts/search,matched
+microsecend,micro-apssouza22_java-microservice,,/accounts/{param},matched
+microsecend,micro-apssouza22_java-microservice,,/emails,matched
+microsecend,micro-apssouza22_java-microservice,,/send,missing
+microsecend,micro-apssouza22_java-microservice,,/send/email,matched
+microsecend,micro-apssouza22_java-microservice,,/todo-changes,matched
+microsecend,micro-apssouza22_java-microservice,,/todo-statistics,matched
+microsecend,micro-apssouza22_java-microservice,,/todos,matched
+microsecend,micro-apssouza22_java-microservice,,/todos/search,matched
+microsecend,micro-apssouza22_java-microservice,,/todos/{param},matched
+microsecend,micro-apssouza22_java-microservice,,/todos/{param}/status,matched
+microsecend,micro-apssouza22_java-microservice,,/users,missing
+microsecend,micro-callistaenterprise_blog-microservices,,/,matched
+microsecend,micro-callistaenterprise_blog-microservices,,/product/{param},matched
+microsecend,micro-callistaenterprise_blog-microservices,,/recommendation,matched
+microsecend,micro-callistaenterprise_blog-microservices,,/review,matched
+microsecend,micro-callistaenterprise_blog-microservices,,/set-processing-time,matched
+microsecend,micro-callistaenterprise_blog-microservices,,/user,matched
+microsecend,micro-callistaenterprise_blog-microservices,,/{param},matched
+microsecend,micro-ewolff_microservice,,/,matched
+microsecend,micro-ewolff_microservice,,/form.html,matched
+microsecend,micro-ewolff_microservice,,/line,matched
+microsecend,micro-ewolff_microservice,,/list.html,matched
+microsecend,micro-ewolff_microservice,,/searchByName.html,matched
+microsecend,micro-ewolff_microservice,,/searchForm.html,matched
+microsecend,micro-ewolff_microservice,,/{param},matched
+microsecend,micro-ewolff_microservice,,/{param}.html,matched
+microsecend,micro-ewolff_microservice-kafka,,/,matched
+microsecend,micro-ewolff_microservice-kafka,,/form.html,matched
+microsecend,micro-ewolff_microservice-kafka,,/line,matched
+microsecend,micro-ewolff_microservice-kafka,,/{param},matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/,matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api,missing
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/card/{param},matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/cards,matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/new-card,matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/statement,matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/statement-by-card,matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/statement/{param},matched
+microsecend,micro-fernandoabcampos_spring-netflix-oss-microservices,,/api/statements,matched
+microsecend,micro-georgwittberger_apache-spring-boot-microservice-example,,/,matched
+microsecend,micro-georgwittberger_apache-spring-boot-microservice-example,,/add/{param},matched
+microsecend,micro-georgwittberger_apache-spring-boot-microservice-example,,/count,matched
+microsecend,micro-georgwittberger_apache-spring-boot-microservice-example,,/{param},matched
+microsecend,micro-jferrater_tap-and-eat-microservices,,/accounts,missing
+microsecend,micro-jferrater_tap-and-eat-microservices,,/customers,missing
+microsecend,micro-jferrater_tap-and-eat-microservices,,/foodtrays,matched
+microsecend,micro-jferrater_tap-and-eat-microservices,,/foodtrays/item/{param},matched
+microsecend,micro-jferrater_tap-and-eat-microservices,,/foodtrays/price/{param},matched
+microsecend,micro-jferrater_tap-and-eat-microservices,,/foodtrays/{param},matched
+microsecend,micro-jferrater_tap-and-eat-microservices,,/items/search/findByItemCode?itemCode={param},missing
+microsecend,micro-jferrater_tap-and-eat-microservices,,/prices/search/findByItemCode?itemCode={param},missing
+microsecend,micro-jferrater_tap-and-eat-microservices,,/stores,missing
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/catalog,missing
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/catalog/{param},matched
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/movies,missing
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/movies/{param},matched
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/ratingsdata,missing
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/ratingsdata/movies/{param},matched
+microsecend,micro-koushikkothagal_spring-boot-microservices-workshop,,/ratingsdata/user/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/api,missing
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/api/recommendation/user/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/api/userDetails/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/movie,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/movie/dummyData,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/movie/list,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/movie/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/newuser,missing
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation,missing
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/dummyData,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/movie,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/movie/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/recommend/user/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/user,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/recommendation/user/{param},matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/user,matched
+microsecend,micro-mdeket_spring-cloud-movie-recommendation,,/user/{param},matched
+microsecend,micro-mudigal-technologies_microservices-sample,,/,matched
+microsecend,micro-piomin_sample-spring-oauth2-microservices,,/,unmatched_observation
+microsecend,micro-piomin_sample-spring-oauth2-microservices,,/user,matched
+microsecend,micro-rohitghatol_spring-boot-microservices,,/,matched
+microsecend,micro-rohitghatol_spring-boot-microservices,,/comments,missing
+microsecend,micro-rohitghatol_spring-boot-microservices,,/comments/{param},matched
+microsecend,micro-rohitghatol_spring-boot-microservices,,/me,matched
+microsecend,micro-rohitghatol_spring-boot-microservices,,/usertask/{param},matched
+microsecend,micro-rohitghatol_spring-boot-microservices,,/{param},matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/departmentServiceFallBack,matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/departments,matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/departments/{param},matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/userServiceFallBack,matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/users,matched
+microsecend,micro-shabbirdwd53_springboot-microservice,,/users/{param},matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/api/gateway,missing
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/api/gateway/owners/{param},unmatched_observation
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/api/gatewayowners/{param},missing
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/owners,matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/owners/*/pets/{param},matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/owners/*/pets/{param}/visits,matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/owners/{param},matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/owners/{param}/pets,matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/petTypes,matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/pets/visits,matched
+microsecend,micro-spring-petclinic_spring-petclinic-microservices,,/vets,matched
+microsecend,micro-sqshq_piggymetrics,,/,matched
+microsecend,micro-sqshq_piggymetrics,,/accounts/{param},missing
+microsecend,micro-sqshq_piggymetrics,,/current,matched
+microsecend,micro-sqshq_piggymetrics,,/recipients,missing
+microsecend,micro-sqshq_piggymetrics,,/recipients/current,matched
+microsecend,micro-sqshq_piggymetrics,,/statistics/{param},missing
+microsecend,micro-sqshq_piggymetrics,,/uaa/users,missing
+microsecend,micro-sqshq_piggymetrics,,/users,unmatched_observation
+microsecend,micro-sqshq_piggymetrics,,/users/current,unmatched_observation
+microsecend,micro-sqshq_piggymetrics,,/{param},matched
+microsecend,micro-yidongnan_spring-cloud-netflix-example,,/,matched
+jasmine,jasmine,singleton1,SingletonDIController → SingletonDIServiceAImpl.print,found
+jasmine,jasmine,singleton2,SingletonDIController → SingletonDIServiceBImpl.print,found
+jasmine,jasmine,singleton3,SingletonDIController → SingletonDIServiceBImpl.print,found
+jasmine,jasmine,prototype1,PrototypeDIController → PrototypeDIServiceCImpl.print,found
+jasmine,jasmine,prototype2,PrototypeDIController → PrototypeDIServiceDImpl.print,found
+jasmine,jasmine,prototype3,PrototypeDIController → PrototypeDIServiceDImpl.print,found
+jasmine,jasmine,aop-1,advice reachable: AOPAspectA.aroundMethod,missing
+jasmine,jasmine,aop-1,advice reachable: AOPAspectA.doBefore,missing
+jasmine,jasmine,aop-1,advice reachable: AOPAspectA.doAfter,missing
+jasmine,jasmine,aop-2,advice reachable: AOPAspectA.aroundMethod,missing
+jasmine,jasmine,aop-2,advice reachable: AOPAspectA.doBefore,missing
+jasmine,jasmine,aop-2,advice reachable: AOPAspectA.doAfter,missing
+jasmine,jasmine,aop-4,advice reachable: AopXmlAspect.doBefore,missing
+jasmine,jasmine,aop-4,advice reachable: AopXmlAspect.doAfter,missing

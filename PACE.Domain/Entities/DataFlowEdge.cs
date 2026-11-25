@@ -12,6 +12,8 @@ public class DataFlowEdge
     public FlowEdgeType EdgeType { get; set; } = FlowEdgeType.Call;
     public string? ConditionContext { get; set; }
     public string? DataLabel { get; set; }
+    public int? CallSiteLine { get; set; }
+    public int? CallSiteColumn { get; set; }
 
     public BusinessFlow Flow { get; set; } = null!;
     public MethodSource FromMethod { get; set; } = null!;

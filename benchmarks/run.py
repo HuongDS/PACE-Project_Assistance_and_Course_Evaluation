@@ -108,6 +108,16 @@ def table(path, rows, fields, delimiter=","):
 
 def export_reports(output):
     summary = {}
+    method_flow_path = output / "java-method-flow-raw.json"
+    if method_flow_path.exists():
+        rows = json.loads(method_flow_path.read_text())
+        summary["java_method_flow"] = {
+            "cases": len(rows),
+            "exact": sum(row["correct"] for row in rows),
+            "supported_cases": sum(row["expected"]["status"] == "Complete" for row in rows),
+            "supported_exact": sum(row["correct"] and row["expected"]["status"] == "Complete" for row in rows),
+            "unsupported_exact": sum(row["correct"] and row["expected"]["status"] == "Unsupported" for row in rows),
+        }
     signature_path = output / "java-signatures-raw.json"
     if signature_path.exists():
         rows = json.loads(signature_path.read_text())["scores"]
@@ -134,9 +144,23 @@ def export_reports(output):
     research_path = output / "research-raw.json"
     if research_path.exists():
         from research_suites import summarize
-        research, rows = summarize(json.loads(research_path.read_text()), json.loads((output / "research-oracles.json").read_text()))
+        raw = json.loads(research_path.read_text())
+        research, rows = summarize(raw, json.loads((output / "research-oracles.json").read_text()))
         table(output / "research-cases.csv", rows, ["dataset", "project", "case", "expected", "status"])
         summary["research"] = research
+        if any("javaMethodFlow" in repo for repo in raw):
+            statuses = collections.Counter()
+            reasons = collections.Counter()
+            for repo in raw:
+                for item in repo.get("javaMethodFlow", []):
+                    statuses[item["status"]] += item["count"]
+                    if item.get("reason"):
+                        reasons[item["reason"]] += item["count"]
+            summary["java_method_flow_coverage"] = {
+                "analyzed_methods": sum(statuses.values()),
+                "status_counts": dict(statuses),
+                "reason_counts": dict(reasons),
+            }
     write_json(output / "summary.json", summary)
     return summary
 
@@ -166,7 +190,7 @@ def compare_runs(previous_path, output, previous, summary):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", required=True, help="B0, B1, B2, Final, etc.")
-    parser.add_argument("--suite", choices=("public", "jcg", "research", "signatures"), default="public")
+    parser.add_argument("--suite", choices=("public", "jcg", "research", "signatures", "java-method-flow"), default="public")
     parser.add_argument("--compare", type=Path, help="Previous run directory using identical input hashes")
     parser.add_argument("--no-restore", action="store_true", help="Use already restored NuGet dependencies")
     args = parser.parse_args()
@@ -208,6 +232,14 @@ def main():
                 raise RuntimeError("Install JDK 17 or newer before running the candidate benchmark.")
             filters = []
             required = []
+            if args.suite == "java-method-flow":
+                fixture = ROOT / "PACE.Tests/JavaMethodFlowBenchmarkTests.cs"
+                metadata["input_hashes"]["java_method_flow"] = digest(fixture.read_bytes())
+                env.update(
+                    PACE_JAVA_METHOD_FLOW_REPORT=str(output / "java-method-flow-raw.json"),
+                    PACE_JAVA_METHOD_FLOW_BASELINE="1" if args.stage.upper() in {"B0", "B3"} else "0")
+                filters.append("FullyQualifiedName~JavaMethodFlowBenchmarkTests")
+                required.append("java-method-flow-raw.json")
             if args.suite == "signatures":
                 fixture = HERE / "fixtures" / "java-signatures.json"
                 metadata["input_hashes"]["java_signatures"] = digest(fixture.read_bytes())

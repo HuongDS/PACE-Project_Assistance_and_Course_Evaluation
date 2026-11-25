@@ -1,0 +1,763 @@
+{
+  "baseline_run": "20261125T061825691798Z-B3",
+  "candidate_run": "20261125T100605904945Z-B4",
+  "input_hashes": {
+    "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+    "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+  },
+  "production_source_sha256": "26e94d06470f75a2f95506f6cbf55f0d0c9e249a1124961e75e81e8d84be4d05",
+  "benchmark_harness_sha256": "48375a9db8be98d1a40fbf7a28f2c59dc76bcd6a5e4c985c8db1476401ad155c",
+  "legacy_oracles": {
+    "summary_matches_b3": true,
+    "case_level_output_matches_b3": true,
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 467,
+        "matched": 35,
+        "missing": 26,
+        "gold_keys": 61,
+        "reported_keys": 502
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    }
+  },
+  "auto_oas_gt_plus": {
+    "workbook_sha256": "1698eb7a851defa8e8bf224d908474077ec062c5366ac618194987145aeec87a",
+    "run": "20261125T100605904945Z-B4",
+    "reference": 551,
+    "matched": 488,
+    "missing": 63,
+    "reported": 502,
+    "outside_reference": 14
+  },
+  "observed_analysis_time": {
+    "B3": {
+      "scopes": 25,
+      "sum_ms": 74455,
+      "median_ms": 2391
+    },
+    "B4": {
+      "scopes": 25,
+      "sum_ms": 72513,
+      "median_ms": 2362
+    }
+  },
+  "java_method_flow_coverage": {
+    "analyzed_methods": 4807,
+    "status_counts": {
+      "Complete": 4275,
+      "Unsupported": 531,
+      "LimitReached": 1
+    },
+    "reason_counts": {
+      "enhanced_for_statement": 93,
+      "for_statement": 28,
+      "instanceof_expression": 70,
+      "switch_expression": 13,
+      "try_statement": 118,
+      "cfg-nodes": 1,
+      "array_creation_expression": 39,
+      "do_statement": 2,
+      "lambda_expression": 114,
+      "method_reference": 45,
+      "try_with_resources_statement": 3,
+      "assert_statement": 3,
+      "array_initializer": 1,
+      "assignment_expression": 2
+    },
+    "by_scope": [
+      {
+        "id": "auto-proxyprint-kitchen",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 369
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 27
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 7
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 13
+          },
+          {
+            "status": "LimitReached",
+            "reason": "cfg-nodes",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "auto-ocvn",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 1674
+          },
+          {
+            "status": "Unsupported",
+            "reason": "array_creation_expression",
+            "count": 6
+          },
+          {
+            "status": "Unsupported",
+            "reason": "do_statement",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 23
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 13
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 52
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 28
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 8
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 3
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 31
+          }
+        ]
+      },
+      {
+        "id": "auto-ur-codebin-api",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 119
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 3
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "auto-ohsome-api",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 200
+          },
+          {
+            "status": "Unsupported",
+            "reason": "array_creation_expression",
+            "count": 30
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 11
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 10
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 6
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 19
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 4
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 13
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_with_resources_statement",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "auto-catwatch",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 273
+          },
+          {
+            "status": "Unsupported",
+            "reason": "array_creation_expression",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "assert_statement",
+            "count": 3
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 15
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 5
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 10
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 19
+          }
+        ]
+      },
+      {
+        "id": "auto-quartz-manager",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 111
+          },
+          {
+            "status": "Unsupported",
+            "reason": "array_initializer",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 8
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "auto-cwa-verification-server",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 64
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 6
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 3
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 5
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "micro-anilallewar_microservices-basics-spring-boot",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 95
+          },
+          {
+            "status": "Unsupported",
+            "reason": "array_creation_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 6
+          }
+        ]
+      },
+      {
+        "id": "micro-apssouza22_java-microservice",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 258
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "instanceof_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 13
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 10
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "micro-callistaenterprise_blog-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 87
+          },
+          {
+            "status": "Unsupported",
+            "reason": "assignment_expression",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 12
+          }
+        ]
+      },
+      {
+        "id": "micro-ewolff_microservice",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 115
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "micro-ewolff_microservice-kafka",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 173
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "micro-fernandoabcampos_spring-netflix-oss-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 52
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "micro-georgwittberger_apache-spring-boot-microservice-example",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 44
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "micro-jferrater_tap-and-eat-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 27
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "micro-koushikkothagal_spring-boot-microservices-workshop",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 50
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "micro-mdeket_spring-cloud-movie-recommendation",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 76
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 5
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "id": "micro-mudigal-technologies_microservices-sample",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 33
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 4
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "micro-piomin_sample-spring-oauth2-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 20
+          }
+        ]
+      },
+      {
+        "id": "micro-rohitghatol_spring-boot-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 83
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "id": "micro-shabbirdwd53_springboot-microservice",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 17
+          }
+        ]
+      },
+      {
+        "id": "micro-spring-petclinic_spring-petclinic-microservices",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 35
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 9
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 3
+          }
+        ]
+      },
+      {
+        "id": "micro-sqshq_piggymetrics",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 183
+          },
+          {
+            "status": "Unsupported",
+            "reason": "enhanced_for_statement",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "lambda_expression",
+            "count": 6
+          },
+          {
+            "status": "Unsupported",
+            "reason": "method_reference",
+            "count": 2
+          },
+          {
+            "status": "Unsupported",
+            "reason": "switch_expression",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 2
+          }
+        ]
+      },
+      {
+        "id": "micro-yidongnan_spring-cloud-netflix-example",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 20
+          }
+        ]
+      },
+      {
+        "id": "jasmine",
+        "breakdown": [
+          {
+            "status": "Complete",
+            "reason": null,
+            "count": 97
+          },
+          {
+            "status": "Unsupported",
+            "reason": "for_statement",
+            "count": 1
+          },
+          {
+            "status": "Unsupported",
+            "reason": "try_statement",
+            "count": 5
+          }
+        ]
+      }
+    ]
+  },
+  "targeted_tests": {
+    "passed": 9,
+    "failed": 0
+  }
+}

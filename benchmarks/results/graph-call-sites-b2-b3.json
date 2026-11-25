@@ -1,0 +1,194 @@
+{
+  "B2": {
+    "cases_correct": 2,
+    "cases": [
+      {
+        "Id": "repeated-sites",
+        "Expected": {
+          "Calls": 3,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "direct-recursion",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 0,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "mutual-recursion",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "depth-limit-at-leaf",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        }
+      },
+      {
+        "Id": "depth-limit-with-work",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        }
+      },
+      {
+        "Id": "shorter-path-reaches-shared-method",
+        "Expected": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": true
+        }
+      },
+      {
+        "Id": "step-budget-omits-return",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      }
+    ]
+  },
+  "B3": {
+    "cases_correct": 7,
+    "cases": [
+      {
+        "Id": "repeated-sites",
+        "Expected": {
+          "Calls": 3,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 3,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "direct-recursion",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "mutual-recursion",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "depth-limit-at-leaf",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "depth-limit-with-work",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        }
+      },
+      {
+        "Id": "shorter-path-reaches-shared-method",
+        "Expected": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "step-budget-omits-return",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        }
+      }
+    ]
+  }
+}

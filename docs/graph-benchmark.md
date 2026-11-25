@@ -35,7 +35,7 @@ Kết quả B0 trên mã phân tích commit `22351f5b3cc0fdc6d17602dfbb35063d9b7
 
 | Phiên bản | Thay đổi so với bản trước | Chỉ số cần nhìn đầu tiên |
 |---|---|---|
-| B0 | PACE hiện tại | Ghi đủ tất cả chỉ số có thể đo |
+| B0 | Mã PACE trước các thay đổi graph, commit `22351f5b3cc0fdc6d17602dfbb35063d9b73b76f` | Ghi các chỉ số mà baseline hỗ trợ |
 | B1 | Định danh symbol và phân giải overload Java qua javac | Đích đúng, dư, thiếu theo chữ ký. JCG đo riêng đích bắt buộc tìm thấy và đích bị cấm xuất hiện. |
 | B2 | Khớp endpoint theo metadata, xử lý mơ hồ | Tỷ lệ đúng endpoint và tỷ lệ bỏ ngỏ |
 | B3 | Giữ từng call site, đệ quy và vị trí bằng chứng, lưu trạng thái bị cắt | Cạnh bị mất, tỷ lệ gộp nhầm, nhận diện đầu ra thiếu |
@@ -46,6 +46,8 @@ Kết quả B0 trên mã phân tích commit `22351f5b3cc0fdc6d17602dfbb35063d9b7
 Chạy toàn bộ bộ đo sau mỗi bước. Bn trừ B(n−1) cho biết thay đổi khi thêm bước đó vào chuỗi hiện tại. Nếu muốn tách đóng góp của hai thay đổi có thể bật độc lập, chạy thêm Final bỏ từng thay đổi, ví dụ Final bỏ CFG hoặc bỏ kiểm tra bằng chứng.
 
 ## Dữ liệu đánh giá và cách kết luận
+
+Bốn bộ công khai đã dùng đến B4 thuộc tập phát triển và đối chiếu hồi quy. Kết quả hiện tại chỉ hỗ trợ kết luận trong phạm vi từng bộ và thước đo tương ứng. Để kiểm chứng mức cải thiện trên repo chưa xem, chốt câu hỏi nghiên cứu, mã các bản cần so sánh, tiêu chí chọn repo, snapshot, phạm vi nhãn và quy tắc chấm trước khi xem đầu ra. Chạy B0 và bản chốt trên cùng tập giữ lại, lưu cả ca tốt lên, xấu đi và chưa xác minh được. Nếu kết quả tập giữ lại được dùng để chỉnh phương pháp, lượt kiểm chứng tiếp theo cần tập mới. [Dwork et al., *The Reusable Holdout*, Science 2015](https://pubmed.ncbi.nlm.nih.gov/26250683/)
 
 - **Microbenchmark:** bổ sung ca route mơ hồ, nhánh lồng, early return, DI và cắt graph trước khi sửa các lớp liên quan. Mỗi ca ghi endpoint đúng, cạnh cần có, cạnh sai đã biết và điều kiện kỳ vọng. Giữ ca đổi tên cùng nhóm với bản gốc khi chia tập.
 - **Repo thực tế:** dùng mock project có sẵn để thử luồng, rồi chốt thêm các repo đại diện cho stack muốn công bố. Khoanh vùng endpoint và call site để hai người có thể chấm tay. Để riêng một số repo chỉ chạy khi chốt phương pháp. Cạnh chưa xác minh ghi là chưa xác minh. Trace chỉ chứng minh cạnh đã chạy dưới cấu hình và input quan sát được.

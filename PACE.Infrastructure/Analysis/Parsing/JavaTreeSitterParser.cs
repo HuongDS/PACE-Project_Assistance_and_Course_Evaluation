@@ -48,7 +48,7 @@ public sealed class JavaTreeSitterParser : ILanguageParser
                 var positions = new JavaSourcePositions(file);
                 var mappings = new JavaSpringMappings(tree.RootNode);
                 foreach (var type in tree.RootNode.Descendants().Where(n => TypeDeclarations.Contains(n.Type)))
-                    ParseType(type, positions, mappings, result);
+                    ParseType(type, positions, mappings, result, ct);
                 sources.Add(positions);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -64,7 +64,8 @@ public sealed class JavaTreeSitterParser : ILanguageParser
         return result;
     }
 
-    private static void ParseType(Node type, JavaSourcePositions positions, JavaSpringMappings mappings, ParseResult result)
+    private static void ParseType(Node type, JavaSourcePositions positions, JavaSpringMappings mappings, ParseResult result,
+        CancellationToken ct)
     {
         var className = type.FieldText("name");
         if (string.IsNullOrEmpty(className)) return;
@@ -97,6 +98,7 @@ public sealed class JavaTreeSitterParser : ILanguageParser
 
         foreach (var method in members.Where(m => m.Type == "method_declaration"))
         {
+            ct.ThrowIfCancellationRequested();
             var parsed = ParseMethod(method, parsedClass, positions);
             result.Methods.Add(parsed);
             positions.Methods[method.StartIndex] = parsed;
@@ -139,6 +141,8 @@ public sealed class JavaTreeSitterParser : ILanguageParser
 
         if (body is null) return parsed;
 
+        parsed.JavaFlow = JavaMethodFlow.Analyze(method, body);
+
         foreach (var node in body.Descendants(child =>
                      !TypeDeclarations.Contains(child.Type) && child.Type != "class_body"))
         {
@@ -146,6 +150,7 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             var call = new ParsedCall
             {
                 MethodName = calledName,
+                Site = node.CallSite(),
                 Condition = FindCondition(node, body)
             };
             parsed.Calls.Add(call);

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using PACE.Application.Analysis.Models;
 using PACE.Application.Common.Interfaces;
 using PACE.Application.Common.Models;
 using PACE.Application.Common;
@@ -16,7 +18,11 @@ public record MethodSourceSummaryDto(
     NodeType NodeType,
     string? Parameters);
 
-public record MethodSourceDto(MethodSourceSummaryDto Method, string SourceCode, IReadOnlyList<Guid> BusinessIds);
+public record MethodSourceDto(MethodSourceSummaryDto Method, string SourceCode, IReadOnlyList<Guid> BusinessIds)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public MethodFlowAnalysis? JavaFlow { get; init; }
+}
 
 public class MethodSourceQuery : PageQuery
 {

@@ -52,7 +52,7 @@ public sealed class CallResolver
         {
             if (call.JavaBinding is not { } binding) return [];
             return binding.SourceTargets.Select(symbol => _javaMethods.GetValueOrDefault(symbol))
-                .OfType<ParsedMethod>().Where(method => method.Id != caller.Id && !method.IsAbstract).ToArray();
+                .OfType<ParsedMethod>().Where(method => !method.IsAbstract).ToArray();
         }
 
         var receiver = string.IsNullOrWhiteSpace(call.ReceiverType) ? caller.ClassName : call.ReceiverType;
@@ -71,7 +71,7 @@ public sealed class CallResolver
             found.AddRange(matches);
         }
 
-        found.RemoveAll(m => m.Id == caller.Id || IsTrivialAccessor(m));
+        found.RemoveAll(IsTrivialAccessor);
         var concrete = found.Where(m => !m.IsAbstract).ToList();
         return (concrete.Count > 0 ? concrete : found).DistinctBy(m => m.Id).ToList();
     }

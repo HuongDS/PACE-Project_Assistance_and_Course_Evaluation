@@ -1,0 +1,425 @@
+{
+  "input_hashes": {
+    "java_method_flow": "abe3b26703785c72e28a414a93ed55154c56ad0aa11e0ad41b602204a08bd622"
+  },
+  "B3": {
+    "run": "20261125T093550893905Z-B3",
+    "production_source_sha256": "dbe66a9858956d6bbffa96f6f6f5f698440e331a7121d7a8481b6a1597833872",
+    "cases": 8,
+    "exact": 0,
+    "supported_cases": 6,
+    "supported_exact": 0,
+    "unsupported_exact": 0,
+    "rows": [
+      {
+        "id": "straight-line",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "Return:5>exit"
+          ],
+          "data": [
+            "n:2>3",
+            "x:4>5"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "if-else-join",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>5",
+            "Return:6>exit",
+            "True:4>4"
+          ],
+          "data": [
+            "flag:2>4",
+            "x:4>6",
+            "x:5>6"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "early-return",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:6>exit",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "stop:2>4",
+            "x:3>8",
+            "x:5>6"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "loop-back-edge",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "n:2>4",
+            "n:2>5",
+            "n:2>6",
+            "n:6>4",
+            "n:6>5",
+            "n:6>6",
+            "x:3>5",
+            "x:3>8",
+            "x:5>5",
+            "x:5>8"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "name-reused-in-disjoint-scopes",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "Return:5>exit",
+            "Return:8>exit",
+            "True:3>4"
+          ],
+          "data": [
+            "flag:2>3",
+            "x:4>5",
+            "x:7>8"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "nested-branch-and-throw",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "False:4>5",
+            "Return:5>exit",
+            "Return:7>exit",
+            "Throw:4>exit",
+            "True:3>4",
+            "True:4>4"
+          ],
+          "data": [
+            "failure:2>4",
+            "first:2>3",
+            "second:2>4"
+          ]
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "unsupported-try-finally",
+        "expected": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      },
+      {
+        "id": "unsupported-nested-write",
+        "expected": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "observed": {
+          "status": "Unavailable",
+          "control": [],
+          "data": []
+        },
+        "correct": false
+      }
+    ]
+  },
+  "B4": {
+    "run": "20261125T100800665077Z-B4",
+    "production_source_sha256": "26e94d06470f75a2f95506f6cbf55f0d0c9e249a1124961e75e81e8d84be4d05",
+    "cases": 8,
+    "exact": 8,
+    "supported_cases": 6,
+    "supported_exact": 6,
+    "unsupported_exact": 2,
+    "rows": [
+      {
+        "id": "straight-line",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "Return:5>exit"
+          ],
+          "data": [
+            "n:2>3",
+            "x:4>5"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "Return:5>exit"
+          ],
+          "data": [
+            "n:2>3",
+            "x:4>5"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "if-else-join",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>5",
+            "Return:6>exit",
+            "True:4>4"
+          ],
+          "data": [
+            "flag:2>4",
+            "x:4>6",
+            "x:5>6"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "False:4>5",
+            "Return:6>exit",
+            "True:4>4"
+          ],
+          "data": [
+            "flag:2>4",
+            "x:4>6",
+            "x:5>6"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "early-return",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:6>exit",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "stop:2>4",
+            "x:3>8",
+            "x:5>6"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:6>exit",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "stop:2>4",
+            "x:3>8",
+            "x:5>6"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "loop-back-edge",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "n:2>4",
+            "n:2>5",
+            "n:2>6",
+            "n:6>4",
+            "n:6>5",
+            "n:6>6",
+            "x:3>5",
+            "x:3>8",
+            "x:5>5",
+            "x:5>8"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "False:4>8",
+            "Return:8>exit",
+            "True:4>5"
+          ],
+          "data": [
+            "n:2>4",
+            "n:2>5",
+            "n:2>6",
+            "n:6>4",
+            "n:6>5",
+            "n:6>6",
+            "x:3>5",
+            "x:3>8",
+            "x:5>5",
+            "x:5>8"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "name-reused-in-disjoint-scopes",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "Return:5>exit",
+            "Return:8>exit",
+            "True:3>4"
+          ],
+          "data": [
+            "flag:2>3",
+            "x:4>5",
+            "x:7>8"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "Return:5>exit",
+            "Return:8>exit",
+            "True:3>4"
+          ],
+          "data": [
+            "flag:2>3",
+            "x:4>5",
+            "x:7>8"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "nested-branch-and-throw",
+        "expected": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "False:4>5",
+            "Return:5>exit",
+            "Return:7>exit",
+            "Throw:4>exit",
+            "True:3>4",
+            "True:4>4"
+          ],
+          "data": [
+            "failure:2>4",
+            "first:2>3",
+            "second:2>4"
+          ]
+        },
+        "observed": {
+          "status": "Complete",
+          "control": [
+            "False:3>7",
+            "False:4>5",
+            "Return:5>exit",
+            "Return:7>exit",
+            "Throw:4>exit",
+            "True:3>4",
+            "True:4>4"
+          ],
+          "data": [
+            "failure:2>4",
+            "first:2>3",
+            "second:2>4"
+          ]
+        },
+        "correct": true
+      },
+      {
+        "id": "unsupported-try-finally",
+        "expected": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "observed": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "correct": true
+      },
+      {
+        "id": "unsupported-nested-write",
+        "expected": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "observed": {
+          "status": "Unsupported",
+          "control": [],
+          "data": []
+        },
+        "correct": true
+      }
+    ]
+  }
+}

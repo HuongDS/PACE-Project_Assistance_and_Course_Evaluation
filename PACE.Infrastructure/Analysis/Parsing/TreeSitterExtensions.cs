@@ -15,6 +15,8 @@ internal static class TreeSitterExtensions
 
     public static int Line(this Node node) => node.StartPosition.Row + 1;
 
+    public static CallSite CallSite(this Node node) => new(node.Line(), node.StartPosition.Column + 1);
+
     public static IEnumerable<Node> Descendants(this Node node, Func<Node, bool>? descendInto = null)
     {
         var stack = new Stack<Node>();

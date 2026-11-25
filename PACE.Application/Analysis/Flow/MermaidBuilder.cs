@@ -41,7 +41,8 @@ public static class MermaidBuilder
         {
             var from = NodeId(step.From);
             var to = NodeId(step.To);
-            var label = Escape($"{step.Order}. {step.DataLabel}");
+            var site = step.Site is { } location ? $" (dòng {location.Line}:{location.Column})" : "";
+            var label = Escape($"{step.Order}. {step.DataLabel}{site}");
 
             if (step.EdgeType == FlowEdgeType.Return)
             {
@@ -64,6 +65,14 @@ public static class MermaidBuilder
             }
 
             sb.AppendLine($"    {from} -->|\"{label}\"| {to}");
+        }
+
+        if (graph.Truncated)
+        {
+            var limits = new List<string>();
+            if (graph.TruncationReason.HasFlag(FlowTruncationReason.DepthLimit)) limits.Add("độ sâu");
+            if (graph.TruncationReason.HasFlag(FlowTruncationReason.StepLimit)) limits.Add("số bước");
+            sb.AppendLine($"    GraphLimit[\"Graph bị cắt do giới hạn {string.Join(" và ", limits)}\"]");
         }
 
         sb.AppendLine("    classDef entry fill:#e3f2fd,stroke:#1565c0,stroke-width:2px");

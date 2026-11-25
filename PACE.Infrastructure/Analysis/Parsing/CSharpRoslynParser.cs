@@ -132,6 +132,8 @@ public sealed class CSharpRoslynParser : ILanguageParser
         IReadOnlyDictionary<string, List<string>> mediatorHandlers,
         List<ParsedCall> calls)
     {
+        var position = invocation.GetLocation().GetLineSpan().StartLinePosition;
+        var site = new CallSite(position.Line + 1, position.Character + 1);
         var condition = FindCondition(invocation, owner);
         var argCount = invocation.ArgumentList.Arguments.Count;
         var symbolInfo = model.GetSymbolInfo(invocation);
@@ -147,6 +149,7 @@ public sealed class CSharpRoslynParser : ILanguageParser
                     ReceiverType = NestedName(declaring),
                     MethodName = symbol.Name,
                     Condition = condition,
+                    Site = site,
                     ArgumentCount = symbol.ReducedFrom is null ? argCount : argCount + 1
                 });
             }
@@ -159,18 +162,18 @@ public sealed class CSharpRoslynParser : ILanguageParser
             if (name is "Send" or "Publish" && TryMediatorTarget(invocation, model, mediatorHandlers, out var handlers))
             {
                 foreach (var handler in handlers)
-                    calls.Add(new ParsedCall { ReceiverType = handler, MethodName = "Handle", Condition = condition });
+                    calls.Add(new ParsedCall { ReceiverType = handler, MethodName = "Handle", Condition = condition, Site = site });
                 return;
             }
 
             var receiverType = model.GetTypeInfo(memberAccess.Expression).Type;
             if (receiverType is not null && receiverType.TypeKind != TypeKind.Error && receiverType.Locations.Any(l => l.IsInSource))
-                calls.Add(new ParsedCall { ReceiverType = receiverType is INamedTypeSymbol named ? NestedName(named) : receiverType.Name, MethodName = name, Condition = condition, ArgumentCount = argCount });
+                calls.Add(new ParsedCall { ReceiverType = receiverType is INamedTypeSymbol named ? NestedName(named) : receiverType.Name, MethodName = name, Condition = condition, Site = site, ArgumentCount = argCount });
             return;
         }
 
         if (invocation.Expression is IdentifierNameSyntax identifier)
-            calls.Add(new ParsedCall { ReceiverType = className, MethodName = identifier.Identifier.Text, Condition = condition, ArgumentCount = argCount });
+            calls.Add(new ParsedCall { ReceiverType = className, MethodName = identifier.Identifier.Text, Condition = condition, Site = site, ArgumentCount = argCount });
     }
 
     private static bool TryMediatorTarget(

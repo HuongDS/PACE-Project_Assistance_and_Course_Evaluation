@@ -95,6 +95,7 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
                 Note = note,
                 Entry = entry is null ? null : GetLocation(entry),
                 Truncated = graph?.Truncated,
+                TruncationReason = graph?.TruncationReason,
                 Nodes = graph?.Methods.OrderBy(method => method.FilePath, StringComparer.Ordinal)
                     .ThenBy(method => method.StartLine)
                     .Select(method => new
@@ -105,7 +106,7 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
                 Edges = graph?.Steps.Select(step => new
                 {
                     step.Order, From = GetLocation(step.From), To = GetLocation(step.To),
-                    step.EdgeType, step.Condition
+                    step.EdgeType, step.Condition, step.Site
                 }).ToArray(),
                 Mermaid = graph is null ? null : MermaidBuilder.Build(graph)
             };
@@ -124,6 +125,10 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
             Files = new { Total = scan.TotalFiles, Java = scan.JavaFiles.Count, CSharp = scan.CSharpFiles.Count, JsTs = scan.JsTsFiles.Count },
             scan.Stacks,
             ParsedMethodCount = parsed.Methods.Count,
+            JavaMethodFlow = parsed.Methods.Select(method => method.JavaFlow).OfType<MethodFlowAnalysis>()
+                .GroupBy(flow => (flow.Status, flow.Reason))
+                .OrderBy(group => group.Key.Status).ThenBy(group => group.Key.Reason, StringComparer.Ordinal)
+                .Select(group => new { group.Key.Status, group.Key.Reason, Count = group.Count() }).ToArray(),
             Warnings = scan.Warnings.Concat(parsed.Warnings).ToArray(),
             Options = new { options.MaxFlowDepth, options.MaxStepsPerFlow },
             Discovery = discovery,

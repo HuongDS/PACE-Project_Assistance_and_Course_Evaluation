@@ -26,7 +26,8 @@ public record BusinessFlowSummaryDto(
     Guid EntryMethodId,
     string EntryMethod,
     int EdgeCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    FlowTruncationReason? TruncationReason = null);
 
 public record DataFlowEdgeDto(
     Guid Id,
@@ -37,7 +38,10 @@ public record DataFlowEdgeDto(
     string ToMethod,
     FlowEdgeType EdgeType,
     string? ConditionContext,
-    string? DataLabel);
+    string? DataLabel,
+    string? CallSiteFile = null,
+    int? CallSiteLine = null,
+    int? CallSiteColumn = null);
 
 public record BusinessFlowDetailDto(
     BusinessFlowSummaryDto Flow,

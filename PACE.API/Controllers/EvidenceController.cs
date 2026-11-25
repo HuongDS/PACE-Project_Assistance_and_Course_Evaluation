@@ -5,14 +5,11 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FlowAnalysis;
 using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Interfaces;
 using PACE.Domain.Enums;
+using PACE.Infrastructure.Analysis.Evidence;
 using PACE.Infrastructure.Persistence;
 namespace PACE.API.Controllers;
 
@@ -181,6 +178,8 @@ public class EvidenceController(AppDbContext db, IGitCloneService git, TeachingA
         var files = Regex.Split(patch, "(?m)(?=^diff --git )").Where(x => x.StartsWith("diff --git ")).Take(100).Select(x => new { filename = Regex.Match(x, "(?m)^\\+\\+\\+ b/(.*)$").Groups[1].Value is { Length: > 0 } name ? name : Regex.Match(x, "(?m)^--- a/(.*)$").Groups[1].Value, status = x.Contains("new file mode ") ? "added" : x.Contains("deleted file mode ") ? "deleted" : "modified", additions = x.Split('\n').Count(l => l.StartsWith('+') && !l.StartsWith("+++")), deletions = x.Split('\n').Count(l => l.StartsWith('-') && !l.StartsWith("---")), patch = x }).ToArray();
         return Ok(files);
     }
+    private const string ComplexityNote = "cyclomaticComplexity is 1 plus the decision points (if, loops, case labels, catch, ?:, &&, ||, ??), summed over the methods persisted for this file; methodComplexities has the per-method values. It is null when a method was truncated when stored.";
+
     [ProducesResponseType(typeof(AstView), 200)]
     [HttpGet("ast-cfg")]
     public async Task<IActionResult> Ast(Guid projectId, [FromQuery, Required, MaxLength(1000)] string filePath, [FromQuery] string graphKind = "AST", CancellationToken ct = default)
@@ -191,36 +190,35 @@ public class EvidenceController(AppDbContext db, IGitCloneService git, TeachingA
         var sources = await db.MethodSources.AsNoTracking().Where(m => m.AnalysisRunId == projectId && m.FilePath == filePath).OrderBy(m => m.Id).Take(101).ToListAsync(ct);
         if (sources.Count == 0) return NotFound(new { error = "No persisted method analysis for this exact file path." });
         if (sources.Count > 100 || sources.Sum(x => x.SourceCode.Length) > 500000) return UnprocessableEntity(new { error = "Source exceeds AST response limits." });
-        if (sources.Any(x => x.Language != ProgrammingLanguage.CSharp)) return UnprocessableEntity(new { error = "AST/CFG endpoint currently supports persisted C# methods only." });
-        var nodes = new List<object>(); var edges = new List<object>();
-        if (graphKind == "CFG")
+
+        var language = sources[0].Language;
+        if (sources.Any(x => x.Language != language)) return UnprocessableEntity(new { error = "File has persisted methods in more than one language; AST/CFG unavailable." });
+        var isCSharp = language == ProgrammingLanguage.CSharp;
+        if (!isCSharp && !TreeSitterStructure.Supports(language)) return UnprocessableEntity(new { error = "AST endpoint supports persisted C#, Java, JavaScript and TypeScript methods only." });
+        if (graphKind == "CFG" && !isCSharp) return UnprocessableEntity(new { error = "Verified CFG currently supports persisted C# methods only; use graphKind=AST for Java, JavaScript and TypeScript." });
+
+        const int nodeLimit = 2000;
+        var nodes = new List<GraphNode>(); var edges = new List<GraphEdge>(); var methods = new List<object>();
+        int? totalComplexity = 0; var semanticErrors = 0;
+        foreach (var source in sources)
         {
-            foreach (var source in sources)
-            {
-                var tree = CSharpSyntaxTree.ParseText("using System; class __PaceFragment { " + source.SourceCode + " }", cancellationToken: ct);
-                var compilation = CSharpCompilation.Create("PaceEvidence", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)], new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-                if (compilation.GetDiagnostics(ct).Any(d => d.Severity == DiagnosticSeverity.Error)) return UnprocessableEntity(new { error = "Verified CFG requires a self-contained C# method. This fragment needs project types or references unavailable in persisted analysis." });
-                var method = tree.GetRoot(ct).DescendantNodes().OfType<MethodDeclarationSyntax>().SingleOrDefault();
-                if (method is null) return UnprocessableEntity(new { error = "Verified CFG supports method declarations only." });
-                var cfg = ControlFlowGraph.Create(method, compilation.GetSemanticModel(tree), ct);
-                if (cfg is null) return UnprocessableEntity(new { error = "Roslyn could not create a verified method CFG." });
-                if (nodes.Count + cfg.Blocks.Length > 2000) return UnprocessableEntity(new { error = "CFG exceeds 2000 node limit." });
-                foreach (var block in cfg.Blocks)
-                {
-                    var id = $"{source.Id}:block:{block.Ordinal}";
-                    var label = $"{source.MethodName} / {block.Kind} #{block.Ordinal}: " + string.Join("; ", block.Operations.Select(o => o.Syntax.ToString()));
-                    if (block.BranchValue is not null) label += "; condition/value: " + block.BranchValue.Syntax;
-                    nodes.Add(new { id, label, type = "statement" });
-                    if (block.FallThroughSuccessor?.Destination is { } next) edges.Add(new { source = id, target = $"{source.Id}:block:{next.Ordinal}", relation = "fall-through" });
-                    if (block.ConditionalSuccessor?.Destination is { } conditional) edges.Add(new { source = id, target = $"{source.Id}:block:{conditional.Ordinal}", relation = "conditional" });
-                }
-            }
-            var provenance = await db.AnalysisRuns.AsNoTracking().Where(r => r.Id == projectId).Select(r => new { r.AnalyzedCommitSha, r.AnalyzedAt }).SingleAsync(ct);
-            return Ok(new { nodes, edges, analyzedCommitSha = provenance.AnalyzedCommitSha, analysisTimestamp = provenance.AnalyzedAt, cyclomaticComplexity = (int?)null, graphKind = "CFG", coverage = "Verified Roslyn basic blocks and successor edges for self-contained persisted C# methods. Project-dependent fragments return 422. No full-project CFG or inferred complexity." });
+            ct.ThrowIfCancellationRequested();
+            var budget = nodeLimit - nodes.Count;
+            var outcome = graphKind == "CFG" ? CSharpStructure.BuildCfg(source.Id, source.MethodName, source.SourceCode, budget, ct)
+                : isCSharp ? CSharpStructure.BuildAst(source.Id, source.SourceCode, budget, ct)
+                : TreeSitterStructure.BuildAst(source.Id, source.SourceCode, language, source.FilePath, budget, ct);
+            if (outcome.Error is not null) return UnprocessableEntity(new { error = outcome.Error });
+            nodes.AddRange(outcome.Nodes); edges.AddRange(outcome.Edges); semanticErrors += outcome.SemanticErrors;
+            totalComplexity = totalComplexity is null || outcome.Complexity is null ? null : totalComplexity + outcome.Complexity;
+            methods.Add(new { methodId = source.Id, methodName = source.MethodName, cyclomaticComplexity = outcome.Complexity });
         }
 
-        foreach (var source in sources) { var root = SyntaxFactory.ParseMemberDeclaration(source.SourceCode); if (root is null || root.ContainsDiagnostics) return UnprocessableEntity(new { error = "Persisted C# fragment cannot be parsed as a member; verified AST unavailable." }); ct.ThrowIfCancellationRequested(); var all = root.DescendantNodesAndSelf().Take(2001).ToArray(); if (nodes.Count + all.Length > 2000) return UnprocessableEntity(new { error = "AST exceeds 2000 node limit." }); var ids = all.Select((n, i) => (n, id: $"{source.Id}:{i}")).ToDictionary(x => x.n, x => x.id); foreach (var n in all) { nodes.Add(new { id = ids[n], label = n.Kind().ToString(), type = "statement" }); if (n.Parent != null && ids.TryGetValue(n.Parent, out var parent)) edges.Add(new { source = parent, target = ids[n], relation = "syntax-child" }); } }
-        var analysis = await db.AnalysisRuns.AsNoTracking().Where(r => r.Id == projectId).Select(r => new { r.AnalyzedCommitSha, r.AnalyzedAt }).SingleAsync(ct);
-        return Ok(new { nodes, edges, analyzedCommitSha = analysis.AnalyzedCommitSha, analysisTimestamp = analysis.AnalyzedAt, cyclomaticComplexity = (int?)null, graphKind = "AST", coverage = "Roslyn syntax trees of persisted C# method fragments. No full-file semantic model or control-flow graph." });
+        var provenance = await db.AnalysisRuns.AsNoTracking().Where(r => r.Id == projectId).Select(r => new { r.AnalyzedCommitSha, r.AnalyzedAt }).SingleAsync(ct);
+        var coverage = graphKind == "CFG"
+            ? "Verified Roslyn basic blocks and successor edges for persisted C# methods. Types from the rest of the project are not available in persisted analysis, so methods that use them are still graphed from their syntax and semanticErrors counts the unresolved references. No full-project CFG. " + ComplexityNote
+            : isCSharp
+                ? "Roslyn syntax trees of persisted C# method fragments. No full-file semantic model or control-flow graph. " + ComplexityNote
+                : $"Tree-sitter syntax trees (named nodes) of persisted {(language == ProgrammingLanguage.Java ? "Java" : "JavaScript/TypeScript")} method fragments. No control-flow graph for this language. " + ComplexityNote;
+        return Ok(new { nodes, edges, analyzedCommitSha = provenance.AnalyzedCommitSha, analysisTimestamp = provenance.AnalyzedAt, cyclomaticComplexity = totalComplexity, methodComplexities = methods, semanticErrors, graphKind, coverage });
     }
 }

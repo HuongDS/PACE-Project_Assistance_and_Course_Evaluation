@@ -1,0 +1,45 @@
+{
+  "jcg": {
+    "annotation_rows": 117,
+    "eligible_rows": 79,
+    "eligible_programs": 74,
+    "status_counts": {
+      "outside-direct-method-scope": 34,
+      "scored": 74,
+      "ambiguous-method-level-projection": 4,
+      "caller-missing": 5
+    },
+    "required_found": 56,
+    "required_total": 81,
+    "prohibited_reported": 3,
+    "prohibited_total": 11
+  },
+  "research": {
+    "auto_oas": {
+      "projects": 7,
+      "analyzed": 7,
+      "unmatched_observation": 279,
+      "matched": 30,
+      "missing": 31,
+      "gold_keys": 61,
+      "reported_keys": 309
+    },
+    "microsecend": {
+      "projects": 17,
+      "analyzed": 17,
+      "matched": 97,
+      "missing": 22,
+      "gold_keys": 119,
+      "reported_keys": 101,
+      "unmatched_observation": 4
+    },
+    "jasmine": {
+      "projects": 1,
+      "analyzed": 1,
+      "required_calls": 6,
+      "found_calls": 6,
+      "required_advice_methods": 8,
+      "found_advice_methods": 0
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "revision": "220f4ba8e92cec9ad1faa03324723a3e9da63d95",
+  "spec": "src/main/resources/openapi.yml",
+  "endpoints": [
+    {
+      "verb": "POST",
+      "route": "/api/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 101,
+      "method": "addOwner",
+      "specLine": 69
+    },
+    {
+      "verb": "GET",
+      "route": "/api/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 76,
+      "method": "listOwners",
+      "specLine": 101
+    },
+    {
+      "verb": "GET",
+      "route": "/api/v2/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v2/OwnerRestControllerV2.java",
+      "line": 33,
+      "method": "listOwnersPage",
+      "specLine": 143
+    },
+    {
+      "verb": "GET",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 91,
+      "method": "getOwner",
+      "specLine": 210
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 113,
+      "method": "updateOwner",
+      "specLine": 263
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 130,
+      "method": "deleteOwner",
+      "specLine": 312
+    },
+    {
+      "verb": "POST",
+      "route": "/api/owners/{ownerId}/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 141,
+      "method": "addPetToOwner",
+      "specLine": 366
+    },
+    {
+      "verb": "GET",
+      "route": "/api/owners/{ownerId}/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 193,
+      "method": "getOwnersPet",
+      "specLine": 415
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/owners/{ownerId}/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 160,
+      "method": "updateOwnersPet",
+      "specLine": 477
+    },
+    {
+      "verb": "POST",
+      "route": "/api/owners/{ownerId}/pets/{petId}/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 177,
+      "method": "addVisitToOwner",
+      "specLine": 532
+    },
+    {
+      "verb": "GET",
+      "route": "/api/pettypes",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 53,
+      "method": "listPetTypes",
+      "specLine": 590
+    },
+    {
+      "verb": "POST",
+      "route": "/api/pettypes",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 73,
+      "method": "addPetType",
+      "specLine": 623
+    },
+    {
+      "verb": "GET",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 63,
+      "method": "getPetType",
+      "specLine": 674
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 83,
+      "method": "updatePetType",
+      "specLine": 727
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 96,
+      "method": "deletePetType",
+      "specLine": 787
+    },
+    {
+      "verb": "GET",
+      "route": "/api/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 64,
+      "method": "listPets",
+      "specLine": 842
+    },
+    {
+      "verb": "GET",
+      "route": "/api/v2/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v2/PetRestControllerV2.java",
+      "line": 33,
+      "method": "listPetsPage",
+      "specLine": 876
+    },
+    {
+      "verb": "GET",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 54,
+      "method": "getPet",
+      "specLine": 930
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 75,
+      "method": "updatePet",
+      "specLine": 983
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 89,
+      "method": "deletePet",
+      "specLine": 1043
+    },
+    {
+      "verb": "GET",
+      "route": "/api/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 57,
+      "method": "listVisits",
+      "specLine": 1097
+    },
+    {
+      "verb": "POST",
+      "route": "/api/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 77,
+      "method": "addVisit",
+      "specLine": 1130
+    },
+    {
+      "verb": "GET",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 67,
+      "method": "getVisit",
+      "specLine": 1181
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 88,
+      "method": "updateVisit",
+      "specLine": 1234
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 102,
+      "method": "deleteVisit",
+      "specLine": 1294
+    },
+    {
+      "verb": "GET",
+      "route": "/api/specialties",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 55,
+      "method": "listSpecialties",
+      "specLine": 1348
+    },
+    {
+      "verb": "POST",
+      "route": "/api/specialties",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 76,
+      "method": "addSpecialty",
+      "specLine": 1381
+    },
+    {
+      "verb": "GET",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 66,
+      "method": "getSpecialty",
+      "specLine": 1432
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 86,
+      "method": "updateSpecialty",
+      "specLine": 1485
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 99,
+      "method": "deleteSpecialty",
+      "specLine": 1545
+    },
+    {
+      "verb": "GET",
+      "route": "/api/vets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 58,
+      "method": "listVets",
+      "specLine": 1599
+    },
+    {
+      "verb": "POST",
+      "route": "/api/vets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 78,
+      "method": "addVet",
+      "specLine": 1633
+    },
+    {
+      "verb": "GET",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 68,
+      "method": "getVet",
+      "specLine": 1684
+    },
+    {
+      "verb": "PUT",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 92,
+      "method": "updateVet",
+      "specLine": 1737
+    },
+    {
+      "verb": "DELETE",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 114,
+      "method": "deleteVet",
+      "specLine": 1797
+    },
+    {
+      "verb": "POST",
+      "route": "/api/users",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/UserRestControllerV1.java",
+      "line": 48,
+      "method": "addUser",
+      "specLine": 1851
+    }
+  ],
+  "excluded": [
+    {
+      "method": "failingRequest",
+      "specLine": 37,
+      "reason": "No unique concrete override in scoped controllers"
+    }
+  ]
+}

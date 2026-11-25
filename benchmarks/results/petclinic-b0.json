@@ -1,0 +1,506 @@
+[
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 101,
+      "method": "addOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 76,
+      "method": "listOwners"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/v2/owners",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v2/OwnerRestControllerV2.java",
+      "line": 33,
+      "method": "listOwnersPage"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 91,
+      "method": "getOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 113,
+      "method": "updateOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/owners/{ownerId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 130,
+      "method": "deleteOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/owners/{ownerId}/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 141,
+      "method": "addPetToOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/owners/{ownerId}/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 193,
+      "method": "getOwnersPet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/owners/{ownerId}/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 160,
+      "method": "updateOwnersPet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/owners/{ownerId}/pets/{petId}/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/OwnerRestControllerV1.java",
+      "line": 177,
+      "method": "addVisitToOwner"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/pettypes",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 53,
+      "method": "listPetTypes"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/pettypes",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 73,
+      "method": "addPetType"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 63,
+      "method": "getPetType"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 83,
+      "method": "updatePetType"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/pettypes/{petTypeId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetTypeRestControllerV1.java",
+      "line": 96,
+      "method": "deletePetType"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 64,
+      "method": "listPets"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/v2/pets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v2/PetRestControllerV2.java",
+      "line": 33,
+      "method": "listPetsPage"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 54,
+      "method": "getPet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 75,
+      "method": "updatePet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/pets/{petId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/PetRestControllerV1.java",
+      "line": 89,
+      "method": "deletePet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 57,
+      "method": "listVisits"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/visits",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 77,
+      "method": "addVisit"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 67,
+      "method": "getVisit"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 88,
+      "method": "updateVisit"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/visits/{visitId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VisitRestControllerV1.java",
+      "line": 102,
+      "method": "deleteVisit"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/specialties",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 55,
+      "method": "listSpecialties"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/specialties",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 76,
+      "method": "addSpecialty"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 66,
+      "method": "getSpecialty"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 86,
+      "method": "updateSpecialty"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/specialties/{specialtyId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/SpecialtyRestControllerV1.java",
+      "line": 99,
+      "method": "deleteSpecialty"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/vets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 58,
+      "method": "listVets"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/vets",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 78,
+      "method": "addVet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "GET",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 68,
+      "method": "getVet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "PUT",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 92,
+      "method": "updateVet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "DELETE",
+      "route": "/api/vets/{vetId}",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/VetRestControllerV1.java",
+      "line": 114,
+      "method": "deleteVet"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  },
+  {
+    "expected": {
+      "verb": "POST",
+      "route": "/api/users",
+      "path": "src/main/java/org/springframework/samples/petclinic/rest/controller/v1/UserRestControllerV1.java",
+      "line": 48,
+      "method": "addUser"
+    },
+    "discovered": false,
+    "status": "unresolved",
+    "actualFile": null,
+    "actualMethod": null,
+    "warning": null
+  }
+]

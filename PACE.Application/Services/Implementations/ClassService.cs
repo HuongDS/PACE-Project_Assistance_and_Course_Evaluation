@@ -14,9 +14,22 @@ public class ClassService(
     ICurrentUserService currentUser,
     IClassExcelService classExcelService) : IClassService
 {
+    private void EnsureManagesClasses()
+    {
+        if (!currentUser.ManagesClasses())
+            throw new ForbiddenException("Chỉ phòng đào tạo được quản lý lớp học và danh sách sinh viên.");
+    }
+
+    private async Task EnsureLecturerAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await uow.Users.GetByIdAsync(userId, ct);
+        if (user?.Role != UserRole.Lecturer)
+            throw new BadRequestException("Người được phân phụ trách lớp phải là giảng viên.");
+    }
+
     private async Task EnsureStaffAccessAsync(Guid classId, CancellationToken ct)
     {
-        if (currentUser.IsAdmin) return;
+        if (currentUser.ManagesClasses()) return;
 
         if (currentUser.Role == UserRole.Lecturer)
         {
@@ -29,7 +42,7 @@ public class ClassService(
 
     public async Task<PagedResult<ClassDto>> GetPagedAsync(ClassQuery query, CancellationToken ct = default)
     {
-        if (currentUser.IsAdmin)
+        if (currentUser.ManagesClasses())
         {
             return await uow.Classes.SearchClassesAsync(query, null, null, ct);
         }
@@ -60,7 +73,7 @@ public class ClassService(
         var detail = await uow.Classes.GetClassDetailAsync(classId, ct)
                      ?? throw new NotFoundException("Lớp học không tồn tại.");
 
-        if (currentUser.IsAdmin) return detail;
+        if (currentUser.ManagesClasses()) return detail;
 
         if (currentUser.Role == UserRole.Lecturer)
         {
@@ -83,7 +96,7 @@ public class ClassService(
         if (!await uow.Classes.ClassExistsAsync(classId, ct))
             throw new NotFoundException("Lớp học không tồn tại.");
 
-        if (!currentUser.IsAdmin)
+        if (!currentUser.ManagesClasses())
         {
             if (currentUser.Role == UserRole.Lecturer)
             {
@@ -104,7 +117,7 @@ public class ClassService(
 
     public async Task<int> AddStudentsAsync(Guid classId, AddStudentsToClassRequest request, CancellationToken ct = default)
     {
-        await EnsureStaffAccessAsync(classId, ct);
+        EnsureManagesClasses();
 
         if (!await uow.Classes.ClassExistsAsync(classId, ct))
             throw new NotFoundException("Lớp học không tồn tại.");
@@ -117,7 +130,7 @@ public class ClassService(
 
     public async Task RemoveStudentAsync(Guid classId, string studentCode, CancellationToken ct = default)
     {
-        await EnsureStaffAccessAsync(classId, ct);
+        EnsureManagesClasses();
 
         if (!await uow.Classes.ClassExistsAsync(classId, ct))
             throw new NotFoundException("Lớp học không tồn tại.");
@@ -129,7 +142,7 @@ public class ClassService(
 
     public async Task<ImportClassStudentsResult> ImportStudentsAsync(Guid classId, Stream excelStream, CancellationToken ct = default)
     {
-        await EnsureStaffAccessAsync(classId, ct);
+        EnsureManagesClasses();
 
         if (!await uow.Classes.ClassExistsAsync(classId, ct))
             throw new NotFoundException("Lớp học không tồn tại.");
@@ -220,8 +233,7 @@ public class ClassService(
 
     public async Task<ClassDto> CreateClassAsync(CreateClassRequest request, CancellationToken ct = default)
     {
-        if (!currentUser.IsAdmin && currentUser.Role != UserRole.Lecturer)
-            throw new ForbiddenException("Bạn không có quyền tạo lớp học.");
+        EnsureManagesClasses();
 
         if (string.IsNullOrWhiteSpace(request.Name))
             throw new BadRequestException("Tên lớp học không được để trống.");
@@ -232,47 +244,20 @@ public class ClassService(
         var course = await uow.Courses.GetByIdAsync(request.CourseId, ct)
             ?? throw new NotFoundException("Môn học không tồn tại.");
 
-        // 2. Xác định giảng viên phụ trách (Lecturer)
-        Guid? assignedLecturerId;
-        if (currentUser.IsAdmin)
-        {
-            assignedLecturerId = request.LecturerId ?? currentUser.UserId;
-        }
-        else
-        {
-            // Giảng viên tạo lớp thì chính giảng viên đó phụ trách
-            if (request.LecturerId.HasValue && request.LecturerId.Value != currentUser.UserId)
-            {
-                throw new ForbiddenException("Giảng viên không thể chỉ định giảng viên khác phụ trách lớp.");
-            }
-            assignedLecturerId = currentUser.UserId;
-        }
+        // 2. Giảng viên phụ trách: phòng đào tạo có thể để trống rồi phân sau; Admin để trống thì tự phụ trách như trước.
+        var assignedLecturerId = currentUser.IsAdmin ? request.LecturerId ?? currentUser.UserId : request.LecturerId;
+        if (!currentUser.IsAdmin && assignedLecturerId.HasValue)
+            await EnsureLecturerAsync(assignedLecturerId.Value, ct);
 
-        // 3. Xác định học kỳ (Semester)
+        // 3. Xác định học kỳ (Semester): mặc định kỳ hiện tại, được chọn kỳ khác
         var currentSemester = await uow.Semesters.GetCurrentSemesterAsync(ct)
             ?? throw new BadRequestException("Hệ thống chưa có học kỳ nào được thiết lập. Vui lòng liên hệ quản trị viên.");
 
-        Semester targetSemester;
-        if (currentUser.IsAdmin)
+        var targetSemester = currentSemester;
+        if (request.SemesterId.HasValue && request.SemesterId.Value != currentSemester.Id)
         {
-            if (request.SemesterId.HasValue && request.SemesterId.Value != currentSemester.Id)
-            {
-                targetSemester = await uow.Semesters.GetByIdAsync(request.SemesterId.Value, ct)
-                    ?? throw new NotFoundException("Học kỳ không tồn tại.");
-            }
-            else
-            {
-                targetSemester = currentSemester;
-            }
-        }
-        else
-        {
-            // Giảng viên chỉ được tạo lớp trong học kỳ hiện tại
-            if (request.SemesterId.HasValue && request.SemesterId.Value != currentSemester.Id)
-            {
-                throw new BadRequestException($"Giảng viên chỉ được phép tạo lớp học trong học kỳ hiện tại ({currentSemester.Name}).");
-            }
-            targetSemester = currentSemester;
+            targetSemester = await uow.Semesters.GetByIdAsync(request.SemesterId.Value, ct)
+                ?? throw new NotFoundException("Học kỳ không tồn tại.");
         }
 
         // 4. Kiểm tra trùng tên lớp của môn học đó trong học kỳ (cho phép cùng tên lớp ở các môn khác nhau)
@@ -328,7 +313,7 @@ public class ClassService(
 
     public async Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request, CancellationToken ct = default)
     {
-        await EnsureStaffAccessAsync(id, ct);
+        EnsureManagesClasses();
 
         var cls = await uow.Classes.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Lớp học không tồn tại.");
@@ -366,8 +351,10 @@ public class ClassService(
         cls.Name = trimmedName;
         cls.CourseId = course.Id;
         cls.SemesterId = targetSemesterId.Value;
-        if (currentUser.IsAdmin && request.LecturerId.HasValue)
+        if (request.LecturerId.HasValue && request.LecturerId != cls.LecturerId)
         {
+            if (!currentUser.IsAdmin)
+                await EnsureLecturerAsync(request.LecturerId.Value, ct);
             cls.LecturerId = request.LecturerId.Value;
         }
         cls.StartDate = startDate;
@@ -404,7 +391,7 @@ public class ClassService(
 
     public async Task DeleteClassAsync(Guid id, CancellationToken ct = default)
     {
-        await EnsureStaffAccessAsync(id, ct);
+        EnsureManagesClasses();
 
         var cls = await uow.Classes.GetByIdAsync(id, ct)
             ?? throw new NotFoundException("Lớp học không tồn tại.");
@@ -419,8 +406,7 @@ public class ClassService(
 
     public async Task<ImportClassesResult> ImportClassesAsync(Stream excelStream, CancellationToken ct = default)
     {
-        if (!currentUser.IsAdmin && currentUser.Role != UserRole.Lecturer)
-            throw new ForbiddenException("Bạn không có quyền import danh sách lớp học.");
+        EnsureManagesClasses();
 
         var currentSemester = await uow.Semesters.GetCurrentSemesterAsync(ct)
             ?? throw new BadRequestException("Hệ thống chưa có học kỳ hiện tại nào. Vui lòng liên hệ quản trị viên.");
@@ -493,14 +479,12 @@ public class ClassService(
                 continue;
             }
 
-            var assignedLecturerId = currentUser.Role == UserRole.Lecturer ? (Guid?)currentUser.UserId : null;
             var newClass = new Class
             {
                 Id = Guid.NewGuid(),
                 Name = className,
                 CourseId = course.Id,
                 SemesterId = currentSemester.Id,
-                LecturerId = assignedLecturerId,
                 StartDate = startDate,
                 ActualStartDate = startDate,
                 EndDate = endDate
@@ -516,9 +500,9 @@ public class ClassService(
                 course.Id,
                 course.Code,
                 course.Name,
-                assignedLecturerId,
-                currentUser.Role == UserRole.Lecturer ? currentUser.Email : "",
-                currentUser.Role == UserRole.Lecturer ? currentUser.Email : "",
+                null,
+                "",
+                "",
                 currentSemester.Name,
                 newClass.StartDate,
                 newClass.EndDate,

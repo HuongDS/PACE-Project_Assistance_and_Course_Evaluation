@@ -198,6 +198,8 @@ public sealed class RepoAnalysisService(
 
             var scan = scanner.Scan(clone.WorkingPath, ct);
             warnings.AddRange(scan.Warnings);
+            warnings.AddRange(scan.RedactionWarnings());
+            LogScan(run.RepoUrl, scan);
             if (scan.TotalFiles == 0)
                 throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
 
@@ -249,6 +251,19 @@ public sealed class RepoAnalysisService(
         {
             AnalysisRunLock.Release(analysisRunId);
         }
+    }
+
+    /// <summary>Ghi log kết quả quét: số file nhận/bỏ/lỗi, số chỗ đã che theo luật. Không ghi giá trị bí mật.</summary>
+    private void LogScan(string repoUrl, RepositoryScan scan)
+    {
+        var byRule = string.Join(", ", scan.Redactions.GroupBy(r => r.Rule).OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Count()}"));
+        logger.LogInformation(
+            "Quét {RepoUrl}: nhận {Accepted} file, bỏ qua {Ignored}, lỗi {Failed}; đã che {Redactions} thông tin nhạy cảm ({Rules})",
+            repoUrl, scan.AcceptedCount, scan.IgnoredCount, scan.FailedCount, scan.Redactions.Count, byRule.Length == 0 ? "không có" : byRule);
+        foreach (var failed in scan.FileLog.Where(e => e.Status == ScanFileStatus.Failed))
+            logger.LogWarning("Quét {RepoUrl}: file {Path} bị bỏ: {Reason}", repoUrl, failed.RelativePath, failed.Reason);
+        foreach (var hit in scan.Redactions.Take(50))
+            logger.LogInformation("Đã che [{Rule}] tại {Path}:{Line}", hit.Rule, hit.RelativePath, hit.Line);
     }
 
     private AnalysisModel BuildModel(Guid runId, List<BusinessTemplate> templates, ParseResult parsed, List<string> warnings)

@@ -65,6 +65,7 @@ else
     builder.Services.AddAuthentication();
 }
 builder.Services.AddAuthorization();
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add<TrainingOfficeScopeFilter>());
 
 const string CorsPolicy = "FrontendPolicy";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PACE.API.Common;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Models;
 using PACE.Application.Dtos;
@@ -10,6 +11,7 @@ namespace PACE.API.Controllers;
 [ApiController]
 [Route("api/classes")]
 [Authorize]
+[AllowTrainingOffice]
 public class ClassController(IClassService classService) : ControllerBase
 {
     [HttpGet]
@@ -17,7 +19,7 @@ public class ClassController(IClassService classService) : ControllerBase
         => Ok(await classService.GetPagedAsync(query, ct));
 
     [HttpGet("template")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<IActionResult> DownloadTemplate(CancellationToken ct)
     {
         var (fileBytes, fileName) = await classService.ExportClassTemplateAsync(ct);
@@ -28,7 +30,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<ActionResult<ClassDto>> Create(
         [FromBody] CreateClassRequest request,
         CancellationToken ct)
@@ -38,7 +40,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpPost("import")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<ActionResult<ImportClassesResult>> ImportClasses(
@@ -71,7 +73,7 @@ public class ClassController(IClassService classService) : ControllerBase
         => Ok(await classService.GetStudentsAsync(id, query, ct));
 
     [HttpPost("{id:guid}/students")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<ActionResult<object>> AddStudents(
         Guid id,
         AddStudentsToClassRequest request,
@@ -82,7 +84,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}/students/{studentCode}")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<IActionResult> RemoveStudent(Guid id, string studentCode, CancellationToken ct)
     {
         await classService.RemoveStudentAsync(id, studentCode, ct);
@@ -90,7 +92,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpPost("{id:guid}/students/import")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<ActionResult<ImportClassStudentsResult>> ImportStudents(
@@ -113,7 +115,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpGet("{id:guid}/students/export")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.ClassStaff)]
     public async Task<IActionResult> ExportStudents(Guid id, CancellationToken ct)
     {
         var (fileBytes, fileName) = await classService.ExportStudentsAsync(id, ct);
@@ -124,7 +126,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<ActionResult<ClassDto>> Update(
         Guid id,
         [FromBody] UpdateClassRequest request,
@@ -135,7 +137,7 @@ public class ClassController(IClassService classService) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Staff)]
+    [Authorize(Roles = Roles.Registrar)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await classService.DeleteClassAsync(id, ct);

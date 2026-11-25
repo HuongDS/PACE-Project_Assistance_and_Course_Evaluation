@@ -1,3 +1,4 @@
+using PACE.API.Common;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
@@ -137,6 +138,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
 {
     private IQueryable<Course> Visible(User u) => db.Courses.AsNoTracking().Where(c =>
             u.Role == UserRole.Admin ||
+            u.Role == UserRole.TrainingOffice ||
             (u.Role == UserRole.Lecturer && c.Classes.Any(cl => cl.LecturerId == u.Id)) ||
             (u.Role == UserRole.Student && (
                 c.Projects.Any(p => p.AnalysisRunId == u.AnalysisRunId) ||
@@ -218,7 +220,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
             })
     });
     [ProducesResponseType(typeof(CourseView[]), 200)]
-    [HttpGet]
+    [HttpGet, AllowTrainingOffice]
     public async Task<IActionResult> List([FromQuery, Range(1, int.MaxValue)] int page = 1,
         [FromQuery, Range(1, 100)] int pageSize = 20, CancellationToken ct = default)
     {
@@ -227,7 +229,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
         return Ok(await Details(courses, user).ToListAsync(ct));
     }
     [ProducesResponseType(typeof(CourseView), 200)]
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}"), AllowTrainingOffice]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
         var user = await access.User(ct);
@@ -235,7 +237,7 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
             ?? throw new NotFoundException("Course unavailable."));
     }
     [ProducesResponseType(typeof(ResourceCreated), 201)]
-    [HttpPost, Authorize(Roles = "Admin,Lecturer")]
+    [HttpPost, Authorize(Roles = Roles.Registrar), AllowTrainingOffice]
     public async Task<IActionResult> Create(CreateCourseRequest request, CancellationToken ct)
     {
         var normalizedCode = request.Code.Trim().ToUpperInvariant();

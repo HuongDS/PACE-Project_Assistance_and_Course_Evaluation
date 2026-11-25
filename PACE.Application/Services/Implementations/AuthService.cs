@@ -166,7 +166,7 @@ public class AuthService(
     {
         var email = await google.ValidateEmailAsync(request.IdToken, ct);
         var user = await uow.Users.GetByEmailAsync(email, ct);
-        if (user is null || user.Role is not (PACE.Domain.Enums.UserRole.Admin or PACE.Domain.Enums.UserRole.Lecturer))
+        if (user is null || user.Role is not (PACE.Domain.Enums.UserRole.Admin or PACE.Domain.Enums.UserRole.Lecturer or PACE.Domain.Enums.UserRole.TrainingOffice))
             throw new UnauthorizedException("Registered staff account required.");
         var (token, expiresAt) = jwt.CreateToken(user);
         return new LoginResponse(token, expiresAt, user.ToDto());

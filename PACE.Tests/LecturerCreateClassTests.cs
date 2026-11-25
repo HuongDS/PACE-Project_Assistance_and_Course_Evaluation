@@ -13,7 +13,8 @@ namespace PACE.Tests;
 public class LecturerCreateClassTests
 {
     private readonly Guid _lecturerId = Guid.NewGuid();
-    private readonly Guid _otherLecturerId = Guid.NewGuid();
+    private readonly Guid _officeId = Guid.NewGuid();
+    private readonly Guid _studentUserId = Guid.NewGuid();
     private readonly Guid _currentSemesterId = Guid.NewGuid();
     private readonly Guid _otherSemesterId = Guid.NewGuid();
     private readonly Guid _courseId = Guid.NewGuid();
@@ -103,7 +104,7 @@ public class LecturerCreateClassTests
         {
             object res = m.Name switch
             {
-                "GetByIdAsync" => Task.FromResult<User?>(new User { Id = (Guid)a[0]!, FullName = "Thầy Giảng", Email = "lecturer@pace.edu.vn" }),
+                "GetByIdAsync" => Task.FromResult<User?>(new User { Id = (Guid)a[0]!, FullName = "Thầy Giảng", Email = "lecturer@pace.edu.vn", Role = (Guid)a[0]! == _studentUserId ? UserRole.Student : UserRole.Lecturer }),
                 _ => Task.FromResult<User?>(null)
             };
             return res;
@@ -155,118 +156,72 @@ public class LecturerCreateClassTests
     }
 
     [Fact]
-    public async Task Lecturer_CanCreateClass_InCurrentSemester()
+    public async Task TrainingOffice_CanCreateClass_AndAssignLecturer()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId);
 
-        var request = new CreateClassRequest
-        {
-            Name = "SE1703",
-            CourseId = _courseId
-        };
+        var created = await service.CreateClassAsync(new CreateClassRequest { Name = "SE1703", CourseId = _courseId, LecturerId = _lecturerId });
 
-        var created = await service.CreateClassAsync(request);
-
-        Assert.NotNull(created);
         Assert.Equal("SE1703", created.Name);
-        Assert.Equal(_courseId, created.CourseId);
         Assert.Equal("Fall 2026", created.Semester);
+        Assert.Equal(_lecturerId, created.LecturerId);
         Assert.Equal("Thầy Giảng", created.LecturerName);
     }
 
     [Fact]
-    public async Task Lecturer_CannotAssignOtherLecturer_WhenCreatingClass()
+    public async Task TrainingOffice_CanCreateClass_WithoutLecturer_InAnotherSemester()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId);
 
-        var request = new CreateClassRequest
-        {
-            Name = "SE1704",
-            CourseId = _otherCourseId,
-            LecturerId = _otherLecturerId
-        };
+        var created = await service.CreateClassAsync(new CreateClassRequest { Name = "SE1704", CourseId = _otherCourseId, SemesterId = _otherSemesterId });
 
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.CreateClassAsync(request));
+        Assert.Null(created.LecturerId);
+        Assert.Equal("Spring 2026", created.Semester);
     }
 
     [Fact]
-    public async Task Lecturer_CanCreateClass_ForAnyCourseInCatalog()
+    public async Task TrainingOffice_CannotAssignNonLecturer()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId);
 
-        var request = new CreateClassRequest
-        {
-            Name = "SE1704",
-            CourseId = _otherCourseId
-        };
-
-        var created = await service.CreateClassAsync(request);
-        Assert.NotNull(created);
-        Assert.Equal("SE1704", created.Name);
-        Assert.Equal(_otherCourseId, created.CourseId);
-        Assert.Equal(_lecturerId, created.LecturerId);
+        await Assert.ThrowsAsync<BadRequestException>(() =>
+            service.CreateClassAsync(new CreateClassRequest { Name = "SE1704", CourseId = _courseId, LecturerId = _studentUserId }));
     }
 
     [Fact]
-    public async Task Lecturer_CannotCreateClass_InDifferentSemester()
+    public async Task TrainingOffice_CannotCreateClass_WithDuplicateName()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId, classExistsInSemester: true);
 
-        var request = new CreateClassRequest
-        {
-            Name = "SE1703",
-            CourseId = _courseId,
-            SemesterId = _otherSemesterId // không phải kỳ hiện tại
-        };
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            service.CreateClassAsync(new CreateClassRequest { Name = "SE1703", CourseId = _courseId }));
+    }
 
-        await Assert.ThrowsAsync<BadRequestException>(() => service.CreateClassAsync(request));
+    [Theory]
+    [InlineData(UserRole.Lecturer)]
+    [InlineData(UserRole.Student)]
+    public async Task TeachingRoles_CannotCreateOrImportClasses(UserRole role)
+    {
+        var service = CreateClassService(role, _lecturerId);
+
+        await Assert.ThrowsAsync<ForbiddenException>(() =>
+            service.CreateClassAsync(new CreateClassRequest { Name = "SE1703", CourseId = _courseId }));
+
+        using var ms = new MemoryStream([1, 2, 3]);
+        await Assert.ThrowsAsync<ForbiddenException>(() => service.ImportClassesAsync(ms));
     }
 
     [Fact]
-    public async Task Lecturer_CannotCreateClass_WithDuplicateName()
+    public async Task ImportClasses_Success_ForTrainingOffice_LeavesLecturerUnassigned()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId, classExistsInSemester: true);
-
-        var request = new CreateClassRequest
-        {
-            Name = "SE1703",
-            CourseId = _courseId
-        };
-
-        await Assert.ThrowsAsync<ConflictException>(() => service.CreateClassAsync(request));
-    }
-
-    [Fact]
-    public async Task Student_CannotCreateClass()
-    {
-        var service = CreateClassService(UserRole.Student, Guid.NewGuid());
-
-        var request = new CreateClassRequest
-        {
-            Name = "SE1703",
-            CourseId = _courseId
-        };
-
-        await Assert.ThrowsAsync<ForbiddenException>(() => service.CreateClassAsync(request));
-    }
-
-    [Fact]
-    public async Task ImportClasses_Success_ForLecturer()
-    {
-        var rows = new List<ClassImportRow>
-        {
-            new(2, "SE1703", "SWP391", new DateOnly(2026, 9, 1), new DateOnly(2026, 12, 31))
-        };
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId, importRows: rows);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId);
 
         using var ms = new MemoryStream([1, 2, 3]);
         var result = await service.ImportClassesAsync(ms);
 
-        Assert.Equal(1, result.TotalRows);
         Assert.Equal(1, result.SuccessCount);
-        Assert.Equal(0, result.SkippedCount);
         Assert.Empty(result.Errors);
-        Assert.Single(result.CreatedClasses);
+        Assert.Null(Assert.Single(result.CreatedClasses).LecturerId);
     }
 
     [Fact]
@@ -276,7 +231,7 @@ public class LecturerCreateClassTests
         {
             new(2, "SE1703", "NONEXISTENT", new DateOnly(2026, 9, 1), new DateOnly(2026, 12, 31))
         };
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId, importRows: rows);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId, importRows: rows);
 
         using var ms = new MemoryStream([1, 2, 3]);
         var result = await service.ImportClassesAsync(ms);
@@ -290,7 +245,7 @@ public class LecturerCreateClassTests
     [Fact]
     public async Task ExportClassTemplate_ReturnsValidFile()
     {
-        var service = CreateClassService(UserRole.Lecturer, _lecturerId);
+        var service = CreateClassService(UserRole.TrainingOffice, _officeId);
 
         var (bytes, fileName) = await service.ExportClassTemplateAsync();
 

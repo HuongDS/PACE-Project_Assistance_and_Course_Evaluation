@@ -8,7 +8,7 @@ public record FewShotExample(string Question, string? SuggestedAnswer, string? D
 public record QuestionPrompt(string SystemInstruction, string UserPrompt);
 
 /// <summary>
-/// Prompt sinh câu hỏi — CHÉP NGUYÊN VĂN từ Repo_Into_Graph
+/// Prompt sinh câu hỏi
 /// (AIService.GenerateUnifiedQuestionsAsync), là prompt dùng chung cho cả ba arm
 /// Traditional / Pure CFG / Hybrid trong bài báo 1. KHÔNG sửa nội dung prompt ở đây,
 /// nếu không kết quả sẽ không còn so sánh được với bài báo.

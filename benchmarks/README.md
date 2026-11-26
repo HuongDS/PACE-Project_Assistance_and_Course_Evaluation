@@ -1,10 +1,10 @@
 # Benchmark công khai cho PACE
 
-Bộ dùng để so sánh B0–B4 và chạy đối chiếu các mốc sau gồm **JCG, AutoOAS Spring, microSecEnD và Spring Jasmine**. Các phép đo dùng annotation, bảng nhãn hoặc ca mẫu dẫn xuất từ artifact công bố. Adapter của PACE chọn phần có thể đối chiếu và báo riêng từng bộ. Repo sinh viên và `spring-petclinic-rest` nằm ngoài bộ chính. Một dự án khác là `spring-petclinic-microservices` nằm trong microSecEnD.
+Bộ dùng để so sánh các mốc graph từ B0 và chạy đối chiếu B5 gồm **JCG, AutoOAS Spring, microSecEnD và Spring Jasmine**. Các phép đo dùng annotation, bảng nhãn hoặc ca mẫu dẫn xuất từ artifact công bố. Adapter của PACE chọn phần có thể đối chiếu và báo riêng từng bộ. Repo sinh viên và `spring-petclinic-rest` nằm ngoài bộ chính. Một dự án khác là `spring-petclinic-microservices` nằm trong microSecEnD.
 
 ## Chạy và lưu kết quả
 
-**Phạm vi báo cáo.** JCG, AutoOAS Spring, microSecEnD và Spring Jasmine đều đã được xem trong quá trình phát triển. Các lượt đo B0–B4 trên bốn bộ này là kết quả đối chiếu trên tập phát triển. Kết quả kiểm chứng độc lập chưa có. Xem [cách dùng tập giữ lại](../docs/graph-benchmark.md#dữ-liệu-đánh-giá-và-cách-kết-luận).
+**Phạm vi báo cáo.** JCG, AutoOAS Spring, microSecEnD và Spring Jasmine đều đã được xem trong quá trình phát triển. Các lượt đo B0–B5 trên bốn bộ này là kết quả đối chiếu trên tập phát triển. Kết quả kiểm chứng độc lập chưa có. Xem [cách dùng tập giữ lại](../docs/graph-benchmark.md#dữ-liệu-đánh-giá-và-cách-kết-luận).
 
 ### Checkpoint trước B1
 
@@ -98,6 +98,18 @@ python3 benchmarks/run.py --stage B4 \
 ```
 
 [Fixture B3/B4](results/java-method-flow-b3-b4.json) lưu kỳ vọng và đầu ra từng ca. [Báo cáo B4](results/public-b4-summary.json) lưu điểm đối chiếu và phạm vi CFG theo từng dự án. Trên 4.807 method Java có thân hàm, B4 ghi 4.275 `Complete`, 531 `Unsupported` và 1 `LimitReached`. Các bộ công khai hiện chưa có nhãn CFG/def-use tương ứng.
+
+### B5 · Câu hỏi có đáp án và dẫn chứng từ CFG
+
+Chạy fixture Java nội bộ đã ghim. Lệnh ghi đầu ra từng câu và từng ca, mẫu số, hash, TRX và log vào thư mục lượt chạy được in trên terminal.
+
+```bash
+python3 benchmarks/run.py --stage B5 --suite grounded-questions --no-restore
+python3 benchmarks/run.py --stage B5 --observe-grounded --no-restore \
+  --compare benchmarks/local/runs/<id-lượt-B4>
+```
+
+Lệnh thứ hai chạy lại bộ công khai để dò hồi quy graph và endpoint. `--observe-grounded` thêm số câu sinh trên mỗi route phát hiện được. Bỏ cờ này nếu chỉ cần đo graph và endpoint. Fixture B5 đối chiếu các tập đích dự kiến ở cấp dòng, kiểm tra tham chiếu được xuất, phát hiện trùng trong lượt sinh và ghi số slot để trống. Hiện chưa có kết quả đối chứng câu hỏi B4/B5 trên dự án độc lập và chưa có chấm của giảng viên. [Oracle đã ghim](fixtures/grounded-questions.json) · [Kết quả fixture](results/b5-grounded-questions.json) · [Kết quả công khai](results/public-b5-summary.json) · [Hồ sơ B5](../docs/paper-pace-graph/README.md) · [Code-QA-Bench, preprint 2026](https://arxiv.org/abs/2605.29277)
 
 ## Nguồn công khai và đơn vị chấm
 

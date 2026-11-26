@@ -153,7 +153,7 @@ Runner ghi metadata, log, TRX, JSON thô, CSV từng ca và delta trong `benchma
 
 **B4.** Đo lại trên cùng đầu vào cho cùng điểm từng ca và graph lời gọi như B3, kể cả 488/551 cặp AutoOAS GT+. Thời gian phân tích 25 mục trong một lượt là **72,513 s**, trung vị **2,362 s**. Lượt B3 gốc là 74,455 s, lượt B3 chạy lại là 75,736 s. Chưa đủ số lượt để kết luận chênh lệch hiệu năng ổn định. Fixture CFG/def-use chốt trước khi sửa cho kết quả B3 **0/8 có đầu ra khớp kỳ vọng** và B4 **8/8**, gồm 6 ca có graph và 2 ca báo đúng `Unsupported`. Trên bộ công khai, B4 xuất CFG cho **4.275/4.807 method Java có thân hàm**, 531 method ngoài phạm vi và 1 method chạm giới hạn. Độ đúng CFG trên repo thực tế chưa có bộ nhãn tương ứng. [Tóm tắt B4](../benchmarks/results/public-b4-summary.json) · [Fixture B3/B4](../benchmarks/results/java-method-flow-b3-b4.json) · [Cách chạy và cơ sở phương pháp](../benchmarks/README.md)
 
-**B5 là kế hoạch.** Dùng bằng chứng từ graph và dòng code để tạo đáp án trước câu hỏi. Chất lượng câu hỏi cần được đo trực tiếp. [Kế hoạch PACE](graph-benchmark.md) · [Code-QA-Bench, preprint](https://arxiv.org/abs/2605.29277)
+**B5.** Mode Evidence tạo đáp án có cấu trúc từ CFG và tọa độ mã trước khi diễn đạt câu hỏi theo mẫu. Xem kết quả fixture, lượt chạy lại bốn bộ và quy trình đối chứng chất lượng câu hỏi trong hồ sơ nghiên cứu. [Hồ sơ nghiên cứu B0–B5](paper-pace-graph/README.md) · [Code-QA-Bench, preprint](https://arxiv.org/abs/2605.29277)
 
 ## Phụ lục · Snapshot 17 repo microSecEnD
 

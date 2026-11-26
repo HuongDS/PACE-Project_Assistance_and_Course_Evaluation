@@ -1,10 +1,10 @@
-# Sinh câu hỏi vấn đáp (Raw / Graph / Hybrid)
+# Sinh câu hỏi vấn đáp (Raw / Graph / Hybrid / Evidence)
 
 ## API (role Admin)
 
 | Method | Route | Mô tả |
 |---|---|---|
-| POST | `/api/businesses/{businessId}/questions/generate` | Sinh câu hỏi bằng GPT-6 Luna và lưu vào `generated_questions` |
+| POST | `/api/businesses/{businessId}/questions/generate` | Sinh câu hỏi theo mode yêu cầu và lưu vào `generated_questions` |
 | GET | `/api/businesses/{businessId}/questions` | Danh sách câu hỏi đã lưu của nghiệp vụ |
 | DELETE | `/api/questions/{id}` | Xoá câu hỏi (chặn nếu đã có sinh viên trả lời) |
 | POST | `/api/businesses/{businessId}/specification/drawio` | Upload XML Draw.io dạng text JSON để làm điểm neo tri thức |
@@ -24,14 +24,14 @@ Body của `generate`:
 }
 ```
 
-- `mode`: `Raw` | `Graph` | `Hybrid` (mặc định `Hybrid`).
+- `mode`: `Raw` | `Graph` | `Hybrid` | `Evidence` (mặc định `Hybrid`).
 - `difficulty`: `Dễ` | `Trung bình` | `Khó` — khớp với hướng dẫn độ khó trong prompt.
 - `replaceExisting = true`: xoá các câu hỏi cũ **chưa có câu trả lời** của nghiệp vụ trước khi lưu câu mới.
 
 Phản hồi trả về mode đã chọn thực tế (`appliedContext`), `nodeCount` (N_w), lý do định tuyến, token, latency và
 danh sách câu hỏi kèm `targetedEntryPoints` (chỉ trả về, không lưu DB).
 
-## Ba mode
+## Các mode dùng LLM
 
 | Mode | Khe `SOURCE CODE` | Khe `DATA FLOW GRAPH` | Tương ứng bài báo 1 |
 |---|---|---|---|
@@ -42,6 +42,12 @@ danh sách câu hỏi kèm `targetedEntryPoints` (chỉ trả về, không lưu 
 N_w = số hàm phân biệt trong các luồng của nghiệp vụ (entry + hai đầu mỗi cạnh), tính trước khi gọi LLM.
 Ngưỡng mặc định 10 lấy từ kết quả phân tầng của bài báo 1: dưới 10 node, nén CFG làm mất 0.224 accuracy;
 trên ngưỡng, mức mất giảm một bậc độ lớn. `ContextType` lưu trong DB là biểu diễn đã dùng thực tế (`Raw`/`Graph`).
+
+## Evidence
+
+Gửi `"mode": "Evidence"` tới endpoint trên. Mode này đọc các hàm Java đã được gắn với nghiệp vụ và có CFG ở trạng thái `Complete`. Hệ thống chọn đáp án từ cạnh rẽ nhánh hoặc quan hệ gán–đọc rồi sinh câu hỏi tiếng Việt theo mẫu. Câu hỏi và đáp án đưa ra dẫn chứng theo `file:dòng:cột`. Phản hồi có `appliedContext: "Evidence"`, `unfilledCount` và hai bộ đếm token bằng 0.
+
+Với mode Evidence, để trống `description`. `difficulty` là nhãn yêu cầu được lưu, hiện chưa dùng để phân loại câu. Nếu sinh được ít hơn số yêu cầu, `replaceExisting` giữ nguyên câu cũ và lưu các câu mới sinh được. Nghiệp vụ chưa có CFG có thể cần được phân tích lại. [Phạm vi và phép đo](paper-pace-graph/README.md)
 
 ## Điểm neo tri thức từ Sơ đồ chuẩn Draw.io (Ground Truth Specification)
 

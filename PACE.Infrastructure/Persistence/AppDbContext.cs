@@ -48,6 +48,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<StudentOralAnswer> StudentOralAnswers => Set<StudentOralAnswer>();
     public DbSet<CourseTopic> CourseTopics => Set<CourseTopic>();
     public DbSet<CourseSyllabus> CourseSyllabi => Set<CourseSyllabus>();
+    public DbSet<GroupSubmission> GroupSubmissions => Set<GroupSubmission>();
+    public DbSet<GroupSubmissionReview> GroupSubmissionReviews => Set<GroupSubmissionReview>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<GroupChangeRequest> GroupChangeRequests => Set<GroupChangeRequest>();
     public DbSet<Milestone> Milestones => Set<Milestone>();

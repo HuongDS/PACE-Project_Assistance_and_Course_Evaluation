@@ -1,0 +1,1104 @@
+{
+  "role": "internal_source_labeled_regression_fixture",
+  "runs": [
+    {
+      "run_id": "20261125T175159831633Z-B5",
+      "stage": "B5",
+      "suite": "grounded-questions",
+      "start_utc": "2026-11-25T17:51:59.831633+00:00",
+      "input_hashes": {
+        "grounded_questions": "38983f8026f5cfa2cfbc851e6c6ba0245c2d5c6f1681a55d71c2f52a4d49f15c"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "936c22c7a00d52c61f001d40d5fc1bc66c9e550ba50c51af9664e5a8bb19bc58",
+      "production_changes": true,
+      "benchmark_harness_sha256": "7f7d822b9dfde7e270b3a3e643f4887aabedc4d4566fdf6ad8c75895a2030f4d",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "observe_grounded": false,
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:52:10.856570+00:00"
+    },
+    {
+      "run_id": "20261125T175459357064Z-B5Repeat",
+      "stage": "B5Repeat",
+      "suite": "grounded-questions",
+      "start_utc": "2026-11-25T17:54:59.357064+00:00",
+      "input_hashes": {
+        "grounded_questions": "38983f8026f5cfa2cfbc851e6c6ba0245c2d5c6f1681a55d71c2f52a4d49f15c"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "936c22c7a00d52c61f001d40d5fc1bc66c9e550ba50c51af9664e5a8bb19bc58",
+      "production_changes": true,
+      "benchmark_harness_sha256": "7f7d822b9dfde7e270b3a3e643f4887aabedc4d4566fdf6ad8c75895a2030f4d",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "observe_grounded": false,
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:55:04.118099+00:00"
+    }
+  ],
+  "raw_exactly_repeated": true,
+  "summary": {
+    "cases": 8,
+    "exact_cases": 8,
+    "scenarios_with_questions": 4,
+    "generated": 16,
+    "requested": 26,
+    "valid": 16,
+    "incorrect": 0,
+    "missing_expected": 0,
+    "unfilled": 10,
+    "invalid_citations": 0,
+    "duplicates": 0
+  },
+  "case_results": [
+    {
+      "id": "two-branches-and-remaining-budget",
+      "budget": 5,
+      "expected": [
+        "BranchTrue:3:4",
+        "BranchFalse:3:6",
+        "Definition:3:flag:2"
+      ],
+      "observed": [
+        "BranchTrue:3:4",
+        "BranchFalse:3:6",
+        "Definition:3:flag:2"
+      ],
+      "questions": [
+        {
+          "kind": "BranchTrue",
+          "anchor": {
+            "line": 3,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 4,
+              "column": 7
+            }
+          ],
+          "filePath": "two-branches-and-remaining-budget.java",
+          "question": "Trong Branch.compute, khi điều kiện tại two-branches-and-remaining-budget.java:3:8 cho kết quả đúng, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh đúng dẫn tới two-branches-and-remaining-budget.java:4:7."
+        },
+        {
+          "kind": "BranchFalse",
+          "anchor": {
+            "line": 3,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 6,
+              "column": 5
+            }
+          ],
+          "filePath": "two-branches-and-remaining-budget.java",
+          "question": "Trong Branch.compute, khi điều kiện tại two-branches-and-remaining-budget.java:3:8 cho kết quả sai, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh sai dẫn tới two-branches-and-remaining-budget.java:6:5."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 3,
+            "column": 9
+          },
+          "variable": "flag",
+          "targets": [
+            {
+              "line": 2,
+              "column": 23
+            }
+          ],
+          "filePath": "two-branches-and-remaining-budget.java",
+          "question": "Trong Branch.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `flag` tới chỗ đọc tại two-branches-and-remaining-budget.java:3:9?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm two-branches-and-remaining-budget.java:2:23."
+        }
+      ],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 3,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 2,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "join-keeps-both-definitions",
+      "budget": 4,
+      "expected": [
+        "BranchTrue:4:5",
+        "BranchFalse:4:7",
+        "Definition:4:flag:2",
+        "Definition:9:x:5,7"
+      ],
+      "observed": [
+        "BranchTrue:4:5",
+        "BranchFalse:4:7",
+        "Definition:4:flag:2",
+        "Definition:9:x:5,7"
+      ],
+      "questions": [
+        {
+          "kind": "BranchTrue",
+          "anchor": {
+            "line": 4,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 5,
+              "column": 7
+            }
+          ],
+          "filePath": "join-keeps-both-definitions.java",
+          "question": "Trong Join.compute, khi điều kiện tại join-keeps-both-definitions.java:4:8 cho kết quả đúng, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh đúng dẫn tới join-keeps-both-definitions.java:5:7."
+        },
+        {
+          "kind": "BranchFalse",
+          "anchor": {
+            "line": 4,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 7,
+              "column": 7
+            }
+          ],
+          "filePath": "join-keeps-both-definitions.java",
+          "question": "Trong Join.compute, khi điều kiện tại join-keeps-both-definitions.java:4:8 cho kết quả sai, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh sai dẫn tới join-keeps-both-definitions.java:7:7."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 4,
+            "column": 9
+          },
+          "variable": "flag",
+          "targets": [
+            {
+              "line": 2,
+              "column": 23
+            }
+          ],
+          "filePath": "join-keeps-both-definitions.java",
+          "question": "Trong Join.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `flag` tới chỗ đọc tại join-keeps-both-definitions.java:4:9?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm join-keeps-both-definitions.java:2:23."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 9,
+            "column": 12
+          },
+          "variable": "x",
+          "targets": [
+            {
+              "line": 5,
+              "column": 7
+            },
+            {
+              "line": 7,
+              "column": 7
+            }
+          ],
+          "filePath": "join-keeps-both-definitions.java",
+          "question": "Trong Join.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `x` tới chỗ đọc tại join-keeps-both-definitions.java:9:12?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm join-keeps-both-definitions.java:5:7, join-keeps-both-definitions.java:7:7."
+        }
+      ],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 4,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 0,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "early-return-does-not-leak",
+      "budget": 5,
+      "expected": [
+        "BranchTrue:4:5",
+        "BranchFalse:4:8",
+        "Definition:4:stop:2",
+        "Definition:6:x:5",
+        "Definition:8:x:3"
+      ],
+      "observed": [
+        "BranchTrue:4:5",
+        "BranchFalse:4:8",
+        "Definition:4:stop:2",
+        "Definition:6:x:5",
+        "Definition:8:x:3"
+      ],
+      "questions": [
+        {
+          "kind": "BranchTrue",
+          "anchor": {
+            "line": 4,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 5,
+              "column": 7
+            }
+          ],
+          "filePath": "early-return-does-not-leak.java",
+          "question": "Trong Early.compute, khi điều kiện tại early-return-does-not-leak.java:4:8 cho kết quả đúng, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh đúng dẫn tới early-return-does-not-leak.java:5:7."
+        },
+        {
+          "kind": "BranchFalse",
+          "anchor": {
+            "line": 4,
+            "column": 8
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 8,
+              "column": 5
+            }
+          ],
+          "filePath": "early-return-does-not-leak.java",
+          "question": "Trong Early.compute, khi điều kiện tại early-return-does-not-leak.java:4:8 cho kết quả sai, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh sai dẫn tới early-return-does-not-leak.java:8:5."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 4,
+            "column": 9
+          },
+          "variable": "stop",
+          "targets": [
+            {
+              "line": 2,
+              "column": 23
+            }
+          ],
+          "filePath": "early-return-does-not-leak.java",
+          "question": "Trong Early.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `stop` tới chỗ đọc tại early-return-does-not-leak.java:4:9?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm early-return-does-not-leak.java:2:23."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 6,
+            "column": 14
+          },
+          "variable": "x",
+          "targets": [
+            {
+              "line": 5,
+              "column": 7
+            }
+          ],
+          "filePath": "early-return-does-not-leak.java",
+          "question": "Trong Early.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `x` tới chỗ đọc tại early-return-does-not-leak.java:6:14?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm early-return-does-not-leak.java:5:7."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 8,
+            "column": 12
+          },
+          "variable": "x",
+          "targets": [
+            {
+              "line": 3,
+              "column": 9
+            }
+          ],
+          "filePath": "early-return-does-not-leak.java",
+          "question": "Trong Early.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `x` tới chỗ đọc tại early-return-does-not-leak.java:8:12?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm early-return-does-not-leak.java:3:9."
+        }
+      ],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 5,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 0,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "loop-carried-definition",
+      "budget": 4,
+      "expected": [
+        "BranchTrue:3:4",
+        "BranchFalse:3:6",
+        "Definition:3:n:2,4",
+        "Definition:4:n:2,4"
+      ],
+      "observed": [
+        "BranchTrue:3:4",
+        "BranchFalse:3:6",
+        "Definition:3:n:2,4",
+        "Definition:4:n:2,4"
+      ],
+      "questions": [
+        {
+          "kind": "BranchTrue",
+          "anchor": {
+            "line": 3,
+            "column": 11
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 4,
+              "column": 7
+            }
+          ],
+          "filePath": "loop-carried-definition.java",
+          "question": "Trong Repeat.compute, khi điều kiện tại loop-carried-definition.java:3:11 cho kết quả đúng, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh đúng dẫn tới loop-carried-definition.java:4:7."
+        },
+        {
+          "kind": "BranchFalse",
+          "anchor": {
+            "line": 3,
+            "column": 11
+          },
+          "variable": null,
+          "targets": [
+            {
+              "line": 6,
+              "column": 5
+            }
+          ],
+          "filePath": "loop-carried-definition.java",
+          "question": "Trong Repeat.compute, khi điều kiện tại loop-carried-definition.java:3:11 cho kết quả sai, CFG đi tiếp tới vị trí nào?",
+          "answer": "Theo CFG, nhánh sai dẫn tới loop-carried-definition.java:6:5."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 3,
+            "column": 12
+          },
+          "variable": "n",
+          "targets": [
+            {
+              "line": 2,
+              "column": 19
+            },
+            {
+              "line": 4,
+              "column": 7
+            }
+          ],
+          "filePath": "loop-carried-definition.java",
+          "question": "Trong Repeat.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `n` tới chỗ đọc tại loop-carried-definition.java:3:12?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm loop-carried-definition.java:2:19, loop-carried-definition.java:4:7."
+        },
+        {
+          "kind": "Definition",
+          "anchor": {
+            "line": 4,
+            "column": 7
+          },
+          "variable": "n",
+          "targets": [
+            {
+              "line": 2,
+              "column": 19
+            },
+            {
+              "line": 4,
+              "column": 7
+            }
+          ],
+          "filePath": "loop-carried-definition.java",
+          "question": "Trong Repeat.compute, những vị trí định nghĩa nào có thể đưa giá trị của biến `n` tới chỗ đọc tại loop-carried-definition.java:4:7?",
+          "answer": "Theo phân tích tĩnh, các vị trí định nghĩa có thể tới chỗ đọc này gồm loop-carried-definition.java:2:19, loop-carried-definition.java:4:7."
+        }
+      ],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 4,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 0,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "unsupported-try-finally",
+      "budget": 2,
+      "expected": [],
+      "observed": [],
+      "questions": [],
+      "graphStatus": "Unsupported",
+      "warnings": [],
+      "valid": 0,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 2,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "valid-cfg-with-no-supported-question",
+      "budget": 2,
+      "expected": [],
+      "observed": [],
+      "questions": [],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 0,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 2,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "older-row-without-cfg",
+      "budget": 2,
+      "expected": [],
+      "observed": [],
+      "questions": [],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 0,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 2,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    },
+    {
+      "id": "graph-without-a-verifiable-source-position",
+      "budget": 2,
+      "expected": [],
+      "observed": [],
+      "questions": [],
+      "graphStatus": "Complete",
+      "warnings": [],
+      "valid": 0,
+      "incorrect": 0,
+      "missingExpected": 0,
+      "unfilled": 2,
+      "invalidCitations": 0,
+      "duplicates": 0,
+      "stable": true,
+      "exact": true
+    }
+  ],
+  "artifacts_sha256": {
+    "20261125T175159831633Z-B5": {
+      "grounded-questions-raw.json": "8c37faf37457f3224bd29e6ed0982a59ca41a65fb69d9f746c7230f637af3105",
+      "run.json": "12cb32cf3ad7a39f0185465825c932caa977f27a16164933646a0f2c12e2380a",
+      "run.log": "b1f4f059bacb01ee16b61d7d8f7ba9e5b733b32e2662738996c385fb39395a48",
+      "summary.json": "52f6d659d09199a3b3b974e60d6e3cd117d41767865dbca89a8e9d24bfa8c1a9",
+      "tests.trx": "b07a3dfb7c70a5cc14382d281c29996ffea9c204205d3a122f762471c01b8211"
+    },
+    "20261125T175459357064Z-B5Repeat": {
+      "grounded-questions-raw.json": "8c37faf37457f3224bd29e6ed0982a59ca41a65fb69d9f746c7230f637af3105",
+      "run.json": "52838fb2481924dd84b0dbc69b5c66ca2f629adf089a37d4f52ef0ff2a39f391",
+      "run.log": "c65f33ace8ee0d032fba95cdffc623a8847291bc2d1b5c29073823c61620de34",
+      "summary.json": "52f6d659d09199a3b3b974e60d6e3cd117d41767865dbca89a8e9d24bfa8c1a9",
+      "tests.trx": "7751424e51a924c09812780860fae502dae46b0f58fe989c16fcbdcf8bf06f8e"
+    }
+  },
+  "offline_regression": {
+    "totals": {
+      "total": 52,
+      "executed": 52,
+      "passed": 52,
+      "failed": 0,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "passedButRunAborted": 0,
+      "notRunnable": 0,
+      "notExecuted": 0,
+      "disconnected": 0,
+      "warning": 0,
+      "completed": 0,
+      "inProgress": 0,
+      "pending": 0
+    },
+    "reports": {
+      "java-signatures": {
+        "scores": [
+          {
+            "id": "overload-string-and-import",
+            "expected": [
+              "billing/UserService.java:save(String)"
+            ],
+            "observed": [
+              "billing/UserService.java:save(String)"
+            ]
+          },
+          {
+            "id": "overload-boxed-and-import",
+            "expected": [
+              "billing/UserService.java:save(Integer)"
+            ],
+            "observed": [
+              "billing/UserService.java:save(Integer)"
+            ]
+          },
+          {
+            "id": "explicit-package",
+            "expected": [
+              "accounts/UserService.java:save(String)"
+            ],
+            "observed": [
+              "accounts/UserService.java:save(String)"
+            ]
+          },
+          {
+            "id": "override-by-type",
+            "expected": [
+              "sample/OddlyNamed.java:apply(String)"
+            ],
+            "observed": [
+              "sample/OddlyNamed.java:apply(String)"
+            ]
+          },
+          {
+            "id": "super-dispatch",
+            "expected": [
+              "sample/Parent.java:send()"
+            ],
+            "observed": [
+              "sample/Parent.java:send()"
+            ]
+          },
+          {
+            "id": "case-sensitive-method",
+            "expected": [
+              "sample/Demo.java:call()"
+            ],
+            "observed": [
+              "sample/Demo.java:call()"
+            ]
+          },
+          {
+            "id": "source-offset-with-unicode",
+            "expected": [
+              "sample/Demo.java:call()"
+            ],
+            "observed": [
+              "sample/Demo.java:call()"
+            ]
+          },
+          {
+            "id": "external-method",
+            "expected": [],
+            "observed": []
+          },
+          {
+            "id": "missing-type",
+            "expected": [],
+            "observed": []
+          },
+          {
+            "id": "partial-attribution",
+            "expected": [
+              "sample/Incomplete.java:local()"
+            ],
+            "observed": [
+              "sample/Incomplete.java:local()"
+            ]
+          }
+        ],
+        "elapsedMs": 1778.6807,
+        "warnings": [
+          "Javac báo 2 lỗi trên source đầu vào; graph Java có thể thiếu cạnh.",
+          "Java: 1 lời gọi chưa phân giải được khai báo bằng javac."
+        ]
+      },
+      "spring-routes": {
+        "rows": [
+          {
+            "Key": "base-and-path-aliases",
+            "Expected": "inventory",
+            "Observed": "inventory",
+            "Note": null
+          },
+          {
+            "Key": "all-explicit-verbs",
+            "Expected": "inventory",
+            "Observed": "inventory",
+            "Note": null
+          },
+          {
+            "Key": "missing-verb",
+            "Expected": null,
+            "Observed": null,
+            "Note": "Không tìm thấy mapping Spring cho DELETE /v1/items."
+          },
+          {
+            "Key": "case-sensitive",
+            "Expected": null,
+            "Observed": null,
+            "Note": null
+          },
+          {
+            "Key": "exact-case",
+            "Expected": "exactCase",
+            "Observed": "exactCase",
+            "Note": null
+          },
+          {
+            "Key": "route-over-name",
+            "Expected": "create",
+            "Observed": "create",
+            "Note": null
+          },
+          {
+            "Key": "explicit-over-any",
+            "Expected": "create",
+            "Observed": "create",
+            "Note": null
+          },
+          {
+            "Key": "any-fallback",
+            "Expected": "anyJob",
+            "Observed": "anyJob",
+            "Note": null
+          },
+          {
+            "Key": "ambiguous-route",
+            "Expected": null,
+            "Observed": null,
+            "Note": "Route Spring GET /v1/conflict có 2 handler phù hợp."
+          },
+          {
+            "Key": "named-ambiguity",
+            "Expected": "conflictTwo",
+            "Observed": "conflictTwo",
+            "Note": null
+          },
+          {
+            "Key": "variable-alias",
+            "Expected": "animal",
+            "Observed": "animal",
+            "Note": null
+          },
+          {
+            "Key": "no-suffix-fallback",
+            "Expected": null,
+            "Observed": null,
+            "Note": "Không tìm thấy mapping Spring cho GET /wrong/v1/Case."
+          },
+          {
+            "Key": "skip-unresolved-path",
+            "Expected": null,
+            "Observed": null,
+            "Note": null
+          },
+          {
+            "Key": "inherited-mapping",
+            "Expected": "lookup",
+            "Observed": "lookup",
+            "Note": null
+          },
+          {
+            "Key": "recognize-spring-annotation",
+            "Expected": null,
+            "Observed": null,
+            "Note": null
+          }
+        ],
+        "knownRoutes": [
+          "ANY /v1/job",
+          "ANY /v2/job",
+          "GET /contract/lookup",
+          "GET /v1/animals/{id}",
+          "GET /v1/Case",
+          "GET /v1/conflict",
+          "GET /v1/custom",
+          "GET /v1/items",
+          "GET /v1/stock",
+          "GET /v2/animals/{id}",
+          "GET /v2/Case",
+          "GET /v2/conflict",
+          "GET /v2/custom",
+          "GET /v2/items",
+          "GET /v2/stock",
+          "HEAD /v1/items",
+          "HEAD /v1/stock",
+          "HEAD /v2/items",
+          "HEAD /v2/stock",
+          "POST /v1/job",
+          "POST /v2/job"
+        ]
+      },
+      "graph-call-sites": [
+        {
+          "Id": "repeated-sites",
+          "Expected": {
+            "Calls": 3,
+            "Returns": 0,
+            "Truncated": false
+          },
+          "Observed": {
+            "Calls": 3,
+            "Returns": 0,
+            "Truncated": false
+          }
+        },
+        {
+          "Id": "direct-recursion",
+          "Expected": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": false
+          },
+          "Observed": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": false
+          }
+        },
+        {
+          "Id": "mutual-recursion",
+          "Expected": {
+            "Calls": 2,
+            "Returns": 0,
+            "Truncated": false
+          },
+          "Observed": {
+            "Calls": 2,
+            "Returns": 0,
+            "Truncated": false
+          }
+        },
+        {
+          "Id": "depth-limit-at-leaf",
+          "Expected": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": false
+          },
+          "Observed": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": false
+          }
+        },
+        {
+          "Id": "depth-limit-with-work",
+          "Expected": {
+            "Calls": 2,
+            "Returns": 0,
+            "Truncated": true
+          },
+          "Observed": {
+            "Calls": 2,
+            "Returns": 0,
+            "Truncated": true
+          }
+        },
+        {
+          "Id": "shorter-path-reaches-shared-method",
+          "Expected": {
+            "Calls": 4,
+            "Returns": 0,
+            "Truncated": false
+          },
+          "Observed": {
+            "Calls": 4,
+            "Returns": 0,
+            "Truncated": false
+          }
+        },
+        {
+          "Id": "step-budget-omits-return",
+          "Expected": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": true
+          },
+          "Observed": {
+            "Calls": 1,
+            "Returns": 0,
+            "Truncated": true
+          }
+        }
+      ],
+      "java-method-flow": [
+        {
+          "id": "straight-line",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "Return:5>exit"
+            ],
+            "data": [
+              "n:2>3",
+              "x:4>5"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "Return:5>exit"
+            ],
+            "data": [
+              "n:2>3",
+              "x:4>5"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "if-else-join",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "False:4>5",
+              "Return:6>exit",
+              "True:4>4"
+            ],
+            "data": [
+              "flag:2>4",
+              "x:4>6",
+              "x:5>6"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "False:4>5",
+              "Return:6>exit",
+              "True:4>4"
+            ],
+            "data": [
+              "flag:2>4",
+              "x:4>6",
+              "x:5>6"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "early-return",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "False:4>8",
+              "Return:6>exit",
+              "Return:8>exit",
+              "True:4>5"
+            ],
+            "data": [
+              "stop:2>4",
+              "x:3>8",
+              "x:5>6"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "False:4>8",
+              "Return:6>exit",
+              "Return:8>exit",
+              "True:4>5"
+            ],
+            "data": [
+              "stop:2>4",
+              "x:3>8",
+              "x:5>6"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "loop-back-edge",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "False:4>8",
+              "Return:8>exit",
+              "True:4>5"
+            ],
+            "data": [
+              "n:2>4",
+              "n:2>5",
+              "n:2>6",
+              "n:6>4",
+              "n:6>5",
+              "n:6>6",
+              "x:3>5",
+              "x:3>8",
+              "x:5>5",
+              "x:5>8"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "False:4>8",
+              "Return:8>exit",
+              "True:4>5"
+            ],
+            "data": [
+              "n:2>4",
+              "n:2>5",
+              "n:2>6",
+              "n:6>4",
+              "n:6>5",
+              "n:6>6",
+              "x:3>5",
+              "x:3>8",
+              "x:5>5",
+              "x:5>8"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "name-reused-in-disjoint-scopes",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "False:3>7",
+              "Return:5>exit",
+              "Return:8>exit",
+              "True:3>4"
+            ],
+            "data": [
+              "flag:2>3",
+              "x:4>5",
+              "x:7>8"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "False:3>7",
+              "Return:5>exit",
+              "Return:8>exit",
+              "True:3>4"
+            ],
+            "data": [
+              "flag:2>3",
+              "x:4>5",
+              "x:7>8"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "nested-branch-and-throw",
+          "expected": {
+            "status": "Complete",
+            "control": [
+              "False:3>7",
+              "False:4>5",
+              "Return:5>exit",
+              "Return:7>exit",
+              "Throw:4>exit",
+              "True:3>4",
+              "True:4>4"
+            ],
+            "data": [
+              "failure:2>4",
+              "first:2>3",
+              "second:2>4"
+            ]
+          },
+          "observed": {
+            "status": "Complete",
+            "control": [
+              "False:3>7",
+              "False:4>5",
+              "Return:5>exit",
+              "Return:7>exit",
+              "Throw:4>exit",
+              "True:3>4",
+              "True:4>4"
+            ],
+            "data": [
+              "failure:2>4",
+              "first:2>3",
+              "second:2>4"
+            ]
+          },
+          "correct": true
+        },
+        {
+          "id": "unsupported-try-finally",
+          "expected": {
+            "status": "Unsupported",
+            "control": [],
+            "data": []
+          },
+          "observed": {
+            "status": "Unsupported",
+            "control": [],
+            "data": []
+          },
+          "correct": true
+        },
+        {
+          "id": "unsupported-nested-write",
+          "expected": {
+            "status": "Unsupported",
+            "control": [],
+            "data": []
+          },
+          "observed": {
+            "status": "Unsupported",
+            "control": [],
+            "data": []
+          },
+          "correct": true
+        }
+      ]
+    },
+    "artifacts_sha256": {
+      "graph-call-sites.json": "a002d33ba81a4456c888d82926c13c20d3cd58387d7ef98bddcb9433c13075a5",
+      "java-method-flow.json": "efe43f6471e2ebee65c969f6569b34e6bc933bd6070d06058c8f3fd46222e322",
+      "java-signatures.json": "e0578ada00ee2b723e08192803e35179b2757b5aace7f3be1dbd42722f842cc7",
+      "run.log": "b274ebb8641c076ff300212b3f062682bba972f9c42e18f083e91a8c43c97aeb",
+      "spring-routes.json": "23f988b97eee577dc1bca591fa01078904086f9a9fb16b7bbca59187dc07347c",
+      "tests.trx": "aeb35effda22e046fd3a667cefff1a982996aa3091262828ddf550b5b6d3d9b8"
+    }
+  }
+}

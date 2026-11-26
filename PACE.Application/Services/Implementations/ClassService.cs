@@ -351,7 +351,12 @@ public class ClassService(
         cls.Name = trimmedName;
         cls.CourseId = course.Id;
         cls.SemesterId = targetSemesterId.Value;
-        if (request.LecturerId.HasValue && request.LecturerId != cls.LecturerId)
+        if (request.UnassignLecturer)
+        {
+            cls.LecturerId = null;
+            cls.Lecturer = null;
+        }
+        else if (request.LecturerId.HasValue && request.LecturerId != cls.LecturerId)
         {
             if (!currentUser.IsAdmin)
                 await EnsureLecturerAsync(request.LecturerId.Value, ct);

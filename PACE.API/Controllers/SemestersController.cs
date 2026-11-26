@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PACE.API.Common;
+using PACE.Application.Common.Exceptions;
 using PACE.Application.Dtos;
 using PACE.Application.Services.Interfaces;
+using PACE.Infrastructure.Persistence;
 
 namespace PACE.API.Controllers;
 
@@ -10,7 +13,7 @@ namespace PACE.API.Controllers;
 [Route("api/semesters")]
 [Authorize]
 [AllowTrainingOffice]
-public class SemestersController(ISemesterService semesterService) : ControllerBase
+public class SemestersController(ISemesterService semesterService, AppDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<SemesterDto>>> GetAll(CancellationToken ct)
@@ -45,6 +48,8 @@ public class SemestersController(ISemesterService semesterService) : ControllerB
     [Authorize(Roles = Roles.Registrar)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
+        if (await db.CourseSyllabi.AnyAsync(x => x.SemesterId == id, ct))
+            throw new ConflictException("Có syllabus áp dụng từ học kỳ này. Gỡ hoặc nhập lại syllabus đó trước khi xóa.");
         await semesterService.DeleteAsync(id, ct);
         return NoContent();
     }

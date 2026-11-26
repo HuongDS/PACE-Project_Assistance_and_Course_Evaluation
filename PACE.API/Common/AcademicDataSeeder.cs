@@ -108,6 +108,7 @@ public static class AcademicDataSeeder
 
             // Đề tài mẫu mở theo kỳ (migration AddSemesterToCourseTopics); chạy ở đây để bản triển khai không cần cập nhật tay.
             await db.Database.ExecuteSqlRawAsync(CourseTopicSemesterSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(CourseSyllabusSchema.Up);
 
             // 1. Seed Semesters
             var fall2026 = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Fall 2026" || s.Name == "Fall2026");

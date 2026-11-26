@@ -680,6 +680,37 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("course_projects", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.CourseSyllabus", b =>
+                {
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<string>("ContentJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("content");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("source_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CourseId");
+
+                    b.ToTable("course_syllabi", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.CourseTopic", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1967,6 +1998,17 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("AnalysisRun");
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.CourseSyllabus", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.Course", "Course")
+                        .WithOne()
+                        .HasForeignKey("PACE.Domain.Entities.CourseSyllabus", "CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Course");
                 });

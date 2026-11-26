@@ -226,14 +226,15 @@ public class CoursesController(AppDbContext db, TeachingAccess access, ILogger<C
     {
         var user = await access.User(ct);
         var courses = Visible(user).OrderBy(c => c.Code).Skip((page - 1) * pageSize).Take(pageSize);
-        return Ok(await Details(courses, user).ToListAsync(ct));
+        // Tách truy vấn: gộp một câu thì lớp × đề tài × sinh viên nhân nhau, chạy quá giờ khi dữ liệu thật.
+        return Ok(await Details(courses, user).AsSplitQuery().ToListAsync(ct));
     }
     [ProducesResponseType(typeof(CourseView), 200)]
     [HttpGet("{id:guid}"), AllowTrainingOffice]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
         var user = await access.User(ct);
-        return Ok(await Details(Visible(user).Where(c => c.Id == id), user).SingleOrDefaultAsync(ct)
+        return Ok(await Details(Visible(user).Where(c => c.Id == id), user).AsSplitQuery().SingleOrDefaultAsync(ct)
             ?? throw new NotFoundException("Course unavailable."));
     }
     [ProducesResponseType(typeof(ResourceCreated), 201)]

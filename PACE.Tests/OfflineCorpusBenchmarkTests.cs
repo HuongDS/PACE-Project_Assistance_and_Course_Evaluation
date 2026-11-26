@@ -5,6 +5,8 @@ using PACE.Application.Analysis;
 using PACE.Application.Analysis.Flow;
 using PACE.Application.Analysis.Models;
 using PACE.Application.Analysis.Template;
+using PACE.Application.Common.ReadModels;
+using PACE.Application.QuestionGeneration;
 using PACE.Infrastructure.Analysis;
 using PACE.Infrastructure.Analysis.Parsing;
 using Xunit;
@@ -18,6 +20,8 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
     private sealed record RepositoryInput(string Id, string Commit, string Root);
     private sealed record GoldCase(string Id, string RepositoryId, string Verb, string Route);
     private sealed record Location(string File, int Line);
+    private sealed record QuestionObservation(string? Verb, string? Route, int Budget,
+        IReadOnlyList<GroundedQuestion> Questions);
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -38,6 +42,7 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
         var reportPath = Environment.GetEnvironmentVariable("PACE_OFFLINE_CORPUS_REPORT");
         Assert.False(string.IsNullOrWhiteSpace(reportPath));
         var input = JsonSerializer.Deserialize<Input>(File.ReadAllText(inputPath), Json)!;
+        var observeQuestions = Environment.GetEnvironmentVariable("PACE_OBSERVE_GROUNDED_QUESTIONS") == "1";
         Assert.NotEmpty(input.Repositories);
         var reports = new List<object>();
         List<string> failures = [];
@@ -46,7 +51,7 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
             var clock = Stopwatch.StartNew();
             try
             {
-                var report = Analyze(repo, input.Cases.Where(item => item.RepositoryId == repo.Id));
+                var report = Analyze(repo, input.Cases.Where(item => item.RepositoryId == repo.Id), observeQuestions);
                 reports.Add(report);
                 output.WriteLine($"{repo.Id}: completed in {clock.ElapsedMilliseconds} ms");
             }
@@ -65,7 +70,7 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
         Assert.Empty(failures);
     }
 
-    private static object Analyze(RepositoryInput repo, IEnumerable<GoldCase> goldCases)
+    private static object Analyze(RepositoryInput repo, IEnumerable<GoldCase> goldCases, bool observeQuestions)
     {
         var options = new AnalysisOptions();
         var stopwatch = Stopwatch.StartNew();
@@ -79,11 +84,14 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
         var matcher = new EntryPointMatcher(parsed.Methods);
         var builder = new FlowBuilder(new CallResolver(parsed.Classes, parsed.Methods),
             options.MaxFlowDepth, options.MaxStepsPerFlow);
+        var observations = new List<(string? Verb, string? Route, IReadOnlyCollection<ParsedMethod> Methods)>();
 
         object MakeFlow(string caseId, ApiTemplate api, string source)
         {
             var entry = matcher.Match(api, out var note);
             var graph = entry is null ? null : builder.Build(entry);
+            if (observeQuestions && source == "discovery" && graph is not null)
+                observations.Add((api.ResolveHttpVerb(), api.Path, graph.Methods));
             return new
             {
                 CaseId = caseId,
@@ -116,6 +124,13 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
         var discovery = endpoints.Select(endpoint => MakeFlow($"discovered-{endpoint.Id}", endpoint.ToApi(), "discovery")).ToArray();
         var gold = goldCases.Select(item => MakeFlow(item.Id,
             new ApiTemplate { HttpMethod = item.Verb, Path = item.Route }, "gold")).ToArray();
+        stopwatch.Stop();
+
+        const int budget = 5;
+        var questionObservations = observeQuestions ? observations.Select(observation => new QuestionObservation(
+            observation.Verb, observation.Route, budget, GroundedQuestionGenerator.Generate(
+                observation.Methods.Select(method => new MethodCode(method.Id, method.ClassName, method.MethodName,
+                    method.SourceCode, method.FilePath, method.JavaFlow?.Serialize())), budget))).ToArray() : null;
 
         return new
         {
@@ -132,7 +147,8 @@ public sealed class OfflineCorpusBenchmarkTests(ITestOutputHelper output)
             Warnings = scan.Warnings.Concat(parsed.Warnings).ToArray(),
             Options = new { options.MaxFlowDepth, options.MaxStepsPerFlow },
             Discovery = discovery,
-            Gold = gold
+            Gold = gold,
+            QuestionObservations = questionObservations
         };
     }
 

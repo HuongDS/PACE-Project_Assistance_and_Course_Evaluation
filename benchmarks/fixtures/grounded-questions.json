@@ -1,0 +1,52 @@
+[
+  {
+    "id": "two-branches-and-remaining-budget",
+    "source": "class Branch {\n  int compute(boolean flag) {\n    if (flag) {\n      return 1;\n    }\n    return 2;\n  }\n}",
+    "budget": 5,
+    "expected": ["BranchTrue:3:4", "BranchFalse:3:6", "Definition:3:flag:2"]
+  },
+  {
+    "id": "join-keeps-both-definitions",
+    "source": "class Join {\n  int compute(boolean flag) {\n    int x;\n    if (flag) {\n      x = 1;\n    } else {\n      x = 2;\n    }\n    return x;\n  }\n}",
+    "budget": 4,
+    "expected": ["BranchTrue:4:5", "BranchFalse:4:7", "Definition:4:flag:2", "Definition:9:x:5,7"]
+  },
+  {
+    "id": "early-return-does-not-leak",
+    "source": "class Early {\n  int compute(boolean stop) {\n    int x = 1;\n    if (stop) {\n      x = 2;\n      return x;\n    }\n    return x;\n  }\n}",
+    "budget": 5,
+    "expected": ["BranchTrue:4:5", "BranchFalse:4:8", "Definition:4:stop:2", "Definition:6:x:5", "Definition:8:x:3"]
+  },
+  {
+    "id": "loop-carried-definition",
+    "source": "class Repeat {\n  int compute(int n) {\n    while (n > 0) {\n      n--;\n    }\n    return 0;\n  }\n}",
+    "budget": 4,
+    "expected": ["BranchTrue:3:4", "BranchFalse:3:6", "Definition:3:n:2,4", "Definition:4:n:2,4"]
+  },
+  {
+    "id": "unsupported-try-finally",
+    "source": "class Unsupported {\n  int compute(int n) {\n    try { return n; } finally { n++; }\n  }\n}",
+    "budget": 2,
+    "expected": []
+  },
+  {
+    "id": "valid-cfg-with-no-supported-question",
+    "source": "class Literal {\n  int compute() {\n    return 1;\n  }\n}",
+    "budget": 2,
+    "expected": []
+  },
+  {
+    "id": "older-row-without-cfg",
+    "source": "class Old {\n  int compute(int n) {\n    return n;\n  }\n}",
+    "budget": 2,
+    "omitFlow": true,
+    "expected": []
+  },
+  {
+    "id": "graph-without-a-verifiable-source-position",
+    "source": "class NoEvidence {\n  int compute(int n) {\n    return n;\n  }\n}",
+    "budget": 2,
+    "staleSource": true,
+    "expected": []
+  }
+]

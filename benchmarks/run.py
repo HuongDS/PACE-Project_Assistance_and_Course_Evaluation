@@ -108,6 +108,19 @@ def table(path, rows, fields, delimiter=","):
 
 def export_reports(output):
     summary = {}
+    grounded_path = output / "grounded-questions-raw.json"
+    if grounded_path.exists():
+        rows = json.loads(grounded_path.read_text())
+        summary["grounded_questions"] = {
+            "cases": len(rows),
+            "exact_cases": sum(row["exact"] for row in rows),
+            "scenarios_with_questions": sum(bool(row["questions"]) for row in rows),
+            "generated": sum(len(row["questions"]) for row in rows),
+            **{key: sum(row[field] for row in rows) for key, field in (
+                ("requested", "budget"), ("valid", "valid"), ("incorrect", "incorrect"),
+                ("missing_expected", "missingExpected"), ("unfilled", "unfilled"),
+                ("invalid_citations", "invalidCitations"), ("duplicates", "duplicates"))},
+        }
     method_flow_path = output / "java-method-flow-raw.json"
     if method_flow_path.exists():
         rows = json.loads(method_flow_path.read_text())
@@ -161,6 +174,29 @@ def export_reports(output):
                 "status_counts": dict(statuses),
                 "reason_counts": dict(reasons),
             }
+        if any(repo.get("questionObservations") is not None for repo in raw):
+            by_project = {}
+            kinds = collections.Counter()
+            for repo in raw:
+                observations = repo.get("questionObservations") or []
+                generated = sum(len(row["questions"]) for row in observations)
+                requested = sum(row["budget"] for row in observations)
+                by_project[repo["id"]] = {
+                    "discovered_routes": len(repo["discovery"]),
+                    "matched_routes": len(observations),
+                    "routes_with_questions": sum(bool(row["questions"]) for row in observations),
+                    "fully_filled_routes": sum(len(row["questions"]) == row["budget"] for row in observations),
+                    "requested": requested,
+                    "generated": generated,
+                    "unfilled": requested - generated,
+                }
+                kinds.update(question["kind"] for row in observations for question in row["questions"])
+            summary["grounded_question_observation"] = {
+                "totals": {key: sum(project[key] for project in by_project.values())
+                           for key in next(iter(by_project.values()))},
+                "kind_counts": dict(kinds),
+                "projects": by_project,
+            }
     write_json(output / "summary.json", summary)
     return summary
 
@@ -178,8 +214,9 @@ def compare_runs(previous_path, output, previous, summary):
                 yield label, value
 
     old, new = dict(numbers(before)), dict(numbers(summary))
-    rows = [{"metric": key, "before": old.get(key, 0), "after": new.get(key, 0),
-             "delta": new.get(key, 0) - old.get(key, 0)} for key in sorted(old.keys() | new.keys())]
+    rows = [{"metric": key, "before": old.get(key), "after": new.get(key),
+             "delta": new[key] - old[key] if key in old and key in new else None}
+            for key in sorted(old.keys() | new.keys())]
     table(output / "comparison.csv", rows, ["metric", "before", "after", "delta"])
     if (output / "jcg-raw.json").exists():
         jcg_delta = subprocess.check_output([sys.executable, str(HERE / "compare-jcg.py"),
@@ -190,10 +227,15 @@ def compare_runs(previous_path, output, previous, summary):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", required=True, help="B0, B1, B2, Final, etc.")
-    parser.add_argument("--suite", choices=("public", "jcg", "research", "signatures", "java-method-flow"), default="public")
+    parser.add_argument("--suite", choices=("public", "jcg", "research", "signatures", "java-method-flow",
+                                            "grounded-questions"), default="public")
     parser.add_argument("--compare", type=Path, help="Previous run directory using identical input hashes")
+    parser.add_argument("--observe-grounded", action="store_true",
+                        help="Count grounded questions on discovered routes without scoring correctness")
     parser.add_argument("--no-restore", action="store_true", help="Use already restored NuGet dependencies")
     args = parser.parse_args()
+    if args.observe_grounded and args.suite not in ("public", "research"):
+        parser.error("--observe-grounded requires the public or research suite")
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.stage):
         parser.error("Stage must contain only letters, digits, '-' or '_'")
     os.umask(0o077)
@@ -224,6 +266,8 @@ def main():
             write_json(output / "run.json", metadata)
             env = os.environ.copy()
             env.pop("PACE_JAVA_CLASSPATH", None)
+            env["PACE_OBSERVE_GROUNDED_QUESTIONS"] = "1" if args.observe_grounded else "0"
+            metadata["observe_grounded"] = args.observe_grounded
             java = shutil.which("java")
             metadata["java_version"] = subprocess.run(
                 [java, "-version"], capture_output=True, text=True, check=True).stderr.splitlines()[0] if java else None
@@ -232,6 +276,13 @@ def main():
                 raise RuntimeError("Install JDK 17 or newer before running the candidate benchmark.")
             filters = []
             required = []
+            if args.suite == "grounded-questions":
+                fixture = HERE / "fixtures" / "grounded-questions.json"
+                metadata["input_hashes"]["grounded_questions"] = digest(fixture.read_bytes())
+                env.update(PACE_GROUNDED_QUESTIONS_FIXTURE=str(fixture),
+                           PACE_GROUNDED_QUESTIONS_REPORT=str(output / "grounded-questions-raw.json"))
+                filters.append("FullyQualifiedName~GroundedQuestionBenchmarkTests")
+                required.append("grounded-questions-raw.json")
             if args.suite == "java-method-flow":
                 fixture = ROOT / "PACE.Tests/JavaMethodFlowBenchmarkTests.cs"
                 metadata["input_hashes"]["java_method_flow"] = digest(fixture.read_bytes())

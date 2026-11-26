@@ -404,7 +404,7 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             s.ActualStartTime,
             s.ActualEndTime,
             rubric = new { id = s.Id, courseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = new object[0] }), totalScore = 100 },
-            participants = s.Students.Select(x => new { user = new { id = x.Student.Id, email = x.Student.Email, fullName = x.Student.Email, role = "STUDENT", createdAt = x.Student.CreatedAt }, role = "CANDIDATE", isAudioActive = false, isVideoActive = false, isSpeaking = false, connectionQuality = "disconnected" }),
+            participants = s.Students.Select(x => new { user = new { id = x.Student.Id, email = x.Student.Email, fullName = string.IsNullOrWhiteSpace(x.Student.FullName) ? x.Student.Email : x.Student.FullName, role = "STUDENT", createdAt = x.Student.CreatedAt }, role = "CANDIDATE", isAudioActive = false, isVideoActive = false, isSpeaking = false, connectionQuality = "disconnected" }),
             oralQuestions = student || s.OralQuestionsJson is null
                 ? null : JsonSerializer.Deserialize<List<OralQuestionSnapshot>>(s.OralQuestionsJson, Json),
             oralEvidence = student || s.OralQuestionsJson is null ? null : s.Students

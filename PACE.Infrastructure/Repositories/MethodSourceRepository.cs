@@ -39,10 +39,12 @@ public class MethodSourceRepository(AppDbContext context) : GenericRepository<Me
     public Task<int> DeleteByRepoAsync(Guid analysisRunId, CancellationToken ct = default)
         => DbSet.Where(m => m.AnalysisRunId == analysisRunId).ExecuteDeleteAsync(ct);
 
-    public Task<List<MethodCode>> GetCodeByBusinessAsync(Guid businessId, CancellationToken ct = default)
+    public Task<List<MethodCode>> GetCodeByBusinessAsync(Guid businessId, CancellationToken ct = default,
+        bool includeEvidence = false)
         => DbSet.AsNoTracking()
             .Where(m => m.BusinessMethods.Any(bm => bm.BusinessId == businessId))
             .OrderBy(m => m.ClassName).ThenBy(m => m.MethodName)
-            .Select(m => new MethodCode(m.Id, m.ClassName, m.MethodName, m.SourceCode))
+            .Select(m => new MethodCode(m.Id, m.ClassName, m.MethodName, m.SourceCode,
+                includeEvidence ? m.FilePath : null, includeEvidence ? m.JavaFlowJson : null))
             .ToListAsync(ct);
 }

@@ -14,5 +14,8 @@ public enum QuestionGenerationMode
     Graph,
 
     /// <summary>N_w &gt; ngưỡng (mặc định 10) thì dùng Graph, ngược lại dùng Raw.</summary>
-    Hybrid
+    Hybrid,
+
+    /// <summary>Sinh câu hỏi từ bằng chứng CFG và def-use đã lưu.</summary>
+    Evidence
 }

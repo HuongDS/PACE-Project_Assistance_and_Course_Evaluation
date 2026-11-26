@@ -71,7 +71,8 @@ public record FlowQuestionContext(
 
 public record FlowEdgeRef(int StepOrder, Guid FromMethodId, Guid ToMethodId);
 
-public record MethodCode(Guid Id, string ClassName, string MethodName, string SourceCode);
+public record MethodCode(Guid Id, string ClassName, string MethodName, string SourceCode,
+    string? FilePath = null, string? JavaFlowJson = null);
 
 public record GeneratedQuestionSummary(
     Guid Id,

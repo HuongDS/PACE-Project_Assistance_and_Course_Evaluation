@@ -13,6 +13,7 @@ public static class QuestionContextRouter
     {
         QuestionGenerationMode.Raw => new ContextRoute(ContextType.Raw, "Mode Raw: chỉ dùng mã nguồn thô."),
         QuestionGenerationMode.Graph => new ContextRoute(ContextType.Graph, "Mode Graph: chỉ dùng sơ đồ Mermaid."),
+        QuestionGenerationMode.Evidence => new ContextRoute(ContextType.Evidence, "Mode Evidence: dựng đáp án từ CFG và tọa độ source."),
         _ => nodeCount > threshold
             ? new ContextRoute(ContextType.Graph, $"Mode Hybrid: luồng có {nodeCount} node > {threshold} nên dùng Graph (nén CFG gần như không mất độ chính xác ở luồng lớn).")
             : new ContextRoute(ContextType.Raw, $"Mode Hybrid: luồng có {nodeCount} node ≤ {threshold} nên dùng Raw (luồng nhỏ mất nhiều độ chính xác nhất khi nén CFG).")

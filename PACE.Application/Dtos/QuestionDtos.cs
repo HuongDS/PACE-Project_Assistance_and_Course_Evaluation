@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using PACE.Domain.Enums;
 
 namespace PACE.Application.Dtos;
 
 public class GenerateQuestionsRequest
 {
-    /// <summary>Raw | Graph | Hybrid (mặc định Hybrid: N_w &gt; 10 node dùng Graph, ngược lại Raw).</summary>
+    /// <summary>Raw | Graph | Hybrid | Evidence (mặc định Hybrid).</summary>
     public QuestionGenerationMode Mode { get; set; } = QuestionGenerationMode.Hybrid;
 
     [Range(1, 20)]
@@ -54,4 +55,6 @@ public record GenerateQuestionsResponse(
     string? PromptText = null)
 {
     public string? FullPrompt => PromptText;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? UnfilledCount { get; init; }
 }

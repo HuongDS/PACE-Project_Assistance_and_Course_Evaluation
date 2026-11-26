@@ -7,7 +7,7 @@ using PACE.Infrastructure.Persistence;
 
 namespace PACE.API.Controllers;
 
-public record LecturerOption(Guid Id, string FullName, string Email);
+public record LecturerOption(Guid Id, string FullName, string Email, string? Code = null, string? Title = null);
 
 [ApiController, Route("api/lecturers"), Authorize(Roles = Roles.Registrar), AllowTrainingOffice]
 public class LecturersController(AppDbContext db) : ControllerBase
@@ -18,6 +18,8 @@ public class LecturersController(AppDbContext db) : ControllerBase
         => Ok(await db.Users.AsNoTracking()
             .Where(x => x.Role == UserRole.Lecturer)
             .OrderBy(x => x.FullName).ThenBy(x => x.Email)
-            .Select(x => new LecturerOption(x.Id, x.FullName, x.Email))
+            .Select(x => new LecturerOption(x.Id, x.FullName, x.Email,
+                db.LecturerProfiles.Where(p => p.UserId == x.Id).Select(p => p.LecturerCode).FirstOrDefault(),
+                db.LecturerProfiles.Where(p => p.UserId == x.Id).Select(p => p.AcademicTitle).FirstOrDefault()))
             .ToListAsync(ct));
 }

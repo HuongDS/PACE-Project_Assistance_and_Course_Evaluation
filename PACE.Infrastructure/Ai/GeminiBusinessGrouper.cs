@@ -12,10 +12,10 @@ namespace PACE.Infrastructure.AI;
 public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
 {
     private const string BaseUrl = "https://generativelanguage.googleapis.com/v1beta";
-    // Prompt gom nghiệp vụ nhỏ; không cần chờ lâu như timeout 600s dùng cho sinh câu hỏi.
     private const int MaxTimeoutSeconds = 120;
+    public const int HybridBatchSize = 12;
 
-    private const string SystemPrompt = """
+    private const string LegacyGroupSystemPrompt = """
         Bạn là chuyên gia phân tích nghiệp vụ cho đồ án phần mềm của sinh viên.
         Đầu vào là danh sách API (endpoint) đã quét từ mã nguồn, mỗi API có id, controller, http_method, function, path.
         Hãy gom các API thành các NGHIỆP VỤ theo góc nhìn người dùng cuối.
@@ -29,9 +29,38 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
         5. endpoint_ids: danh sách id thuộc nghiệp vụ.
         """;
 
+    private const string HybridSliceSystemPrompt = """
+        Bạn là hệ thống phân tích tĩnh & khôi phục ngữ nghĩa mã nguồn theo phương pháp Total Alpha-Renaming / Name-Agnostic Deobfuscation (Alon et al., POPL 2019).
+        Trong đầu vào, toàn bộ tên controller, tên hàm và tên biến tự đặt của lập trình viên đã được ẩn danh hóa hoàn toàn thành fn_1, fn_2, VAR_1, VAR_2... để loại bỏ thiên kiến đặt tên.
+        Mỗi API chỉ cung cấp các bằng chứng thực thi bất biến gồm:
+        - http_method: phương thức HTTP.
+        - context_graph_summary: gồm call_chain (fn_1 -> fn_2...) và callee_summaries (tóm tắt từ dưới lên của các hàm con).
+        - deobfuscated_evidence_slice: các nút bằng chứng thực thi (ENTRY_DATA, DATA_FLOW, DB_READ, DB_WRITE, SDK_CALL, HTTP_OUT, EVENT_PUB, BRANCH, RETURN) kèm dfg_from và anchor.
+        - code_anchors: các bảng/cột DB đọc/ghi và SDK bên ngoài không thể làm mờ.
+
+        QUY TẮC BẮT BUỘC (GROUNDED GUARDRAILS):
+        1. Suy luận 100% dựa trên chuỗi DFG, CFG (BRANCH/RETURN), callee_summaries và code_anchors (bảng DB, SDK, HTTP status). Không bao giờ nhắc tới các ký hiệu ẩn danh fn_1, VAR_1 trong câu mô tả tiếng Việt.
+        2. Với mỗi endpoint_id trong đầu vào, trả về:
+           - summary: 1 câu tiếng Việt ngắn gọn, chính xác mô tả chức năng thực sự của API dựa trên bảng DB và SDK mà nó tương tác.
+           - behaviors: danh sách các mệnh đề hành vi (claim_id: "C1", "C2"..., action: câu tiếng Việt mô tả hành động/điều kiện cụ thể, evidence_nodes: mảng các id nút bằng chứng như ["n1", "n2"] có thật trong deobfuscated_evidence_slice của endpoint đó, confidence: độ tự tin 0.0 -> 1.0).
+        """;
+
+    private const string HybridGroupingSystemPrompt = """
+        Bạn là chuyên gia phân tích nghiệp vụ phần mềm theo phương pháp Name-Agnostic Semantic Recovery.
+        Đầu vào là danh sách các API đã được khôi phục ngữ nghĩa hoàn toàn từ đồ thị thực thi và neo cơ sở dữ liệu (mỗi API có id, http_method, summary, và code_anchors gồm db_reads, db_writes, external_sdks).
+        Hãy gom các API thành các NGHIỆP VỤ theo góc nhìn người dùng cuối.
+
+        Quy tắc bắt buộc:
+        1. Dựa hoàn toàn vào `summary` và `code_anchors` (các bảng DB đọc/ghi và SDK dùng chung) để gom nhóm các API có liên quan mật thiết về mặt dữ liệu và luồng nghiệp vụ.
+        2. Mỗi id phải nằm trong ĐÚNG MỘT nghiệp vụ. Không bỏ sót id, không lặp id, không bịa id không có trong đầu vào.
+        3. business_name: tiếng Việt, ngắn gọn (tối đa 60 ký tự), không trùng nhau, không dùng từ kỹ thuật như Controller, API, CRUD.
+        4. description: một câu tiếng Việt mô tả nghiệp vụ dựa trên summary của các API thành viên.
+        5. endpoint_ids: danh sách id thuộc nghiệp vụ.
+        """;
+
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    private static readonly object ResponseSchema = new
+    private static readonly object GroupResponseSchema = new
     {
         type = "ARRAY",
         items = new
@@ -44,6 +73,37 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
                 endpoint_ids = new { type = "ARRAY", items = new { type = "INTEGER" } }
             },
             required = new[] { "business_name", "endpoint_ids" }
+        }
+    };
+
+    private static readonly object HybridSliceResponseSchema = new
+    {
+        type = "ARRAY",
+        items = new
+        {
+            type = "OBJECT",
+            properties = new
+            {
+                endpoint_id = new { type = "INTEGER" },
+                summary = new { type = "STRING" },
+                behaviors = new
+                {
+                    type = "ARRAY",
+                    items = new
+                    {
+                        type = "OBJECT",
+                        properties = new
+                        {
+                            claim_id = new { type = "STRING" },
+                            action = new { type = "STRING" },
+                            evidence_nodes = new { type = "ARRAY", items = new { type = "STRING" } },
+                            confidence = new { type = "NUMBER" }
+                        },
+                        required = new[] { "claim_id", "action", "evidence_nodes", "confidence" }
+                    }
+                }
+            },
+            required = new[] { "endpoint_id", "summary", "behaviors" }
         }
     };
 
@@ -67,11 +127,71 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             id = e.Id, controller = e.Controller, http_method = e.HttpMethod, function = e.Function, path = e.Path
         }));
 
+        return await RequestGroupsAsync(LegacyGroupSystemPrompt, input, ct);
+    }
+
+    public async Task<HybridSynthesisResult> SynthesizeAndGroupAsync(
+        IReadOnlyList<EndpointEvidenceSlice> slices,
+        CancellationToken ct)
+    {
+        if (!IsConfigured) throw new ExternalServiceException("Gemini", "Chưa cấu hình Gemini:ApiKey.");
+
+        var specsById = new Dictionary<int, SynthesizedEndpointSpec>();
+
+        // Bước 1: Total Alpha-Renaming — Không gửi tên controller/function/path cho LLM để chống thiên kiến tên 100%
+        foreach (var batch in slices.Chunk(HybridBatchSize))
+        {
+            var batchPayload = JsonSerializer.Serialize(batch.Select(s => new
+            {
+                endpoint_id = s.EndpointId,
+                http_method = s.HttpMethod,
+                context_graph_summary = s.ContextGraphSummary,
+                deobfuscated_evidence_slice = s.EvidenceNodes,
+                code_anchors = s.CodeAnchors
+            }));
+
+            var body = new
+            {
+                systemInstruction = new { parts = new[] { new { text = HybridSliceSystemPrompt } } },
+                contents = new[] { new { role = "user", parts = new[] { new { text = batchPayload } } } },
+                generationConfig = new { temperature = 0.1, responseMimeType = "application/json", responseSchema = HybridSliceResponseSchema }
+            };
+
+            var text = ExtractText(await SendWithRetryAsync(body, ct));
+            var synthesizedBatch = JsonSerializer.Deserialize<List<GeminiEndpointSynthesis>>(text, JsonOptions) ?? [];
+            foreach (var item in synthesizedBatch)
+            {
+                specsById[item.EndpointId] = new SynthesizedEndpointSpec(
+                    item.EndpointId,
+                    item.Summary,
+                    item.Behaviors);
+            }
+        }
+
+        // Bước 2: Gom nhóm các API thành Nghiệp vụ thuần túy dựa trên summary đã khôi phục + code_anchors (Name-Agnostic Grouping)
+        var groupingInput = JsonSerializer.Serialize(slices.Select(s =>
+        {
+            var spec = specsById.GetValueOrDefault(s.EndpointId);
+            return new
+            {
+                id = s.EndpointId,
+                http_method = s.HttpMethod,
+                summary = !string.IsNullOrWhiteSpace(spec?.Summary) ? spec.Summary : s.FallbackSummary,
+                code_anchors = s.CodeAnchors
+            };
+        }));
+
+        var groups = await RequestGroupsAsync(HybridGroupingSystemPrompt, groupingInput, ct);
+        return new HybridSynthesisResult(groups, specsById);
+    }
+
+    private async Task<IReadOnlyList<SuggestedBusiness>> RequestGroupsAsync(string systemPrompt, string userJson, CancellationToken ct)
+    {
         var body = new
         {
-            systemInstruction = new { parts = new[] { new { text = SystemPrompt } } },
-            contents = new[] { new { role = "user", parts = new[] { new { text = input } } } },
-            generationConfig = new { temperature = 0.2, responseMimeType = "application/json", responseSchema = ResponseSchema }
+            systemInstruction = new { parts = new[] { new { text = systemPrompt } } },
+            contents = new[] { new { role = "user", parts = new[] { new { text = userJson } } } },
+            generationConfig = new { temperature = 0.2, responseMimeType = "application/json", responseSchema = GroupResponseSchema }
         };
 
         var text = ExtractText(await SendWithRetryAsync(body, ct));
@@ -82,7 +202,6 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             .ToList();
     }
 
-    // 429 (hết hạn mức) và 5xx (model quá tải) thường chỉ tạm thời nên thử lại trước khi bỏ cuộc.
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
 
     private async Task<string> SendWithRetryAsync(object body, CancellationToken ct)
@@ -137,5 +256,12 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
         [JsonPropertyName("business_name")] public string? BusinessName { get; set; }
         [JsonPropertyName("description")] public string? Description { get; set; }
         [JsonPropertyName("endpoint_ids")] public List<int>? EndpointIds { get; set; }
+    }
+
+    private sealed class GeminiEndpointSynthesis
+    {
+        [JsonPropertyName("endpoint_id")] public int EndpointId { get; set; }
+        [JsonPropertyName("summary")] public string? Summary { get; set; }
+        [JsonPropertyName("behaviors")] public List<ApiBehaviorClaim>? Behaviors { get; set; }
     }
 }

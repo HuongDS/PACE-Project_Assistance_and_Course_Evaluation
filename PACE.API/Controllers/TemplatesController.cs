@@ -18,6 +18,11 @@ public class TemplatesController(ITemplateGenerationService service, IBatchTempl
     public async Task<ActionResult<GeneratedTemplateDto>> Generate(GenerateTemplateRequest request, CancellationToken ct)
         => Ok(await service.GenerateAsync(request, ct));
 
+    /// <summary>Chạy song song phương pháp Cũ (Legacy) và phương pháp Mới (Hybrid 4 giai đoạn) trên cùng một repo để đối chiếu trực tiếp.</summary>
+    [HttpPost("compare")]
+    public async Task<ActionResult<CompareTemplateResultDto>> Compare(CompareTemplateRequest request, CancellationToken ct)
+        => Ok(await service.CompareAsync(request, ct));
+
     /// <summary>Đọc file Excel (.xlsx) chứa nhiều link repo và trả về bản nháp template của từng repo.</summary>
     [HttpPost("generate-from-excel")]
     [Consumes("multipart/form-data")]

@@ -116,6 +116,58 @@ public class StoredBusinessTemplateTests
         Assert.Equal("Ngân sách", (await service.GetTemplateAsync(run.Id)).Businesses[0].BusinessName);
     }
 
+    [Fact]
+    public async Task CompareAsync_runs_both_legacy_and_hybrid_on_same_clone_and_returns_side_by_side_metrics()
+    {
+        const string code = """
+            using Microsoft.AspNetCore.Mvc;
+            [ApiController]
+            [Route("api/x99")]
+            public class X99Controller : ControllerBase
+            {
+                private readonly IOrdersRepository _ordersRepository;
+                [HttpPost("abc")]
+                public IActionResult DoOp(string id)
+                {
+                    _ordersRepository.Update(id);
+                    return Ok("PAID");
+                }
+            }
+            """;
+
+        var clone = Stub< PACE.Application.Analysis.Abstractions.IClonedRepository >.Create((m, _) => m.Name switch
+        {
+            "get_WorkingPath" => "/tmp/repo",
+            "get_RootPath" => "/tmp/repo",
+            "Dispose" => null,
+            _ => null
+        });
+        var git = Stub<IGitCloneService>.Create((m, _) => m.Name == "CloneAsync" ? Task.FromResult(clone) : throw new NotSupportedException(m.Name));
+        var scan = new PACE.Application.Analysis.Models.RepositoryScan();
+        scan.Stacks.Add(".NET");
+        scan.CSharpFiles.Add(new PACE.Application.Analysis.Models.SourceFile("/tmp/repo/X99Controller.cs", "X99Controller.cs", code));
+
+        var scanner = Stub<IRepositoryScanner>.Create((m, _) => m.Name == "Scan" ? scan : throw new NotSupportedException(m.Name));
+        var ai = Stub<IBusinessGroupingAi>.Create((m, _) => m.Name == "get_IsConfigured" ? false : throw new NotSupportedException(m.Name));
+
+        var service = new TemplateGenerationService(
+            UnitOfWork(new AnalysisRun { Id = Guid.NewGuid(), RepoUrl = RepoUrl }, () => { }),
+            git,
+            scanner,
+            [new PACE.Infrastructure.Analysis.Parsing.CSharpRoslynParser()],
+            ai,
+            NullLogger<TemplateGenerationService>.Instance);
+
+        var comparison = await service.CompareAsync(new CompareTemplateRequest { RepoUrl = RepoUrl, UseAi = false });
+
+        Assert.Equal(1, comparison.Metrics.TotalEndpoints);
+        Assert.Equal(1, comparison.Metrics.EndpointsWithDbWrites);
+
+        Assert.Null(comparison.Legacy.Businesses[0].Apis[0].CodeAnchors);
+        Assert.NotNull(comparison.Hybrid.Businesses[0].Apis[0].CodeAnchors);
+        Assert.NotEmpty(comparison.Hybrid.Businesses[0].Apis[0].Behaviors!);
+    }
+
     private static TemplateGenerationService GenerationService(AnalysisRun run, Action onClone)
         => new(UnitOfWork(run, () => { }),
             Stub<IGitCloneService>.Create((_, _) => { onClone(); throw new InvalidOperationException("clone"); }),

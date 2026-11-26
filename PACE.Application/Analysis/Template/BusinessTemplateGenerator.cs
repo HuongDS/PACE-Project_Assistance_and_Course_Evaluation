@@ -8,10 +8,78 @@ namespace PACE.Application.Analysis.Template;
 
 public sealed record TemplateEndpoint(int Id, string Controller, string HttpMethod, string Function, string? Path)
 {
-    public ApiTemplate ToApi() => new() { Controller = Controller, HttpMethod = HttpMethod, Function = Function, Path = Path };
+    public ApiTemplate ToApi(EndpointEvidenceSlice? slice = null, SynthesizedEndpointSpec? synthesized = null)
+    {
+        if (slice is null && synthesized is null)
+        {
+            return new ApiTemplate
+            {
+                Controller = Controller,
+                HttpMethod = HttpMethod,
+                Function = Function,
+                Path = Path
+            };
+        }
+
+        var validNodeIds = slice?.EvidenceNodes.Select(n => n.Id).ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+        List<ApiBehaviorClaim>? behaviors = null;
+
+        if (synthesized?.Behaviors is { Count: > 0 })
+        {
+            behaviors = synthesized.Behaviors
+                .Where(b => !string.IsNullOrWhiteSpace(b.Action))
+                .Select((b, idx) =>
+                {
+                    var ev = (b.EvidenceNodes ?? [])
+                        .Where(id => validNodeIds.Count == 0 || validNodeIds.Contains(id))
+                        .Distinct()
+                        .ToList();
+                    if (ev.Count == 0 && slice is { EvidenceNodes.Count: > 0 })
+                        ev.Add(slice.EvidenceNodes[0].Id);
+
+                    return new ApiBehaviorClaim
+                    {
+                        ClaimId = string.IsNullOrWhiteSpace(b.ClaimId) ? $"C{idx + 1}" : b.ClaimId.Trim(),
+                        Action = b.Action.Trim(),
+                        EvidenceNodes = ev,
+                        Confidence = Math.Clamp(b.Confidence <= 0 ? 0.95 : b.Confidence, 0.0, 1.0)
+                    };
+                })
+                .ToList();
+        }
+
+        if ((behaviors is null || behaviors.Count == 0) && slice is { FallbackBehaviors.Count: > 0 })
+        {
+            behaviors = slice.FallbackBehaviors.ToList();
+        }
+
+        var summary = !string.IsNullOrWhiteSpace(synthesized?.Summary)
+            ? synthesized.Summary.Trim()
+            : slice?.FallbackSummary;
+
+        return new ApiTemplate
+        {
+            Controller = Controller,
+            HttpMethod = HttpMethod,
+            Function = Function,
+            Path = Path,
+            Summary = summary,
+            Behaviors = behaviors,
+            CodeAnchors = slice?.CodeAnchors
+        };
+    }
 }
 
+public sealed record SynthesizedEndpointSpec(
+    int EndpointId,
+    string? Summary,
+    IReadOnlyList<ApiBehaviorClaim>? Behaviors);
+
 public sealed record SuggestedBusiness(string BusinessName, string? Description, IReadOnlyList<int> EndpointIds);
+
+public sealed record HybridSynthesisResult(
+    IReadOnlyList<SuggestedBusiness> Groups,
+    IReadOnlyDictionary<int, SynthesizedEndpointSpec> EndpointSpecs);
 
 public static partial class BusinessTemplateGenerator
 {
@@ -47,12 +115,20 @@ public static partial class BusinessTemplateGenerator
             .Replace("[action]", m.MethodName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
     }
 
-    public static List<BusinessTemplate> GroupByController(IEnumerable<TemplateEndpoint> endpoints)
+    public static List<BusinessTemplate> GroupByController(
+        IEnumerable<TemplateEndpoint> endpoints,
+        IReadOnlyDictionary<int, EndpointEvidenceSlice>? slicesById = null,
+        IReadOnlyDictionary<int, SynthesizedEndpointSpec>? specsById = null)
         => endpoints
             .GroupBy(e => e.Controller, StringComparer.OrdinalIgnoreCase)
             .Select(g =>
             {
-                var apis = g.Select(e => e.ToApi()).ToList();
+                var apis = g.Select(e =>
+                {
+                    var slice = slicesById?.GetValueOrDefault(e.Id);
+                    var spec = specsById?.GetValueOrDefault(e.Id);
+                    return e.ToApi(slice, spec);
+                }).ToList();
                 return new BusinessTemplate
                 {
                     BusinessName = DeriveBusinessName(g.Key),
@@ -67,7 +143,11 @@ public static partial class BusinessTemplateGenerator
     /// nghiệp vụ; endpoint bị bỏ sót được gom lại theo controller để không mất API nào.
     /// </summary>
     public static List<BusinessTemplate> ApplyGrouping(
-        IReadOnlyList<TemplateEndpoint> endpoints, IEnumerable<SuggestedBusiness> groups, List<string> warnings)
+        IReadOnlyList<TemplateEndpoint> endpoints,
+        IEnumerable<SuggestedBusiness> groups,
+        List<string> warnings,
+        IReadOnlyDictionary<int, EndpointEvidenceSlice>? slicesById = null,
+        IReadOnlyDictionary<int, SynthesizedEndpointSpec>? specsById = null)
     {
         var byId = endpoints.ToDictionary(e => e.Id);
         var assigned = new HashSet<int>();
@@ -81,7 +161,12 @@ public static partial class BusinessTemplateGenerator
             foreach (var id in group.EndpointIds ?? [])
             {
                 if (!byId.TryGetValue(id, out var endpoint)) { unknown++; continue; }
-                if (assigned.Add(id)) apis.Add(endpoint.ToApi());
+                if (assigned.Add(id))
+                {
+                    var slice = slicesById?.GetValueOrDefault(id);
+                    var spec = specsById?.GetValueOrDefault(id);
+                    apis.Add(endpoint.ToApi(slice, spec));
+                }
             }
             if (apis.Count == 0) continue;
             result.Add(new BusinessTemplate
@@ -98,7 +183,7 @@ public static partial class BusinessTemplateGenerator
         if (missing.Count > 0)
         {
             warnings.Add($"AI bỏ sót {missing.Count} API, đã gom các API này theo controller.");
-            result.AddRange(GroupByController(missing));
+            result.AddRange(GroupByController(missing, slicesById, specsById));
         }
 
         return result;

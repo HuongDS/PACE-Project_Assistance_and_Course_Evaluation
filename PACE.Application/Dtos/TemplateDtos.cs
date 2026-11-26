@@ -16,6 +16,48 @@ public class GenerateTemplateRequest
     public bool Regenerate { get; set; }
 }
 
+public class CompareTemplateRequest
+{
+    [Required, Url, MaxLength(500)]
+    public string RepoUrl { get; set; } = null!;
+
+    /// <summary>Dùng Gemini để so sánh cả chế độ AI cũ vs AI Hybrid mới; nếu false thì so sánh gom theo Controller cũ vs gom theo Controller kèm phân tích tĩnh Hybrid.</summary>
+    public bool UseAi { get; set; } = true;
+}
+
+public record EndpointComparisonItemDto(
+    int EndpointId,
+    string Controller,
+    string HttpMethod,
+    string Function,
+    string? Path,
+    string LegacyBusinessName,
+    string HybridBusinessName,
+    bool BusinessGroupChanged,
+    string? HybridSummary,
+    int BehaviorClaimCount,
+    int EvidenceNodeCount,
+    ApiCodeAnchors CodeAnchors);
+
+public record TemplateComparisonMetricsDto(
+    long LegacyDurationMs,
+    long HybridDurationMs,
+    int LegacyBusinessCount,
+    int HybridBusinessCount,
+    int TotalEndpoints,
+    int EndpointsWithDbReads,
+    int EndpointsWithDbWrites,
+    int EndpointsWithExternalSdks,
+    int EndpointsWithChangedBusinessGroup);
+
+public record CompareTemplateResultDto(
+    string RepoUrl,
+    string DetectedStacks,
+    TemplateComparisonMetricsDto Metrics,
+    GeneratedTemplateDto Legacy,
+    GeneratedTemplateDto Hybrid,
+    IReadOnlyList<EndpointComparisonItemDto> EndpointComparisons);
+
 public class BusinessTemplateRequest
 {
     [Required]

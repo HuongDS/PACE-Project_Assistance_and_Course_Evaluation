@@ -32,8 +32,9 @@
     - [x] Hàm C# tham chiếu kiểu của project không còn trả `422`: vẫn dựng CFG từ cú pháp và báo số lỗi ngữ nghĩa ở `semanticErrors`. Chỉ lỗi cú pháp, mã bị cắt hoặc hàm không có thân (abstract/interface) mới trả `422`.
     - [x] AST cho Java, JS/TS bằng Tree-sitter (`graphKind=AST`).
     - [ ] CFG cho Java, JS/TS: chưa làm (hiện trả `422` kèm hướng dẫn dùng `graphKind=AST`).
-- [ ] **4. Hoàn thiện Health Check thực tế cho `/health` (`Program.cs`)**:
-  - Trong [Program.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Program.cs#L99), đăng ký kiểm tra kết nối thực tế cho `builder.Services.AddHealthChecks()`: PostgreSQL (`AppDbContext`), Upstash Redis, Git CLI, và trạng thái cấu hình các AI Providers.
+- [x] **4. Hoàn thiện Health Check thực tế cho `/health` (`Program.cs`)**:
+  - Đã thêm `PACE.API/HealthChecks/`: kiểm tra PostgreSQL (`AppDbContext`), Upstash Redis, Git CLI và cấu hình các AI Providers, đăng ký qua `AddPaceHealthChecks()`.
+  - `/health` giữ nguyên là liveness (không chạy check phụ thuộc, để deploy không bị rollback vì Redis/AI); chi tiết ở `GET /health/details` (JSON, chỉ Admin, trả 503 khi PostgreSQL lỗi, Degraded vẫn 200).
 
 ---
 

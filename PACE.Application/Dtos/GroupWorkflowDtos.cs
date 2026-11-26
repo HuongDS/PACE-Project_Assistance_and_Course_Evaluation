@@ -72,7 +72,12 @@ public record CourseTopicDto(
     int MaxGroups,
     int CurrentGroupsCount,
     bool IsActive,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    Guid? SemesterId = null,
+    List<TopicGroupDto>? Groups = null);
+
+/// <summary>Một nhóm đang chọn đề tài mẫu, để biết mỗi lớp đã dùng bao nhiêu suất.</summary>
+public record TopicGroupDto(Guid GroupId, string GroupName, Guid ClassId, string ClassName);
 
 public class CreateCourseTopicRequest
 {
@@ -83,8 +88,12 @@ public class CreateCourseTopicRequest
     public string? Description { get; set; }
     public string? Requirements { get; set; }
 
+    /// <summary>Số nhóm tối đa trong mỗi lớp.</summary>
     [Range(1, 100, ErrorMessage = "Số nhóm tối đa từ 1 đến 100.")]
     public int MaxGroups { get; set; } = 1;
+
+    /// <summary>Kỳ mở đề tài; để trống thì lấy kỳ hiện tại.</summary>
+    public Guid? SemesterId { get; set; }
 }
 
 public class UpdateCourseTopicRequest
@@ -100,6 +109,9 @@ public class UpdateCourseTopicRequest
     public int MaxGroups { get; set; } = 1;
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Để trống thì giữ nguyên kỳ đang có.</summary>
+    public Guid? SemesterId { get; set; }
 }
 
 public class SelectTopicRequest

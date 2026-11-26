@@ -717,6 +717,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("requirements");
 
+                    b.Property<Guid?>("SemesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("semester_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -726,6 +730,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
+
+                    b.HasIndex("SemesterId");
 
                     b.ToTable("course_topics", (string)null);
                 });
@@ -1973,7 +1979,14 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PACE.Domain.Entities.Semester", "Semester")
+                        .WithMany()
+                        .HasForeignKey("SemesterId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Course");
+
+                    b.Navigation("Semester");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.DataFlowEdge", b =>

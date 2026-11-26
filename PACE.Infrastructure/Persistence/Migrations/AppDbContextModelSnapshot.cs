@@ -682,20 +682,28 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.CourseSyllabus", b =>
                 {
-                    b.Property<Guid>("CourseId")
+                    b.Property<Guid>("Id")
                         .HasColumnType("uuid")
-                        .HasColumnName("course_id");
+                        .HasColumnName("id");
 
                     b.Property<string>("ContentJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("content");
 
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("name");
+
+                    b.Property<Guid>("SemesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("semester_id");
 
                     b.Property<string>("SourceId")
                         .HasMaxLength(64)
@@ -706,7 +714,12 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("CourseId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("SemesterId");
+
+                    b.HasIndex("CourseId", "SemesterId")
+                        .IsUnique();
 
                     b.ToTable("course_syllabi", (string)null);
                 });
@@ -2005,12 +2018,20 @@ namespace PACE.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("PACE.Domain.Entities.CourseSyllabus", b =>
                 {
                     b.HasOne("PACE.Domain.Entities.Course", "Course")
-                        .WithOne()
-                        .HasForeignKey("PACE.Domain.Entities.CourseSyllabus", "CourseId")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PACE.Domain.Entities.Semester", "Semester")
+                        .WithMany()
+                        .HasForeignKey("SemesterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Course");
+
+                    b.Navigation("Semester");
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.CourseTopic", b =>

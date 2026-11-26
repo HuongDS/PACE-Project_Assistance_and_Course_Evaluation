@@ -51,9 +51,28 @@ public class TopicManagementService(
         throw new ForbiddenException("Chỉ nhóm trưởng hoặc giảng viên mới có quyền chọn hoặc đề xuất đề tài cho nhóm.");
     }
 
-    public async Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, CancellationToken ct = default)
+    private async Task<Guid> RequireSemesterAsync(Guid semesterId, CancellationToken ct)
     {
-        return await uow.Groups.GetCourseTopicsAsync(courseId, ct);
+        if (!await uow.Semesters.AnyAsync(s => s.Id == semesterId, ct))
+            throw new NotFoundException("Kỳ học không tồn tại.");
+        return semesterId;
+    }
+
+    public async Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, Guid? semesterId = null, Guid? classId = null, CancellationToken ct = default)
+    {
+        if (classId is Guid id)
+        {
+            var targetClass = await uow.Classes.GetByIdAsync(id, ct)
+                ?? throw new NotFoundException("Lớp học không tồn tại.");
+            if (targetClass.CourseId != courseId)
+                throw new BadRequestException("Lớp này không thuộc môn đang xem.");
+            semesterId = targetClass.SemesterId;
+        }
+
+        // Tên nhóm chỉ trả cho cán bộ; giảng viên chỉ thấy nhóm của lớp mình phụ trách.
+        var staff = currentUser.IsAdmin || currentUser.Role == UserRole.Lecturer;
+        Guid? lecturerId = currentUser.Role == UserRole.Lecturer ? currentUser.UserId : null;
+        return await uow.Groups.GetCourseTopicsAsync(courseId, semesterId, classId, staff, lecturerId, ct);
     }
 
     public async Task<CourseTopicDto> CreateCourseTopicAsync(Guid courseId, CreateCourseTopicRequest request, CancellationToken ct = default)
@@ -65,10 +84,21 @@ public class TopicManagementService(
         if (!courseExists)
             throw new NotFoundException("Môn học không tồn tại.");
 
+        Guid? semesterId;
+        if (request.SemesterId is Guid requested)
+        {
+            semesterId = await RequireSemesterAsync(requested, ct);
+        }
+        else
+        {
+            semesterId = (await uow.Semesters.GetCurrentSemesterAsync(ct))?.Id;
+        }
+
         var topic = new CourseTopic
         {
             Id = Guid.NewGuid(),
             CourseId = courseId,
+            SemesterId = semesterId,
             Title = request.Title.Trim(),
             Description = request.Description?.Trim(),
             Requirements = request.Requirements?.Trim(),
@@ -89,7 +119,8 @@ public class TopicManagementService(
             topic.MaxGroups,
             0,
             topic.IsActive,
-            topic.CreatedAt);
+            topic.CreatedAt,
+            topic.SemesterId);
     }
 
     public async Task<CourseTopicDto> UpdateCourseTopicAsync(Guid topicId, UpdateCourseTopicRequest request, CancellationToken ct = default)
@@ -105,6 +136,12 @@ public class TopicManagementService(
         topic.Requirements = request.Requirements?.Trim();
         topic.MaxGroups = Math.Max(1, request.MaxGroups);
         topic.IsActive = request.IsActive;
+        if (request.SemesterId is Guid requested && requested != topic.SemesterId)
+        {
+            if (topic.Groups.Count > 0)
+                throw new ConflictException("Đề tài đã có nhóm chọn nên không chuyển sang kỳ khác được.");
+            topic.SemesterId = await RequireSemesterAsync(requested, ct);
+        }
 
         await uow.SaveChangesAsync(ct);
 
@@ -117,7 +154,8 @@ public class TopicManagementService(
             topic.MaxGroups,
             topic.Groups.Count,
             topic.IsActive,
-            topic.CreatedAt);
+            topic.CreatedAt,
+            topic.SemesterId);
     }
 
     public async Task DeleteCourseTopicAsync(Guid topicId, CancellationToken ct = default)
@@ -163,11 +201,15 @@ public class TopicManagementService(
         if (topic.CourseId != targetClass.CourseId)
             throw new BadRequestException("Đề tài mẫu này không thuộc môn học của lớp.");
 
+        if (topic.SemesterId != null && topic.SemesterId != targetClass.SemesterId)
+            throw new BadRequestException("Đề tài mẫu này không mở trong kỳ của lớp.");
+
         if (!topic.IsActive)
             throw new BadRequestException("Đề tài mẫu này hiện không còn khả dụng để lựa chọn.");
 
-        if (topic.Groups.Count >= topic.MaxGroups && group.CourseTopicId != topic.Id)
-            throw new ConflictException($"Đề tài '{topic.Title}' đã đạt giới hạn số nhóm tối đa ({topic.MaxGroups} nhóm).");
+        // Giới hạn tính riêng từng lớp: lớp khác chọn bao nhiêu cũng không ảnh hưởng.
+        if (topic.Groups.Count(g => g.ClassId == group.ClassId && g.Id != group.Id) >= topic.MaxGroups)
+            throw new ConflictException($"Đề tài '{topic.Title}' đã đủ {topic.MaxGroups} nhóm trong lớp này.");
 
         group.CourseTopicId = topic.Id;
         group.TopicName = topic.Title;

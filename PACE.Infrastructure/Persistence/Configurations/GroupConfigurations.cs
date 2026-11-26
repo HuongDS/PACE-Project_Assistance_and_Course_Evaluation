@@ -41,6 +41,7 @@ public class CourseTopicConfiguration : IEntityTypeConfiguration<CourseTopic>
 
         e.Property(x => x.Id).HasColumnName("id");
         e.Property(x => x.CourseId).HasColumnName("course_id").IsRequired();
+        e.Property(x => x.SemesterId).HasColumnName("semester_id");
         e.Property(x => x.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
         e.Property(x => x.Description).HasColumnName("description");
         e.Property(x => x.Requirements).HasColumnName("requirements");
@@ -53,7 +54,13 @@ public class CourseTopicConfiguration : IEntityTypeConfiguration<CourseTopic>
             .HasForeignKey(x => x.CourseId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        e.HasOne(x => x.Semester)
+            .WithMany()
+            .HasForeignKey(x => x.SemesterId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         e.HasIndex(x => x.CourseId);
+        e.HasIndex(x => x.SemesterId);
     }
 }
 

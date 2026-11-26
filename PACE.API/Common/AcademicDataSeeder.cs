@@ -106,6 +106,9 @@ public static class AcademicDataSeeder
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
             ");
 
+            // Đề tài mẫu mở theo kỳ (migration AddSemesterToCourseTopics); chạy ở đây để bản triển khai không cần cập nhật tay.
+            await db.Database.ExecuteSqlRawAsync(CourseTopicSemesterSchema.Up);
+
             // 1. Seed Semesters
             var fall2026 = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Fall 2026" || s.Name == "Fall2026");
             if (fall2026 == null)

@@ -308,23 +308,37 @@ public class GroupRepository(AppDbContext context) : GenericRepository<Group>(co
     // Course Topics
     // ==========================================
 
-    public async Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, CancellationToken ct = default)
+    public async Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, Guid? semesterId, Guid? classId, bool includeGroups, Guid? lecturerId, CancellationToken ct = default)
     {
-        return await Context.CourseTopics.AsNoTracking()
-            .Where(t => t.CourseId == courseId)
-            .Include(t => t.Groups)
+        var query = Context.CourseTopics.AsNoTracking().Where(t => t.CourseId == courseId);
+        if (semesterId != null) query = query.Where(t => t.SemesterId == null || t.SemesterId == semesterId);
+
+        var topics = await query
             .OrderBy(t => t.Title)
-            .Select(t => new CourseTopicDto(
-                t.Id,
-                t.CourseId,
-                t.Title,
-                t.Description,
-                t.Requirements,
-                t.MaxGroups,
-                t.Groups.Count,
-                t.IsActive,
-                t.CreatedAt))
+            .Select(t => new
+            {
+                Topic = t,
+                Count = t.Groups.Count(g => classId == null || g.ClassId == classId),
+                Groups = t.Groups
+                    .Where(g => includeGroups && (classId == null || g.ClassId == classId) && (lecturerId == null || g.Class.LecturerId == lecturerId))
+                    .OrderBy(g => g.Class.Name).ThenBy(g => g.Name)
+                    .Select(g => new TopicGroupDto(g.Id, g.Name, g.ClassId, g.Class.Name))
+                    .ToList()
+            })
             .ToListAsync(ct);
+
+        return topics.Select(x => new CourseTopicDto(
+            x.Topic.Id,
+            x.Topic.CourseId,
+            x.Topic.Title,
+            x.Topic.Description,
+            x.Topic.Requirements,
+            x.Topic.MaxGroups,
+            x.Count,
+            x.Topic.IsActive,
+            x.Topic.CreatedAt,
+            x.Topic.SemesterId,
+            includeGroups ? x.Groups : null)).ToList();
     }
 
     public async Task<CourseTopic?> GetCourseTopicByIdAsync(Guid topicId, CancellationToken ct = default)

@@ -10,10 +10,11 @@ namespace PACE.API.Controllers;
 [Authorize]
 public class CourseTopicsController(ITopicManagementService topicService) : ControllerBase
 {
-    /// <summary>Lấy danh sách đề tài mẫu có sẵn của môn học.</summary>
+    /// <summary>Đề tài mẫu của môn học. Truyền classId để lấy danh sách của kỳ lớp đó và số nhóm đã chọn trong lớp;
+    /// hoặc semesterId để lọc theo kỳ.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<CourseTopicDto>>> GetTopics(Guid courseId, CancellationToken ct)
-        => Ok(await topicService.GetCourseTopicsAsync(courseId, ct));
+    public async Task<ActionResult<List<CourseTopicDto>>> GetTopics(Guid courseId, CancellationToken ct, [FromQuery] Guid? semesterId = null, [FromQuery] Guid? classId = null)
+        => Ok(await topicService.GetCourseTopicsAsync(courseId, semesterId, classId, ct));
 
     /// <summary>Thêm đề tài mẫu vào môn học (Giảng viên / Admin).</summary>
     [HttpPost]

@@ -2653,6 +2653,28 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("AnalysisRun");
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralSetup", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.AssessmentSession", "Session")
+                        .WithOne("IndividualSetup")
+                        .HasForeignKey("PACE.Domain.Entities.IndividualOralSetup", "SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.OralAttempt", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.SessionStudent", "Student")
+                        .WithOne()
+                        .HasForeignKey("PACE.Domain.Entities.OralAttempt", "SessionId", "StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.AnalysisRun", b =>
                 {
                     b.Navigation("Businesses");
@@ -2823,27 +2845,6 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("StudentProfile");
 
                     b.Navigation("Submissions");
-                });
-            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralSetup", b =>
-                {
-                    b.HasOne("PACE.Domain.Entities.AssessmentSession", "Session")
-                        .WithOne("IndividualSetup")
-                        .HasForeignKey("PACE.Domain.Entities.IndividualOralSetup", "SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Session");
-                });
-
-            modelBuilder.Entity("PACE.Domain.Entities.OralAttempt", b =>
-                {
-                    b.HasOne("PACE.Domain.Entities.SessionStudent", "Student")
-                        .WithOne()
-                        .HasForeignKey("PACE.Domain.Entities.OralAttempt", "SessionId", "StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 #pragma warning restore 612, 618
         }

@@ -175,7 +175,9 @@ public class GroupFormationController(AppDbContext db, TeachingAccess access) : 
         var cls = await RequireClassStaff(classId, ct);
         var students = await ActiveStudents(classId, ct);
         var groups = await db.Groups.AsNoTracking().Include(g => g.Members).Where(g => g.ClassId == classId).ToListAsync(ct);
-        var current = groups.SelectMany(g => g.Members).ToDictionary(m => m.StudentCode, m => m.GroupId, StringComparer.OrdinalIgnoreCase);
+        // Một người lỡ nằm ở hai nhóm thì lấy nhóm vào trước, không để cả đề xuất bị lỗi.
+        var current = groups.SelectMany(g => g.Members).GroupBy(m => m.StudentCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.JoinedAt).First().GroupId, StringComparer.OrdinalIgnoreCase);
         var byCode = students.ToDictionary(s => s.StudentCode, StringComparer.OrdinalIgnoreCase);
 
         var plan = GroupPlanner.Plan(

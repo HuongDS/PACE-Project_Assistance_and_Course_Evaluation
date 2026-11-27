@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
         services.AddSingleton<IGitCloneService, GitCloneService>();
         services.AddSingleton<IGitHistoryService, GitCloneService>();
+        services.AddHttpClient<IGitHubDirectory, GitHubDirectory>(client => client.Timeout = TimeSpan.FromSeconds(8));
         services.AddSingleton<IRepositoryScanner, RepositoryScanner>();
         services.AddSingleton<ILanguageParser, CSharpRoslynParser>();
         services.AddSingleton<ILanguageParser, JavaTreeSitterParser>();

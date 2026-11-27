@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PACE.API.Controllers;
 using PACE.Application.Analysis;
+using PACE.Domain.Enums;
+using PACE.Application.Analysis.Template;
 using PACE.Application.Analysis.Abstractions;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Oral;
@@ -32,6 +34,57 @@ public class IndividualOralTests
         var match = Assert.Single(OralOwnership.Match([Author(email, name)], [An, Binh]));
         Assert.Equal(An.Id, match.StudentId);
         Assert.Equal(reason, match.MatchedBy);
+    }
+
+    [Theory]
+    [InlineData("lam@gmail.com", "Ai đó", null, "email đã khai")]
+    [InlineData("x@gmail.com", "Ai đó", "AnKun", "tài khoản GitHub đã khai")]
+    [InlineData("12345+ankun@users.noreply.github.com", "Ai đó", null, "tài khoản GitHub đã khai")]
+    [InlineData("y@gmail.com", "ankun", null, "tên trùng tài khoản GitHub đã khai")]
+    public void Declared_Git_Accounts_Are_Recognised(string email, string name, string? login, string reason)
+    {
+        var an = An with { GitHub = "ankun", GitEmails = ["lam@gmail.com"] };
+
+        var match = Assert.Single(OralOwnership.Match([Author(email, name) with { Login = login }], [an, Binh]));
+
+        Assert.Equal(An.Id, match.StudentId);
+        Assert.Equal(reason, match.MatchedBy);
+    }
+
+    [Fact]
+    public void A_Newly_Declared_Account_Applies_Without_Rescanning_But_Keeps_The_Lecturers_Choice()
+    {
+        var snapshot = new CodeSnapshot([
+            Author("12345+ankun@users.noreply.github.com"),
+            Author("98+binhtt@users.noreply.github.com") with { StudentId = An.Id, MatchedBy = OralOwnership.Manual }], [], []);
+
+        var applied = OralOwnership.Apply(snapshot, [An with { GitHub = "ankun" }, Binh with { GitHub = "binhtt" }]);
+
+        Assert.Equal([An.Id, An.Id], applied.Authors.Select(a => a.StudentId!.Value));
+        Assert.Equal(OralOwnership.Manual, applied.Authors[1].MatchedBy);
+    }
+
+    [Theory]
+    [InlineData("  @AnKun ", "ankun")]
+    [InlineData("https://github.com/An-Kun/", "an-kun")]
+    [InlineData("github.com/ankun", "ankun")]
+    [InlineData("", null)]
+    public void Git_Account_Input_Is_Normalised(string input, string? expected) =>
+        Assert.Equal(expected, GitAccountRules.Normalize(input));
+
+    [Theory]
+    [InlineData("https://github.com/ankun/repo")]
+    [InlineData("an kun")]
+    [InlineData("-an")]
+    [InlineData("an--kun")]
+    public void Wrong_Git_Account_Is_Rejected(string input) =>
+        Assert.Throws<BadRequestException>(() => GitAccountRules.Normalize(input));
+
+    [Fact]
+    public void Commit_Emails_Are_Checked()
+    {
+        Assert.Equal(["a@x.com"], GitAccountRules.Emails([" A@x.com ", "", "a@x.com"]));
+        Assert.Throws<BadRequestException>(() => GitAccountRules.Emails(["khong phai email"]));
     }
 
     [Theory]
@@ -170,6 +223,18 @@ public class IndividualOralTests
             var commit = Assert.Single(methods["Order.Cancel"].Commits);
             Assert.Equal("binh", commit.Message);
 
+            Assert.Empty(read.Context.Businesses);
+            Assert.Contains(read.Snapshot.Warnings, w => w.Contains("chưa có nghiệp vụ"));
+
+            var templates = new List<BusinessTemplate> { new() { BusinessName = "Đơn hàng", Apis = [new() { Controller = "Order", Method = "Cancel" }] } };
+            var built = await reader.ReadAsync("https://github.com/pace/demo", new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc), templates);
+            var business = Assert.Single(built.Context.Businesses);
+            var flow = Assert.Single(business.Flows);
+            Assert.False(string.IsNullOrWhiteSpace(flow.MermaidGraph));
+            var entry = built.Context.Methods.Single(m => m.Id == flow.EntryMethodId);
+            Assert.Equal(("Order", "Cancel"), (entry.ClassName, entry.MethodName));
+            Assert.Contains(built.Snapshot.Methods, m => m.Key == entry.Key);
+
             await Assert.ThrowsAsync<UnprocessableException>(() => reader.ReadAsync("https://github.com/pace/demo", new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc)));
         }
         finally
@@ -179,15 +244,16 @@ public class IndividualOralTests
         }
     }
 
-    private sealed class FakeLlm(string reply) : IQuestionLlmClient
+    private sealed class FakeLlm(params string[] replies) : IQuestionLlmClient
     {
-        public string Prompt = "";
+        public string System = "", Prompt = "", First = "";
         public int Calls;
         public Task<LlmResult> GenerateJsonAsync(string systemInstruction, string prompt, float temperature, CancellationToken ct = default)
         {
+            System = systemInstruction;
             Prompt = prompt;
-            Calls++;
-            return Task.FromResult(new LlmResult(reply, 0, 0, 0, "fake"));
+            if (Calls == 0) First = prompt;
+            return Task.FromResult(new LlmResult(replies[Math.Min(Calls++, replies.Length - 1)], 0, 0, 0, "fake"));
         }
     }
 
@@ -248,60 +314,172 @@ public class IndividualOralTests
         Assert.Equal("", llm.Prompt);
     }
 
-    private static QuestionRequest Request(int count, params SnapshotMethod[] methods) => new("BookLoop",
-        OralOwnership.OwnedBy(Snapshot(methods), An.Id), count, "Trung bình", null, [new(Guid.NewGuid(), "Hiểu mã", "", 100)], []);
+    // ----- Sinh đề trên lõi nghiên cứu -----
+
+    private static readonly Guid Controller = Guid.NewGuid(), Service = Guid.NewGuid(), Other = Guid.NewGuid();
+
+    private static SnapshotMethod Named(string key, string name, string author) =>
+        new(key, key + ".cs", name, 10, "a;\nb;\nc;\nd;", [author], [0, 0, 0, 0], [new($"sha-{key}", "viết " + name, null, author)]);
+
+    /// <summary>Nghiệp vụ "Đặt hàng": Controller của Bình gọi Service của An; nghiệp vụ "Kho" chỉ có Bình.</summary>
+    private static (ResearchContext Context, CodeSnapshot Snapshot) Shop()
+    {
+        var context = new ResearchContext(
+            [
+                new("Đặt hàng", [new(Guid.NewGuid(), "POST /orders", Controller, "graph TD\n A-->B", [new(1, Controller, Service)])], [Controller, Service]),
+                new("Kho", [new(Guid.NewGuid(), "GET /stock", Other, "graph TD\n C", [])], [Other]),
+            ],
+            [
+                new(Controller, "c", "OrderController", "Create", "controller code"),
+                new(Service, "s", "OrderService", "PlaceAsync", "service code"),
+                new(Other, "o", "StockController", "List", "stock code"),
+            ]);
+        return (context, Snapshot(Named("s", "OrderService.PlaceAsync", "a@x"), Named("c", "OrderController.Create", "b@x"), Named("o", "StockController.List", "b@x")));
+    }
+
+    private static QuestionRequest Request(int count, QuestionGenerationMode mode = QuestionGenerationMode.Hybrid, IReadOnlyList<RubricLineInput>? rubric = null)
+    {
+        var (context, snapshot) = Shop();
+        return new(StudentWorkload.For(context, snapshot, An.Id), count, "Trung bình", null, mode, rubric ?? [], []);
+    }
+
+    private const string ThroughService = """[{"question":"Hết hàng thì sao?","suggestedAnswer":"Từ chối.","difficulty":"Trung bình","targetedEntryPoints":["OrderController.Create","IOrderService.PlaceAsync"]}]""";
 
     [Fact]
-    public async Task Questions_Must_Point_At_Lines_The_Student_Wrote()
+    public void A_Students_Units_Are_The_Business_Flows_They_Wrote_Code_In()
     {
-        // Dòng 10–13 của An, 14–17 của Bình.
-        var method = Method("m", 10, "a@x", "a@x", "a@x", "a@x", "b@x", "b@x", "b@x", "b@x");
+        var (context, snapshot) = Shop();
+
+        var an = Assert.Single(StudentWorkload.For(context, snapshot, An.Id));
+        Assert.Equal("Đặt hàng", an.Business);
+        Assert.Equal(["OrderController", "OrderService"], an.Methods.Select(m => m.ClassName));
+        Assert.Equal(["OrderService.PlaceAsync"], an.Owned.Select(o => o.Method.Name));
+        Assert.Equal(2, StudentWorkload.For(context, snapshot, Binh.Id).Count);
+    }
+
+    [Fact]
+    public void Code_Outside_Every_Flow_Falls_Back_To_That_Students_Raw_Methods()
+    {
+        var (context, _) = Shop();
+        var snapshot = Snapshot(Named("u", "Money.Round", "a@x"));
+
+        var unit = Assert.Single(StudentWorkload.For(context, snapshot, An.Id));
+
+        Assert.Equal(StudentWorkload.OutsideFlows, unit.Business);
+        Assert.Empty(unit.Flows);
+        Assert.Equal(("Money", "Round"), (unit.Methods[0].ClassName, unit.Methods[0].MethodName));
+    }
+
+    [Fact]
+    public async Task The_Research_Prompt_Is_Used_Verbatim_With_Ownership_Only_In_Its_Additional_Slot()
+    {
+        var llm = new FakeLlm(ThroughService);
+        var request = Request(1);
+        var unit = request.Units[0];
+
+        await Assistant(llm).GenerateQuestionsAsync(request);
+
+        var route = QuestionContextRouter.Resolve(QuestionGenerationMode.Hybrid, 2, 10);
+        var slots = QuestionContextComposer.Compose(unit.Methods, unit.Flows, route);
+        var expected = QuestionPromptBuilder.Build("Đặt hàng", slots.Code, slots.Flow, 2, "Trung bình",
+            OralAssistant.Ownership(unit, null, []), null, null, slots.HasFrontend);
+        Assert.Equal(expected.SystemInstruction, llm.System);
+        Assert.Equal(expected.UserPrompt, llm.Prompt);
+        Assert.Contains("service code", llm.Prompt);
+        Assert.Contains("- OrderService.PlaceAsync", llm.Prompt);
+        Assert.DoesNotContain("- OrderController.Create", llm.Prompt);
+    }
+
+    [Theory]
+    [InlineData(10, QuestionGenerationMode.Hybrid, "Raw")]
+    [InlineData(1, QuestionGenerationMode.Hybrid, "Graph")]
+    [InlineData(1, QuestionGenerationMode.Raw, "Raw")]
+    [InlineData(10, QuestionGenerationMode.Graph, "Graph")]
+    public async Task The_Router_Chooses_The_Context_And_The_Choice_Is_Recorded(int threshold, QuestionGenerationMode mode, string context)
+    {
+        var llm = new FakeLlm(ThroughService);
+        var assistant = new OralAssistant(llm, Options.Create(new QuestionGenerationOptions { GraphNodeThreshold = threshold }));
+
+        var question = Assert.Single((await assistant.GenerateQuestionsAsync(Request(1, mode))).Questions);
+
+        Assert.Equal((context, mode.ToString(), 2, threshold), (question.Trace!.Context, question.Trace.Mode, question.Trace.NodeCount, question.Trace.Threshold));
+        Assert.Equal(context == "Raw", llm.Prompt.Contains("service code"));
+        Assert.Equal(context == "Graph", llm.Prompt.Contains("graph TD"));
+    }
+
+    [Fact]
+    public async Task Only_Questions_Passing_Through_The_Students_Code_Are_Kept()
+    {
         var llm = new FakeLlm("""
-            {"questions":[
-              {"question":"Hỏi vào dòng người khác","method":"M1","fromLine":14,"toLine":17},
-              {"question":"Sai mã hàm","method":"M7","fromLine":10,"toLine":11},
-              {"question":"Ngoài hàm","method":"M1","fromLine":3,"toLine":11},
-              {"question":"Đúng đoạn của An","method":"M1","fromLine":10,"toLine":13,"criterion":"C1","difficulty":"Khó","rationale":"Kiểm chứng."}]}
+            [{"question":"Chỉ đi qua phần người khác","targetedEntryPoints":["OrderController.Create"]},
+             {"question":"Hết hàng thì sao?","targetedEntryPoints":["IOrderService.PlaceAsync"]}]
             """);
 
-        var batch = await Assistant(llm).GenerateQuestionsAsync(Request(2, method));
+        var batch = await Assistant(llm).GenerateQuestionsAsync(Request(1));
 
         var question = Assert.Single(batch.Questions);
-        Assert.Equal("Đúng đoạn của An", question.Content);
-        Assert.Equal((10, 13, "Khó"), (question.FromLine, question.ToLine, question.Difficulty));
-        Assert.NotNull(question.CriterionId);
+        Assert.Equal("Hết hàng thì sao?", question.Content);
+        Assert.Equal("OrderService.PlaceAsync", question.Method);
         Assert.Equal([10, 11, 12, 13], question.OwnLines);
-        Assert.Equal("sha-a@x", Assert.Single(question.Commits!).Sha);
+        Assert.Equal("sha-s", Assert.Single(question.Commits!).Sha);
+        Assert.Null(batch.Note);
+    }
+
+    [Fact]
+    public async Task Too_Few_Matching_Questions_Are_Asked_For_Again_And_Reported()
+    {
+        var llm = new FakeLlm(ThroughService);
+
+        var batch = await Assistant(llm).GenerateQuestionsAsync(Request(2));
+
+        Assert.Single(batch.Questions);
+        Assert.Equal(2, llm.Calls);
         Assert.Contains("1/2", batch.Note);
-        Assert.Equal(3, llm.Calls);
-        Assert.Contains("   10 ▶| line0;", llm.Prompt);
-        Assert.Contains("   14  | line4;", llm.Prompt);
-        Assert.Contains("Đoạn được hỏi: 10-13", llm.Prompt);
+    }
+
+    [Theory]
+    [InlineData("OrderService.PlaceAsync", true)]
+    [InlineData("IOrderService.PlaceAsync", true)]
+    [InlineData("OrderServiceImpl.PlaceAsync(Order order)", true)]
+    [InlineData("PaymentService.PlaceAsync", false)]
+    [InlineData("PlaceAsync", false)]
+    public void Entry_Points_Are_Matched_To_Functions(string entry, bool match) =>
+        Assert.Equal(match, OralAssistant.Names(entry, "OrderService.PlaceAsync"));
+
+    [Fact]
+    public async Task Criteria_Are_Linked_By_A_Separate_Call()
+    {
+        var rubric = new List<RubricLineInput> { new(Guid.NewGuid(), "Hiểu luồng", "", 50), new(Guid.NewGuid(), "Xử lý lỗi", "", 50) };
+        var llm = new FakeLlm(ThroughService, """{"links":[{"question":1,"criterion":"C2"}]}""");
+
+        var batch = await Assistant(llm).GenerateQuestionsAsync(Request(1, rubric: rubric));
+
+        Assert.Equal(rubric[1].Id, Assert.Single(batch.Questions).CriterionId);
+        Assert.Equal(2, llm.Calls);
+        Assert.DoesNotContain("Hiểu luồng", llm.First);
+    }
+
+    private sealed class SlowThenFastLlm : IQuestionLlmClient
+    {
+        public int Calls;
+        public async Task<LlmResult> GenerateJsonAsync(string systemInstruction, string prompt, float temperature, CancellationToken ct = default)
+        {
+            var call = Interlocked.Increment(ref Calls);
+            if (call == 1) await Task.Delay(Timeout.Infinite, ct);
+            return new LlmResult(ThroughService, 0, 0, 0, "fake");
+        }
     }
 
     [Fact]
-    public void Askable_Blocks_Skip_Other_Peoples_Lines_But_Not_Braces()
+    public async Task A_Slow_Reply_Gets_A_Backup_Request_And_The_First_Answer_Wins()
     {
-        var method = Method("m", 10, "a@x", "", "a@x", "b@x", "a@x", "b@x", "a@x", "a@x", "a@x");
+        var llm = new SlowThenFastLlm();
+        var assistant = new OralAssistant(llm, Options.Create(new QuestionGenerationOptions { OralBackupAfterSeconds = 0.05 }));
 
-        Assert.Equal([(10, 12), (16, 18)], OralAssistant.Blocks(Assert.Single(OralOwnership.OwnedBy(Snapshot(method), An.Id))));
-    }
+        var batch = await assistant.GenerateQuestionsAsync(Request(1));
 
-    [Fact]
-    public async Task Two_Questions_Do_Not_Share_A_Block_While_Others_Are_Free()
-    {
-        var first = Method("m", 10, "a@x", "a@x", "a@x");
-        var second = Method("n", 30, "a@x", "a@x", "a@x");
-        var llm = new FakeLlm("""
-            {"questions":[
-              {"question":"Một","method":"M1","fromLine":10,"toLine":12},
-              {"question":"Hai, cùng đoạn","method":"M1","fromLine":11,"toLine":12},
-              {"question":"Ba","method":"M2","fromLine":30,"toLine":32}]}
-            """);
-
-        var batch = await Assistant(llm).GenerateQuestionsAsync(Request(2, first, second));
-
-        Assert.Equal(["Một", "Ba"], batch.Questions.Select(q => q.Content));
+        Assert.Single(batch.Questions);
+        Assert.Equal(2, llm.Calls);
     }
 
     [Fact]
@@ -309,7 +487,7 @@ public class IndividualOralTests
     {
         var llm = new FakeLlm("{}");
 
-        await Assert.ThrowsAsync<BadRequestException>(() => Assistant(llm).GenerateQuestionsAsync(Request(1)));
+        await Assert.ThrowsAsync<BadRequestException>(() => Assistant(llm).GenerateQuestionsAsync(new([], 1, "Trung bình", null, QuestionGenerationMode.Hybrid, [], [])));
         Assert.Equal(0, llm.Calls);
     }
 

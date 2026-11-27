@@ -82,6 +82,30 @@ public class OralAttemptConfiguration : IEntityTypeConfiguration<OralAttempt>
         e.HasOne(x => x.Student).WithOne().HasForeignKey<OralAttempt>(x => new { x.SessionId, x.StudentId }).OnDelete(DeleteBehavior.Cascade);
     }
 }
+public class IndividualOralContextConfiguration : IEntityTypeConfiguration<IndividualOralContext>
+{
+    public void Configure(EntityTypeBuilder<IndividualOralContext> e)
+    {
+        e.ToTable("individual_oral_contexts"); e.HasKey(x => x.SessionId);
+        e.Property(x => x.SessionId).HasColumnName("session_id").ValueGeneratedNever();
+        e.Property(x => x.ContextJson).HasColumnName("context_json");
+        e.HasOne<IndividualOralSetup>().WithOne().HasForeignKey<IndividualOralContext>(x => x.SessionId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+public class StudentGitAccountConfiguration : IEntityTypeConfiguration<StudentGitAccount>
+{
+    public void Configure(EntityTypeBuilder<StudentGitAccount> e)
+    {
+        e.ToTable("student_git_accounts"); e.HasKey(x => x.UserId);
+        e.Property(x => x.UserId).HasColumnName("user_id").ValueGeneratedNever();
+        e.Property(x => x.GitHubUsername).HasColumnName("github_username").HasMaxLength(39);
+        e.Property(x => x.Emails).HasColumnName("emails").HasMaxLength(1300);
+        e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+        e.Property(x => x.UpdatedBy).HasColumnName("updated_by");
+        e.HasIndex(x => x.GitHubUsername).IsUnique();
+        e.HasOne(x => x.User).WithOne().HasForeignKey<StudentGitAccount>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
 public class AuditEventConfiguration : IEntityTypeConfiguration<AuditEvent>
 {
     public void Configure(EntityTypeBuilder<AuditEvent> e)

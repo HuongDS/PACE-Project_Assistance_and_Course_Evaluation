@@ -13,6 +13,9 @@ public class QuestionGenerationOptions
 
     public int MaxQuestions { get; set; } = 20;
 
+    /// <summary>Đề vấn đáp riêng: quá chừng này giây chưa có phản hồi thì gửi thêm một yêu cầu và lấy cái về trước. 0 là tắt.</summary>
+    public double OralBackupAfterSeconds { get; set; } = 15;
+
     /// <summary>Nhà cung cấp LLM để sinh câu hỏi: "Gemini" (mặc định) hoặc "OpenAI".</summary>
     public string Provider { get; set; } = "Gemini";
 

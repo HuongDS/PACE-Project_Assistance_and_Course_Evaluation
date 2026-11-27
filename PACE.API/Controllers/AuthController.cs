@@ -1,3 +1,4 @@
+using PACE.API.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PACE.Application.Dtos;
@@ -7,6 +8,7 @@ namespace PACE.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[AllowTrainingOffice]
 public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]

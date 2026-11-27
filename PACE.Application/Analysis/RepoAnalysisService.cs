@@ -222,6 +222,8 @@ public sealed class RepoAnalysisService(
 
             var scan = scanner.Scan(clone.WorkingPath, ct);
             warnings.AddRange(scan.Warnings);
+            warnings.AddRange(scan.RedactionWarnings());
+            LogScan(run.RepoUrl, scan);
             if (scan.TotalFiles == 0)
                 throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
 

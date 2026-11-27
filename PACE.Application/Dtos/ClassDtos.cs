@@ -106,6 +106,8 @@ public class UpdateClassRequest
 
     public Guid? SemesterId { get; set; }
     public Guid? LecturerId { get; set; }
+    /// <summary>Bỏ giảng viên đang phụ trách (LecturerId rỗng chỉ có nghĩa là giữ nguyên).</summary>
+    public bool UnassignLecturer { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? ActualStartDate { get; set; }
     public DateOnly? EndDate { get; set; }

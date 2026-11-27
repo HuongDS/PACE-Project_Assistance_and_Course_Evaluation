@@ -121,7 +121,9 @@ public sealed partial class GitCloneService(IOptions<AnalysisOptions> options, I
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8
         };
         foreach (var arg in arguments) startInfo.ArgumentList.Add(arg);
         startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";

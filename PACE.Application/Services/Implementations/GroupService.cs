@@ -246,8 +246,8 @@ public class GroupService(
         if (currentUser.Role == UserRole.Student)
         {
             var groupMilestone = await uow.Milestones.GetClassMilestoneByTypeAsync(group.ClassId, MilestoneType.GroupRegistration, ct);
-            if (groupMilestone != null && groupMilestone.IsLocked)
-                throw new BadRequestException("Giai đoạn đăng ký nhóm đã bị khóa, không thể thêm thành viên trực tiếp.");
+            if (groupMilestone != null && (groupMilestone.IsLocked || DateTime.UtcNow > groupMilestone.Deadline))
+                throw new BadRequestException("Giai đoạn đăng ký nhóm đã kết thúc, không thể thêm thành viên trực tiếp.");
         }
 
         var currentMembers = await uow.Groups.GetGroupMembersAsync(groupId, ct);

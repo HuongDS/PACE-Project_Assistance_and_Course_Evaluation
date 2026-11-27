@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using PACE.API.Common;
+using PACE.API.HealthChecks;
 using PACE.Application.Common.Interfaces;
 using PACE.Application;
 using PACE.Application.Services.Implementations;
@@ -75,6 +76,7 @@ else
     builder.Services.AddAuthentication();
 }
 builder.Services.AddAuthorization();
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.Add<TrainingOfficeScopeFilter>());
 
 const string CorsPolicy = "FrontendPolicy";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -111,7 +113,7 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddHealthChecks();
+builder.Services.AddPaceHealthChecks();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "PACE API", Version = "v1" });
@@ -151,8 +153,10 @@ app.UseHttpsRedirection();
 app.UseCors(CorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+// Liveness: không chạy check phụ thuộc nào, chỉ cho biết process còn sống (deploy workflow và Azure dựa vào đây).
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
+    Predicate = _ => false,
     ResponseWriter = async (context, report) =>
     {
         var revision = app.Configuration["Deployment:Revision"];
@@ -161,6 +165,14 @@ app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks
         await context.Response.WriteAsync(report.Status.ToString());
     }
 }).AllowAnonymous();
+// Chi tiết sức khỏe PostgreSQL, Redis, git, AI provider: chỉ Admin được xem (JSON); 503 khi có phụ thuộc bắt buộc lỗi.
+var healthDetails = app.MapHealthChecks("/health/details", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = r => r.Tags.Contains(PACE.API.HealthChecks.HealthCheckExtensions.DependencyTag),
+    ResponseWriter = PACE.API.HealthChecks.HealthCheckExtensions.WriteDetailedReportAsync
+});
+if (authEnabled) healthDetails.RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute { Roles = PACE.API.Controllers.Roles.Admin });
+else healthDetails.AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
 

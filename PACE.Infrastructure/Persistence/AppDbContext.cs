@@ -22,6 +22,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<CourseProject> CourseProjects => Set<CourseProject>();
     public DbSet<AssessmentSession> AssessmentSessions => Set<AssessmentSession>();
     public DbSet<SessionStudent> SessionStudents => Set<SessionStudent>();
+    public DbSet<IndividualOralSetup> IndividualOralSetups => Set<IndividualOralSetup>();
+    public DbSet<OralAttempt> OralAttempts => Set<OralAttempt>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();
@@ -47,6 +49,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<StudentOralSession> StudentOralSessions => Set<StudentOralSession>();
     public DbSet<StudentOralAnswer> StudentOralAnswers => Set<StudentOralAnswer>();
     public DbSet<CourseTopic> CourseTopics => Set<CourseTopic>();
+    public DbSet<CourseSyllabus> CourseSyllabi => Set<CourseSyllabus>();
+    public DbSet<GroupSubmission> GroupSubmissions => Set<GroupSubmission>();
+    public DbSet<GroupSubmissionReview> GroupSubmissionReviews => Set<GroupSubmissionReview>();
     public DbSet<GroupInvitation> GroupInvitations => Set<GroupInvitation>();
     public DbSet<GroupChangeRequest> GroupChangeRequests => Set<GroupChangeRequest>();
     public DbSet<Milestone> Milestones => Set<Milestone>();

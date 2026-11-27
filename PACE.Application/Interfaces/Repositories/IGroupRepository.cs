@@ -32,7 +32,9 @@ public interface IGroupRepository : IGenericRepository<Group>
     Task AddChangeRequestAsync(GroupChangeRequest request, CancellationToken ct = default);
 
     // Topics & Projects
-    Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, CancellationToken ct = default);
+    /// <summary>Đề tài mẫu của môn. semesterId: chỉ kỳ đó (kèm đề tài dùng chung). classId: số nhóm đã chọn tính riêng lớp đó.
+    /// includeGroups: kèm danh sách nhóm đang chọn; lecturerId: chỉ nhóm thuộc lớp của giảng viên này.</summary>
+    Task<List<CourseTopicDto>> GetCourseTopicsAsync(Guid courseId, Guid? semesterId, Guid? classId, bool includeGroups, Guid? lecturerId, CancellationToken ct = default);
     Task<CourseTopic?> GetCourseTopicByIdAsync(Guid topicId, CancellationToken ct = default);
     Task AddCourseTopicAsync(CourseTopic topic, CancellationToken ct = default);
     void RemoveCourseTopic(CourseTopic topic);

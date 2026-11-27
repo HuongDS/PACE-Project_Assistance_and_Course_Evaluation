@@ -106,6 +106,12 @@ public static class AcademicDataSeeder
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_courses_Code"" ON courses(""Code"");
             ");
 
+            // Đề tài mẫu mở theo kỳ (migration AddSemesterToCourseTopics); chạy ở đây để bản triển khai không cần cập nhật tay.
+            await db.Database.ExecuteSqlRawAsync(CourseTopicSemesterSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(CourseSyllabusSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(GroupSubmissionSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(IndividualOralSchema.Up);
+
             // 1. Seed Semesters
             var fall2026 = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Fall 2026" || s.Name == "Fall2026");
             if (fall2026 == null)
@@ -179,6 +185,24 @@ public static class AcademicDataSeeder
                     updated = true;
                 }
                 if (updated) await db.SaveChangesAsync();
+            }
+
+            // Phòng đào tạo: training@pace.edu.vn (cùng mật khẩu seed). Chỉ tạo khi phát triển, để bản triển khai
+            // không có thêm một tài khoản quản lý lớp dùng mật khẩu công khai trong mã nguồn.
+            var trainingEmail = "training@pace.edu.vn";
+            if (app.Environment.IsDevelopment() && !await db.Users.AnyAsync(u => u.Email.ToLower() == trainingEmail))
+            {
+                db.Users.Add(new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = trainingEmail,
+                    FullName = "Phòng Đào tạo",
+                    Role = UserRole.TrainingOffice,
+                    PasswordHash = defaultHash,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+                logger.LogInformation("Seeded training office: training@pace.edu.vn");
             }
 
             var existingLecProfile = await db.LecturerProfiles.FirstOrDefaultAsync(lp => lp.LecturerCode == "GV001");

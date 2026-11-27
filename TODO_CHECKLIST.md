@@ -28,10 +28,13 @@
     - Trạng thái kết nối sinh viên (`isAudioActive = false, isVideoActive = false, connectionQuality = "disconnected"`) -> kết nối với trạng thái phiên trực tuyến thực tế.
 - [ ] **3. Mở rộng Phân tích AST/CFG (`/api/evidence/projects/{projectId}/ast-cfg`)**:
   - Trong [EvidenceController.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Controllers/EvidenceController.cs):
-    - Tính toán và trả về độ phức tạp `cyclomaticComplexity` thực tế (hiện đang để `null`).
-    - Xử lý trường hợp hàm C# có tham chiếu đến kiểu dữ liệu ngoài hàm (tránh trả lỗi `422`) và mở rộng hỗ trợ AST/CFG cho Java, JS/TS (bằng Tree-sitter đã có sẵn trong project).
-- [ ] **4. Hoàn thiện Health Check thực tế cho `/health` (`Program.cs`)**:
-  - Trong [Program.cs](file:///d:/TaiLieu_FA26/Capstone/Project/PACE-Project_Assistance_and_Course_Evaluation/PACE.API/Program.cs#L99), đăng ký kiểm tra kết nối thực tế cho `builder.Services.AddHealthChecks()`: PostgreSQL (`AppDbContext`), Upstash Redis, Git CLI, và trạng thái cấu hình các AI Providers.
+    - [x] Tính toán và trả về độ phức tạp `cyclomaticComplexity` thực tế (tổng theo file, kèm `methodComplexities` từng hàm; `null` nếu mã hàm bị cắt khi lưu). Hỗ trợ C#, Java, JS/TS.
+    - [x] Hàm C# tham chiếu kiểu của project không còn trả `422`: vẫn dựng CFG từ cú pháp và báo số lỗi ngữ nghĩa ở `semanticErrors`. Chỉ lỗi cú pháp, mã bị cắt hoặc hàm không có thân (abstract/interface) mới trả `422`.
+    - [x] AST cho Java, JS/TS bằng Tree-sitter (`graphKind=AST`).
+    - [ ] CFG cho Java, JS/TS: chưa làm (hiện trả `422` kèm hướng dẫn dùng `graphKind=AST`).
+- [x] **4. Hoàn thiện Health Check thực tế cho `/health` (`Program.cs`)**:
+  - Đã thêm `PACE.API/HealthChecks/`: kiểm tra PostgreSQL (`AppDbContext`), Upstash Redis, Git CLI và cấu hình các AI Providers, đăng ký qua `AddPaceHealthChecks()`.
+  - `/health` giữ nguyên là liveness (không chạy check phụ thuộc, để deploy không bị rollback vì Redis/AI); chi tiết ở `GET /health/details` (JSON, chỉ Admin, trả 503 khi PostgreSQL lỗi, Degraded vẫn 200).
 
 ---
 
@@ -66,9 +69,9 @@
 
 #### 3.3. Xử lý Bằng chứng, Cơ sở Tri thức Dự án & Hệ thống RAG
 - **Backend (BE):**
-  - [ ] **Bộ lọc file & Quét che giấu thông tin nhạy cảm (Secret Redaction Pipeline)**:
-    - Kiểm tra định dạng/dung lượng file, loại bỏ thư mục build/dependencies, tự động quét và che giấu API keys, mật khẩu, token trong code/config trước khi lưu hoặc gửi sang LLM.
-    - Lưu log các file được chấp nhận, bị bỏ qua hoặc lỗi.
+  - [x] **Bộ lọc file & Quét che giấu thông tin nhạy cảm (Secret Redaction Pipeline)**:
+    - Đã làm: `RepositoryScanner` bỏ file nhạy cảm (`.env`, `appsettings*.json`, `*.pem`, `*.key`...), file nhị phân/rỗng/quá 512 KB, thư mục build/dependencies; che API key, token, mật khẩu, chuỗi kết nối, khoá riêng bằng `SecretRedactor` ngay khi đọc file nên mã lưu DB và mã gửi sang LLM đều đã che. Không che được thì bỏ file.
+    - Log nhận/bỏ qua/lỗi và số chỗ đã che nằm trong application log và cảnh báo của kết quả phân tích; chưa lưu thành bảng DB. Repo đã phân tích trước đây vẫn giữ mã chưa che đến khi phân tích lại.
   - [ ] **Trích xuất Tài liệu & Đối chiếu chéo (Cross-Source Conflict Detection)**:
     - Đọc nội dung tài liệu nộp (DOCX/PDF/Markdown, SQL/DB schema, OpenAPI).
     - Tự động đối chiếu các tuyên bố trong tài liệu với source code và DB schema thực tế; bảo lưu và xuất danh sách các điểm mâu thuẫn cho giảng viên.

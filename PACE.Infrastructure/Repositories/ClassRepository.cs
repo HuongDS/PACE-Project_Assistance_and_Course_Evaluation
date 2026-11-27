@@ -129,10 +129,10 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             .OrderBy(sc => sc.StudentCode)
             .ToListAsync(ct);
 
-        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+        var groupMemberMap = GroupNames(await Context.GroupMembers.AsNoTracking()
             .Where(gm => gm.Group.ClassId == classId)
-            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
-            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+            .Select(gm => new ValueTuple<string, string>(gm.StudentCode, gm.Group.Name))
+            .ToListAsync(ct));
 
         var students = studentClasses.Select(sc =>
         {
@@ -205,10 +205,10 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             .ToListAsync(ct);
 
         var studentCodes = pagedItems.Select(x => x.StudentCode).ToList();
-        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+        var groupMemberMap = GroupNames(await Context.GroupMembers.AsNoTracking()
             .Where(gm => gm.Group.ClassId == classId && studentCodes.Contains(gm.StudentCode))
-            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
-            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+            .Select(gm => new ValueTuple<string, string>(gm.StudentCode, gm.Group.Name))
+            .ToListAsync(ct));
 
         var items = pagedItems.Select(sc =>
         {
@@ -234,6 +234,12 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
         };
     }
 
+    /// <summary>Tên nhóm theo mã sinh viên. Dữ liệu sai có thể xếp một người vào hai nhóm của lớp:
+    /// khi đó ghép cả hai tên để còn thấy mà sửa, thay vì làm hỏng cả trang.</summary>
+    public static Dictionary<string, string> GroupNames(IEnumerable<(string StudentCode, string GroupName)> memberships) =>
+        memberships.GroupBy(x => x.StudentCode)
+            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.GroupName).Distinct().OrderBy(x => x, StringComparer.Ordinal)));
+
     public async Task<List<ClassStudentDto>> GetAllStudentsInClassAsync(Guid classId, CancellationToken ct = default)
     {
         var studentClasses = await Context.StudentClasses.AsNoTracking()
@@ -243,10 +249,10 @@ public class ClassRepository(AppDbContext context) : GenericRepository<Class>(co
             .OrderBy(sc => sc.StudentCode)
             .ToListAsync(ct);
 
-        var groupMemberMap = await Context.GroupMembers.AsNoTracking()
+        var groupMemberMap = GroupNames(await Context.GroupMembers.AsNoTracking()
             .Where(gm => gm.Group.ClassId == classId)
-            .Select(gm => new { gm.StudentCode, GroupName = gm.Group.Name })
-            .ToDictionaryAsync(gm => gm.StudentCode, gm => gm.GroupName, ct);
+            .Select(gm => new ValueTuple<string, string>(gm.StudentCode, gm.Group.Name))
+            .ToListAsync(ct));
 
         return studentClasses.Select(sc =>
         {

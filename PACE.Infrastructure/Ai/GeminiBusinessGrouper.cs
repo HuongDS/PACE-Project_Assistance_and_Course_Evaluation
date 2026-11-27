@@ -146,12 +146,22 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
         var totalUsage = LlmTokenUsage.Empty;
         var batchWarnings = new List<string>();
         var batches = slices.Chunk(effectiveBatchSize).ToList();
+        // Gemini quá tải (đã retry hết) thì các batch sau gần như chắc chắn cũng lỗi:
+        // dừng gọi, dùng fallback tĩnh cho phần còn lại và báo một dòng thay vì mỗi batch một dòng.
+        GeminiOverloadedException? overloaded = null;
+        var overloadedApiCount = 0;
 
         // Bước 1: Total Alpha-Renaming — Không gửi tên controller/function/path cho LLM để chống thiên kiến tên 100%
         // Cô lập lỗi theo từng batch (Fault-Tolerant Batching): nếu 1 batch lỗi sau khi retry, giữ nguyên toàn bộ token & kết quả các batch khác.
         for (var i = 0; i < batches.Count; i++)
         {
             var batch = batches[i];
+            if (overloaded is not null)
+            {
+                overloadedApiCount += batch.Length;
+                continue;
+            }
+
             var batchPayload = JsonSerializer.Serialize(batch.Select(s => new
             {
                 endpoint_id = s.EndpointId,
@@ -183,10 +193,22 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
                         item.Behaviors);
                 }
             }
+            catch (GeminiOverloadedException ex) when (!ct.IsCancellationRequested)
+            {
+                overloaded = ex;
+                overloadedApiCount += batch.Length;
+            }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 batchWarnings.Add($"Pha 4.1 Batch {i + 1}/{batches.Count} lỗi ({Truncate(ex.Message, 140)}), đã dùng fallback tĩnh cho {batch.Length} API này.");
             }
+        }
+
+        if (overloaded is not null)
+        {
+            batchWarnings.Add($"Gemini đang quá tải ({overloaded.Message}) nên {overloadedApiCount}/{slices.Count} API dùng mô tả tĩnh thay vì AI, " +
+                              "và nghiệp vụ được gom theo controller. Kết quả vẫn dùng được; muốn AI mô tả lại thì thử lại sau ít phút.");
+            return new HybridSynthesisResult([], specsById, totalUsage, batchWarnings);
         }
 
         // Bước 2: Gom nhóm các API thành Nghiệp vụ thuần túy dựa trên summary đã khôi phục + code_anchors (Name-Agnostic Grouping)
@@ -234,53 +256,89 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             .ToList(), usage);
     }
 
-    private static readonly TimeSpan[] RateLimitRetryDelays = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30)];
-    private static readonly TimeSpan[] ServerRetryDelays = [TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(8)];
+    private const int MaxRetryDelaySeconds = 60;
 
+    /// <summary>Gemini trả 429/5xx hoặc không phản hồi sau khi đã retry hết: lỗi tạm thời phía Google, không phải lỗi request.</summary>
+    private sealed class GeminiOverloadedException(string message) : ExternalServiceException("Gemini", message);
+
+    /// <summary>Gọi model chính; model quá tải sau khi retry hết thì thử model dự phòng (nếu có cấu hình).</summary>
     private async Task<string> SendWithRetryAsync(object body, CancellationToken ct)
     {
+        try
+        {
+            return await SendToModelAsync(_options.Model, body, ct);
+        }
+        catch (GeminiOverloadedException) when (!string.IsNullOrWhiteSpace(_options.FallbackModel)
+                                               && !string.Equals(_options.FallbackModel, _options.Model, StringComparison.OrdinalIgnoreCase))
+        {
+            return await SendToModelAsync(_options.FallbackModel!, body, ct);
+        }
+    }
+
+    private async Task<string> SendToModelAsync(string model, object body, CancellationToken ct)
+    {
+        var maxRetries = Math.Clamp(_options.MaxRetries, 0, 8);
         for (var attempt = 0; ; attempt++)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post,
-                $"{BaseUrl}/models/{Uri.EscapeDataString(_options.Model)}:generateContent")
+                $"{BaseUrl}/models/{Uri.EscapeDataString(model)}:generateContent")
             {
                 Content = JsonContent.Create(body)
             };
             request.Headers.Add("x-goog-api-key", _options.ApiKey);
 
-            HttpResponseMessage response;
-            string raw;
             try
             {
-                response = await _http.SendAsync(request, ct);
-                using (response)
-                {
-                    raw = await response.Content.ReadAsStringAsync(ct);
-                    if (response.IsSuccessStatusCode) return raw;
+                using var response = await _http.SendAsync(request, ct);
+                var raw = await response.Content.ReadAsStringAsync(ct);
+                if (response.IsSuccessStatusCode) return raw;
 
-                    var status = (int)response.StatusCode;
-                    if (status == 429 && attempt < RateLimitRetryDelays.Length)
+                var status = (int)response.StatusCode;
+                if (status == 429 || status >= 500)
+                {
+                    if (attempt < maxRetries)
                     {
-                        var retryAfter = response.Headers.RetryAfter?.Delta;
-                        var delay = retryAfter is { TotalSeconds: > 0 and <= 65 }
-                            ? retryAfter.Value
-                            : RateLimitRetryDelays[attempt];
-                        await Task.Delay(delay, ct);
+                        await Task.Delay(RetryDelay(attempt, response.Headers.RetryAfter?.Delta), ct);
                         continue;
                     }
-                    if (status >= 500 && attempt < ServerRetryDelays.Length)
-                    {
-                        await Task.Delay(ServerRetryDelays[attempt], ct);
-                        continue;
-                    }
-                    throw new ExternalServiceException("Gemini", $"HTTP {status}: {Truncate(raw, 300)}");
+                    throw new GeminiOverloadedException($"{model} HTTP {status}: {ErrorMessage(raw)}");
                 }
+
+                throw new ExternalServiceException("Gemini", $"HTTP {status}: {ErrorMessage(raw)}");
             }
-            catch (TaskCanceledException) when (!ct.IsCancellationRequested && attempt < ServerRetryDelays.Length)
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
-                await Task.Delay(ServerRetryDelays[attempt], ct);
+                if (attempt >= maxRetries)
+                    throw new GeminiOverloadedException($"{model} không phản hồi sau {_http.Timeout.TotalSeconds:0} giây");
+                await Task.Delay(RetryDelay(attempt, null), ct);
             }
         }
+    }
+
+    /// <summary>Chờ theo Retry-After của Google nếu có, không thì tăng dần 5s, 10s, 20s... (tối đa 60s) cộng chút ngẫu nhiên để các request không dồn cùng lúc.</summary>
+    private TimeSpan RetryDelay(int attempt, TimeSpan? retryAfter)
+    {
+        if (retryAfter is { TotalSeconds: > 0 and <= 65 }) return retryAfter.Value;
+        var initial = Math.Clamp(_options.InitialRetryDelaySeconds, 1, MaxRetryDelaySeconds);
+        var seconds = Math.Min(initial * Math.Pow(2, attempt), MaxRetryDelaySeconds);
+        return TimeSpan.FromSeconds(seconds) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000));
+    }
+
+    /// <summary>Lấy câu thông báo trong JSON lỗi của Google thay vì in nguyên cả khối JSON ra cảnh báo.</summary>
+    private static string ErrorMessage(string raw)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.TryGetProperty("error", out var error)
+                && error.TryGetProperty("message", out var message)
+                && message.GetString() is { Length: > 0 } text)
+                return Truncate(text, 160);
+        }
+        catch (JsonException)
+        {
+        }
+        return Truncate(raw, 160);
     }
 
     private static (string Text, LlmTokenUsage Usage) ExtractTextAndUsage(string raw)

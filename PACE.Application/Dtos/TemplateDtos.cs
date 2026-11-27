@@ -15,6 +15,12 @@ public class GenerateTemplateRequest
     /// <summary>Bỏ qua template đã chốt trong DB và template_business.json có sẵn trong repo, tạo mới.</summary>
     public bool Regenerate { get; set; }
 
+    /// <summary>
+    /// API mà AI bỏ sót khi gom nhóm: true thì tự gom theo controller (template đủ API, dùng khi xuất file);
+    /// false thì để ngoài template, chưa thuộc nghiệp vụ nào, để sinh viên tự chọn nghiệp vụ trên trang Dự án.
+    /// </summary>
+    public bool GroupMissingByController { get; set; } = true;
+
     /// <summary>Số lượng API mỗi batch gửi lên Gemini (mặc định 12; dùng cho Thực nghiệm 4 - Ablation Study).</summary>
     [Range(1, 50)]
     public int? BatchSize { get; set; }

@@ -144,6 +144,158 @@ public sealed class RepoAnalysisService(
     public Task<AnalyzeResultDto> ReanalyzeAsync(Guid analysisRunId, bool regenerateTemplate = false, CancellationToken ct = default)
         => AnalyzeAsync(analysisRunId, null, true, ct, regenerateTemplate);
 
+    /// <summary>
+    /// Tải lại source sau lần phân tích đầu: chỉ cập nhật danh sách hàm / API theo code mới.
+    /// Không gọi Gemini, không tạo lại template, không dựng lại luồng; nghiệp vụ, API đã gán, luồng, sơ đồ
+    /// và câu hỏi giữ nguyên. API mới hiện trong danh sách API để nhóm tự thêm vào nghiệp vụ.
+    /// Repo chưa phân tích lần nào thì chạy phân tích đầy đủ.
+    /// </summary>
+    public async Task<AnalyzeResultDto> RefreshApisAsync(Guid analysisRunId, CancellationToken ct = default)
+    {
+        var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
+        if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
+        if (run.IsArchived) throw new BadRequestException("Không thể phân tích lại bản lịch sử.");
+
+        if (!await uow.MethodSources.AnyAsync(m => m.AnalysisRunId == analysisRunId, ct))
+            return await ReanalyzeAsync(analysisRunId, regenerateTemplate: true, ct);
+
+        if (!AnalysisRunLock.TryAcquire(analysisRunId))
+            throw new ConflictException("Repo này đang được phân tích, vui lòng đợi lần chạy trước xong.");
+
+        var warnings = new List<string>();
+        try
+        {
+            using var clone = await git.CloneAsync(run.RepoUrl, ct);
+
+            var scan = scanner.Scan(clone.WorkingPath, ct);
+            warnings.AddRange(scan.Warnings);
+            warnings.AddRange(scan.RedactionWarnings());
+            LogScan(run.RepoUrl, scan);
+            if (scan.TotalFiles == 0)
+                throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
+
+            var parsed = new ParseResult();
+            foreach (var parser in parsers)
+                parsed.Merge(parser.Parse(scan.FilesFor(parser.Kind), ct));
+            parsed.Methods.AddRange(scan.FrontendEntries());
+            warnings.AddRange(parsed.Warnings);
+
+            if (parsed.Methods.Count == 0)
+                throw new UnprocessableException("Parse xong nhưng không tìm thấy hàm nào trong mã nguồn.");
+
+            var sync = await uow.ExecuteInTransactionAsync(async token =>
+            {
+                // Tải lại trong transaction: lần retry của execution strategy chạy sau khi change tracker đã bị xoá.
+                var existing = await uow.MethodSources.FindAsync(m => m.AnalysisRunId == analysisRunId, asNoTracking: false, token);
+                var fresh = parsed.Methods.Select(m => ToMethodSource(analysisRunId, m)).ToList();
+                var result = SyncMethodSources(existing, fresh);
+
+                // Hàm không còn trong code: chỉ xoá khi không có luồng nào dùng, để luồng và câu hỏi cũ không bị hỏng.
+                var keptOld = 0;
+                if (result.Missing.Count > 0)
+                {
+                    var missingIds = result.Missing.Select(m => m.Id).ToList();
+                    var used = (await uow.BusinessMethods.FindAsync(bm => missingIds.Contains(bm.MethodSourceId), ct: token))
+                        .Select(bm => bm.MethodSourceId)
+                        .Concat((await uow.DataFlowEdges.FindAsync(e => missingIds.Contains(e.FromMethodId) || missingIds.Contains(e.ToMethodId), ct: token))
+                            .SelectMany(e => new[] { e.FromMethodId, e.ToMethodId }))
+                        .ToHashSet();
+                    var removable = result.Missing.Where(m => !used.Contains(m.Id)).ToList();
+                    keptOld = result.Missing.Count - removable.Count;
+                    uow.MethodSources.RemoveRange(removable);
+                }
+
+                await uow.MethodSources.AddRangeAsync(result.Added, token);
+
+                var trackedRun = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, token) ?? throw new NotFoundException("repo", analysisRunId);
+                trackedRun.AnalyzedRepoUrl = run.RepoUrl;
+                trackedRun.AnalyzedCommitSha = clone.CommitSha;
+                trackedRun.AnalyzedAt = DateTime.UtcNow;
+
+                return (Total: fresh.Count, result.Added, result.Missing, KeptOld: keptOld);
+            }, ct);
+
+            var newApis = sync.Added.Count(IsApiMethod);
+            var removedApis = sync.Missing.Count(IsApiMethod);
+            warnings.Insert(0, newApis == 0
+                ? "Không có API mới. Nghiệp vụ và luồng xử lý giữ nguyên."
+                : $"Có {newApis} API mới. Mở nghiệp vụ, bấm sửa để thêm API vào nghiệp vụ phù hợp.");
+            if (removedApis > 0)
+                warnings.Add($"{removedApis} API không còn trong code. API đã gán vào nghiệp vụ vẫn được giữ, nhóm tự gỡ nếu không dùng nữa.");
+            if (sync.KeptOld > 0)
+                warnings.Add($"{sync.KeptOld} hàm không còn trong code nhưng vẫn giữ lại vì luồng xử lý cũ đang dùng.");
+
+            logger.LogInformation("Tải lại API {RepoUrl}: {Methods} hàm, thêm {Added}, không còn {Missing}",
+                run.RepoUrl, sync.Total, sync.Added.Count, sync.Missing.Count);
+
+            return new AnalyzeResultDto(run.Id, string.Join(", ", scan.Stacks), sync.Total,
+                await uow.Businesses.CountAsync(b => b.AnalysisRunId == analysisRunId, ct),
+                await uow.BusinessFlows.CountAsync(f => f.Business.AnalysisRunId == analysisRunId, ct),
+                0, warnings, newApis);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Tải lại API của repo {RunId} thất bại", analysisRunId);
+            throw;
+        }
+        finally
+        {
+            AnalysisRunLock.Release(analysisRunId);
+        }
+    }
+
+    private sealed record MethodSync(List<MethodSource> Added, List<MethodSource> Missing);
+
+    /// <summary>
+    /// Ghép hàm vừa parse với hàm đang lưu theo class + tên + tham số (ưu tiên cùng file) để giữ nguyên Id:
+    /// hàm cũ được cập nhật code, hàm mới được thêm, hàm không còn được trả về để xử lý riêng.
+    /// </summary>
+    private static MethodSync SyncMethodSources(List<MethodSource> existing, List<MethodSource> fresh)
+    {
+        static string Key(MethodSource m) => $"{m.ClassName}|{m.MethodName}|{m.Parameters}";
+
+        var pool = existing.GroupBy(Key).ToDictionary(g => g.Key, g => g.ToList());
+        var added = new List<MethodSource>();
+        foreach (var m in fresh)
+        {
+            if (!pool.TryGetValue(Key(m), out var candidates) || candidates.Count == 0)
+            {
+                added.Add(m);
+                continue;
+            }
+
+            var match = candidates.FirstOrDefault(c => c.FilePath == m.FilePath) ?? candidates[0];
+            candidates.Remove(match);
+            match.FilePath = m.FilePath;
+            match.HttpVerb = m.HttpVerb;
+            match.Route = m.Route;
+            match.SourceCode = m.SourceCode;
+            match.Language = m.Language;
+            match.NodeType = m.NodeType;
+        }
+
+        return new MethodSync(added, pool.Values.SelectMany(v => v).ToList());
+    }
+
+    private static bool IsApiMethod(MethodSource m)
+        => !m.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal)
+           && (m.HttpVerb != null || m.ClassName.EndsWith("Controller", StringComparison.Ordinal));
+
+    private static MethodSource ToMethodSource(Guid runId, ParsedMethod m) => new()
+    {
+        Id = m.Id,
+        AnalysisRunId = runId,
+        FilePath = Truncate(m.FilePath, 500),
+        ClassName = Truncate(m.ClassName, 255)!,
+        MethodName = Truncate(m.MethodName, 255)!,
+        Parameters = m.Parameters.Count == 0 ? null : string.Join(", ", m.Parameters.Select(p => p.ToString())),
+        HttpVerb = Truncate(m.HttpVerb, 10),
+        Route = Truncate(m.Route, 500),
+        SourceCode = m.SourceCode,
+        Language = m.Language,
+        NodeType = m.IsDecision ? NodeType.DecisionGateway : NodeType.Activity
+    };
+
     private async Task RemoveRunAsync(Guid runId)
     {
         try
@@ -158,6 +310,17 @@ public sealed class RepoAnalysisService(
         {
             logger.LogError(ex, "Không xoá được repo {RunId} sau khi phân tích thất bại", runId);
         }
+    }
+    private void LogScan(string repoUrl, RepositoryScan scan)
+    {
+        var byRule = string.Join(", ", scan.Redactions.GroupBy(r => r.Rule).OrderBy(g => g.Key).Select(g => $"{g.Key}={g.Count()}"));
+        logger.LogInformation(
+            "Quét {RepoUrl}: nhận {Accepted} file, bỏ qua {Ignored}, lỗi {Failed}; đã che {Redactions} thông tin nhạy cảm ({Rules})",
+            repoUrl, scan.AcceptedCount, scan.IgnoredCount, scan.FailedCount, scan.Redactions.Count, byRule.Length == 0 ? "không có" : byRule);
+        foreach (var failed in scan.FileLog.Where(e => e.Status == ScanFileStatus.Failed))
+            logger.LogWarning("Quét {RepoUrl}: file {Path} bị bỏ: {Reason}", repoUrl, failed.RelativePath, failed.Reason);
+        foreach (var hit in scan.Redactions.Take(50))
+            logger.LogInformation("Đã che [{Rule}] tại {Path}:{Line}", hit.Rule, hit.RelativePath, hit.Line);
     }
 
     private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, bool replaceExisting, CancellationToken ct,
@@ -210,7 +373,7 @@ public sealed class RepoAnalysisService(
                 else if (templateGen != null)
                 {
                     // Tự động quét và tạo template nghiệp vụ nếu repo chưa có template_business.json
-                    var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = run.RepoUrl, UseAi = true, Regenerate = regenerateTemplate }, ct);
+                    var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = run.RepoUrl, UseAi = true, Regenerate = regenerateTemplate, GroupMissingByController = false }, ct);
                     templates = gen.Businesses.ToList();
                     templateSource = gen.Source;
                 }
@@ -302,7 +465,7 @@ public sealed class RepoAnalysisService(
             if (generated is null)
             {
                 if (templateGen is null) return null;
-                var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = repoUrl, UseAi = true, Regenerate = true }, ct);
+                var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = repoUrl, UseAi = true, Regenerate = true, GroupMissingByController = false }, ct);
                 warnings.AddRange(gen.Warnings);
                 generated = gen.Businesses.ToList();
             }
@@ -332,20 +495,7 @@ public sealed class RepoAnalysisService(
         var frontendMethods = parsed.Methods
             .Where(m => m.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal))
             .ToList();
-        var methods = parsed.Methods.Select(m => new MethodSource
-        {
-            Id = m.Id,
-            AnalysisRunId = runId,
-            FilePath = Truncate(m.FilePath, 500),
-            ClassName = Truncate(m.ClassName, 255)!,
-            MethodName = Truncate(m.MethodName, 255)!,
-            Parameters = m.Parameters.Count == 0 ? null : string.Join(", ", m.Parameters.Select(p => p.ToString())),
-            HttpVerb = Truncate(m.HttpVerb, 10),
-            Route = Truncate(m.Route, 500),
-            SourceCode = m.SourceCode,
-            Language = m.Language,
-            NodeType = m.IsDecision ? NodeType.DecisionGateway : NodeType.Activity
-        }).ToList();
+        var methods = parsed.Methods.Select(m => ToMethodSource(runId, m)).ToList();
 
         var businesses = new List<Business>();
         var businessMethods = new List<BusinessMethod>();

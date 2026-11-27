@@ -76,7 +76,8 @@ public sealed class TemplateGenerationService(
         var slicesById = slices.ToDictionary(s => s.EndpointId);
 
         // Giai đoạn 4: Hybrid LLM Synthesis & Gom nhóm Nghiệp vụ
-        var (source, businesses, usage) = await SynthesizeAndGroupAsync(url, endpoints, slices, slicesById, request.UseAi, request.BatchSize, warnings, ct);
+        var (source, businesses, usage) = await SynthesizeAndGroupAsync(url, endpoints, slices, slicesById, request.UseAi, request.BatchSize, warnings, ct,
+            request.GroupMissingByController);
         return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses), warnings, usage);
     }
 
@@ -209,7 +210,8 @@ public sealed class TemplateGenerationService(
         bool useAi,
         int? batchSize,
         List<string> warnings,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool groupMissing = true)
     {
         if (useAi && !ai.IsConfigured)
         {
@@ -227,7 +229,7 @@ public sealed class TemplateGenerationService(
                 if (synthesis.Groups.Count > 0)
                 {
                     return (BusinessTemplateSource.Ai,
-                        BusinessTemplateGenerator.ApplyGrouping(endpoints, synthesis.Groups, warnings, slicesById, synthesis.EndpointSpecs),
+                        BusinessTemplateGenerator.ApplyGrouping(endpoints, synthesis.Groups, warnings, slicesById, synthesis.EndpointSpecs, groupMissing),
                         usage);
                 }
 
@@ -240,7 +242,7 @@ public sealed class TemplateGenerationService(
             {
                 var legacy = await ai.GroupWithUsageAsync(endpoints, ct);
                 return (BusinessTemplateSource.Ai,
-                    BusinessTemplateGenerator.ApplyGrouping(endpoints, legacy.Groups, warnings, slicesById),
+                    BusinessTemplateGenerator.ApplyGrouping(endpoints, legacy.Groups, warnings, slicesById, groupMissing: groupMissing),
                     legacy.TokenUsage);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)

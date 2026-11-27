@@ -165,7 +165,8 @@ public static partial class BusinessTemplateGenerator
         IEnumerable<SuggestedBusiness> groups,
         List<string> warnings,
         IReadOnlyDictionary<int, EndpointEvidenceSlice>? slicesById = null,
-        IReadOnlyDictionary<int, SynthesizedEndpointSpec>? specsById = null)
+        IReadOnlyDictionary<int, SynthesizedEndpointSpec>? specsById = null,
+        bool groupMissing = true)
     {
         var byId = endpoints.ToDictionary(e => e.Id);
         var assigned = new HashSet<int>();
@@ -200,8 +201,21 @@ public static partial class BusinessTemplateGenerator
         var missing = endpoints.Where(e => !assigned.Contains(e.Id)).ToList();
         if (missing.Count > 0)
         {
-            warnings.Add($"AI bỏ sót {missing.Count} API, đã gom các API này theo controller.");
-            result.AddRange(GroupByController(missing, slicesById, specsById));
+            const int shown = 10;
+            var names = string.Join("; ", missing.Take(shown).Select(e =>
+                $"{e.HttpMethod} {(string.IsNullOrWhiteSpace(e.Path) ? e.Function : e.Path)} ({e.Controller}.{e.Function})"));
+            if (missing.Count > shown) names += $"; và {missing.Count - shown} API khác";
+
+            if (groupMissing)
+            {
+                warnings.Add($"AI bỏ sót {missing.Count} API, đã gom các API này theo controller: {names}.");
+                result.AddRange(GroupByController(missing, slicesById, specsById));
+            }
+            else
+            {
+                warnings.Add($"AI chưa xếp {missing.Count} API vào nghiệp vụ nào: {names}. " +
+                             "Các API này nằm ở mục \"API chưa thuộc nghiệp vụ nào\", nhóm chọn nghiệp vụ phù hợp cho từng API.");
+            }
         }
 
         return result;

@@ -141,8 +141,8 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    public Task<AnalyzeResultDto> ReanalyzeAsync(Guid analysisRunId, CancellationToken ct = default)
-        => AnalyzeAsync(analysisRunId, null, true, ct);
+    public Task<AnalyzeResultDto> ReanalyzeAsync(Guid analysisRunId, bool regenerateTemplate = false, CancellationToken ct = default)
+        => AnalyzeAsync(analysisRunId, null, true, ct, regenerateTemplate);
 
     private async Task RemoveRunAsync(Guid runId)
     {
@@ -160,7 +160,8 @@ public sealed class RepoAnalysisService(
         }
     }
 
-    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, bool replaceExisting, CancellationToken ct)
+    private async Task<AnalyzeResultDto> AnalyzeAsync(Guid analysisRunId, List<BusinessTemplate>? confirmed, bool replaceExisting, CancellationToken ct,
+        bool regenerateTemplate = false)
     {
         var run = await uow.AnalysisRuns.GetByIdAsync(analysisRunId, ct) ?? throw new NotFoundException("repo", analysisRunId);
         if (string.IsNullOrWhiteSpace(run.RepoUrl)) throw new BadRequestException("Repo chưa có link GitHub.");
@@ -179,12 +180,24 @@ public sealed class RepoAnalysisService(
             var templates = confirmed;
             var templateSource = BusinessTemplateSource.Confirmed;
             var syncApis = true;
-            if (templates is null && existing.Any(b => b.Apis.Count > 0))
+            IReadOnlySet<Guid>? resyncBusinessIds = null;
+            if (templates is null && (existing.Any(b => b.Apis.Count > 0) || (regenerateTemplate && existing.Count > 0)))
             {
                 templates = BusinessTemplateLoader.Normalize(DeclaredBusinessTemplate.Build(existing));
                 syncApis = false;
+
+                // Tải lại source: tạo lại template từ code mới rồi gộp vào nghiệp vụ đang có, không xoá gì.
+                if (regenerateTemplate)
+                {
+                    var merged = await RegenerateAndMergeAsync(run.RepoUrl, clone, templates, warnings, ct);
+                    if (merged is not null)
+                    {
+                        templates = merged.Templates;
+                        resyncBusinessIds = merged.ChangedBusinessIds;
+                    }
+                }
             }
-            if (templates is null && run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
+            if (templates is null && !regenerateTemplate && run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
                 templates = BusinessTemplateLoader.Parse(run.BusinessTemplateJson);
             if (templates is null)
             {
@@ -197,7 +210,7 @@ public sealed class RepoAnalysisService(
                 else if (templateGen != null)
                 {
                     // Tự động quét và tạo template nghiệp vụ nếu repo chưa có template_business.json
-                    var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = run.RepoUrl, UseAi = true }, ct);
+                    var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = run.RepoUrl, UseAi = true, Regenerate = regenerateTemplate }, ct);
                     templates = gen.Businesses.ToList();
                     templateSource = gen.Source;
                 }
@@ -221,7 +234,7 @@ public sealed class RepoAnalysisService(
             if (parsed.Methods.Count == 0)
                 throw new UnprocessableException("Parse xong nhưng không tìm thấy hàm nào trong mã nguồn.");
 
-            var model = BuildModel(run.Id, templates, parsed, warnings, existing, syncApis);
+            var model = BuildModel(run.Id, templates, parsed, warnings, existing, syncApis, resyncBusinessIds);
 
             await uow.ExecuteInTransactionAsync(async token =>
             {
@@ -260,8 +273,54 @@ public sealed class RepoAnalysisService(
         }
     }
 
+    /// <summary>
+    /// Tạo lại template nghiệp vụ từ code vừa kéo về rồi gộp vào nghiệp vụ hiện có.
+    /// Ưu tiên file template_business.json trong repo nếu nhóm có commit file này, không có thì quét code (Gemini Hybrid).
+    /// Lỗi khi tạo lại không làm hỏng lần tải lại: giữ nguyên nghiệp vụ cũ và báo cảnh báo.
+    /// </summary>
+    private async Task<BusinessTemplateMerger.Result?> RegenerateAndMergeAsync(
+        string repoUrl, IClonedRepository clone, List<BusinessTemplate> current, List<string> warnings, CancellationToken ct)
+    {
+        try
+        {
+            List<BusinessTemplate>? generated = null;
+            var templateJson = await scanner.ReadBusinessTemplateAsync([clone.WorkingPath, clone.RootPath], ct);
+            if (templateJson is not null)
+            {
+                try
+                {
+                    generated = BusinessTemplateLoader.Parse(templateJson);
+                }
+                catch (BadRequestException ex)
+                {
+                    warnings.Add($"File {BusinessTemplateLoader.FileName} trong repo không dùng được ({ex.Message}), chuyển sang quét code.");
+                }
+            }
+
+            if (generated is null)
+            {
+                if (templateGen is null) return null;
+                var gen = await templateGen.GenerateAsync(new GenerateTemplateRequest { RepoUrl = repoUrl, UseAi = true, Regenerate = true }, ct);
+                warnings.AddRange(gen.Warnings);
+                generated = gen.Businesses.ToList();
+            }
+
+            var merged = BusinessTemplateMerger.Merge(current, generated);
+            warnings.AddRange(merged.Notes);
+            if (merged.AddedApiCount == 0)
+                warnings.Add("Đã tạo lại template từ code mới: không có API mới, nghiệp vụ giữ nguyên.");
+            return merged;
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Tạo lại template cho {RepoUrl} thất bại", repoUrl);
+            warnings.Add($"Không tạo lại được template từ code mới ({ex.Message}), nghiệp vụ giữ nguyên.");
+            return null;
+        }
+    }
+
     private AnalysisModel BuildModel(Guid runId, List<BusinessTemplate> templates, ParseResult parsed, List<string> warnings,
-        IReadOnlyList<Business> existing, bool syncApis)
+        IReadOnlyList<Business> existing, bool syncApis, IReadOnlySet<Guid>? resyncBusinessIds = null)
     {
         var settings = options.Value;
         var resolver = new CallResolver(parsed.Classes, parsed.Methods);
@@ -301,7 +360,9 @@ public sealed class RepoAnalysisService(
                     : null)
                 ?? existing.FirstOrDefault(b => !usedBusinessIds.Contains(b.Id)
                     && string.Equals(b.BusinessName.Trim(), template.BusinessName, StringComparison.OrdinalIgnoreCase));
-            var apis = syncApis ? ToBusinessApis(template) : new List<BusinessApi>();
+            // Nghiệp vụ mới luôn mang API của template; nghiệp vụ cũ chỉ đồng bộ API khi syncApis hoặc vừa được gộp thêm API mới.
+            var apis = ToBusinessApis(template);
+            var shouldSync = current is not null && (syncApis || resyncBusinessIds?.Contains(current.Id) == true);
             var business = current ?? new Business
             {
                 Id = Guid.NewGuid(),
@@ -313,7 +374,7 @@ public sealed class RepoAnalysisService(
             };
             usedBusinessIds.Add(business.Id);
             if (current is null) businesses.Add(business);
-            else if (syncApis) apiSyncs.Add(new ApiSync(current.Id, template.Description, apis));
+            else if (shouldSync) apiSyncs.Add(new ApiSync(current.Id, syncApis ? template.Description : current.Description, apis));
 
             var methodIds = new HashSet<Guid>();
             var entries = new HashSet<Guid>();

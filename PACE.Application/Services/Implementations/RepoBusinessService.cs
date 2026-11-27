@@ -57,7 +57,7 @@ public class RepoBusinessService(
     public async Task<AnalyzeResultDto> ReloadSourceAsync(Guid analysisRunId, CancellationToken ct = default)
     {
         await GetAccessAsync(analysisRunId, !currentUser.IsAdmin, ct);
-        return await analysisService.ReanalyzeAsync(analysisRunId, ct);
+        return await analysisService.ReanalyzeAsync(analysisRunId, regenerateTemplate: true, ct);
     }
 
     public async Task<RepoBusinessDto> GetBusinessAsync(Guid analysisRunId, Guid businessId, CancellationToken ct = default)

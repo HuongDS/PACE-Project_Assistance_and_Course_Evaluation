@@ -6,7 +6,7 @@ namespace PACE.Application.Dtos;
 
 public class GenerateTemplateRequest
 {
-    [Required, Url, MaxLength(500)]
+    [Required, MaxLength(500)]
     public string RepoUrl { get; set; } = null!;
 
     /// <summary>Dùng Gemini để gom nghiệp vụ; lỗi hoặc chưa cấu hình thì tự gom theo controller.</summary>
@@ -14,15 +14,29 @@ public class GenerateTemplateRequest
 
     /// <summary>Bỏ qua template đã chốt trong DB và template_business.json có sẵn trong repo, tạo mới.</summary>
     public bool Regenerate { get; set; }
+
+    /// <summary>Số lượng API mỗi batch gửi lên Gemini (mặc định 12; dùng cho Thực nghiệm 4 - Ablation Study).</summary>
+    [Range(1, 50)]
+    public int? BatchSize { get; set; }
+
+    /// <summary>Số lượng EvidenceNode tối đa mỗi API (mặc định 25; dùng cho Thực nghiệm 4 - Ablation Study).</summary>
+    [Range(5, 100)]
+    public int? MaxNodes { get; set; }
 }
 
 public class CompareTemplateRequest
 {
-    [Required, Url, MaxLength(500)]
+    [Required, MaxLength(500)]
     public string RepoUrl { get; set; } = null!;
 
     /// <summary>Dùng Gemini để so sánh cả chế độ AI cũ vs AI Hybrid mới; nếu false thì so sánh gom theo Controller cũ vs gom theo Controller kèm phân tích tĩnh Hybrid.</summary>
     public bool UseAi { get; set; } = true;
+
+    [Range(1, 50)]
+    public int? BatchSize { get; set; }
+
+    [Range(5, 100)]
+    public int? MaxNodes { get; set; }
 }
 
 public record EndpointComparisonItemDto(
@@ -42,6 +56,10 @@ public record EndpointComparisonItemDto(
 public record TemplateComparisonMetricsDto(
     long LegacyDurationMs,
     long HybridDurationMs,
+    int LegacyInputTokens,
+    int LegacyOutputTokens,
+    int HybridInputTokens,
+    int HybridOutputTokens,
     int LegacyBusinessCount,
     int HybridBusinessCount,
     int TotalEndpoints,
@@ -71,7 +89,11 @@ public record GeneratedTemplateDto(
     int BusinessCount,
     int ApiCount,
     IReadOnlyList<BusinessTemplate> Businesses,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    int InputTokens = 0,
+    int OutputTokens = 0,
+    int TotalTokens = 0,
+    int LlmApiCalls = 0);
 
 public record AnalysisRunTemplateDto(
     Guid AnalysisRunId,

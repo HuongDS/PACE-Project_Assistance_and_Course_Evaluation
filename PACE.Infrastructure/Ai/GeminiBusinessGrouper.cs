@@ -119,6 +119,9 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
 
     public async Task<IReadOnlyList<SuggestedBusiness>> GroupAsync(IReadOnlyList<TemplateEndpoint> endpoints, CancellationToken ct)
+        => (await GroupWithUsageAsync(endpoints, ct)).Groups;
+
+    public async Task<LegacyGroupingResult> GroupWithUsageAsync(IReadOnlyList<TemplateEndpoint> endpoints, CancellationToken ct)
     {
         if (!IsConfigured) throw new ExternalServiceException("Gemini", "Chưa cấu hình Gemini:ApiKey.");
 
@@ -127,20 +130,28 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             id = e.Id, controller = e.Controller, http_method = e.HttpMethod, function = e.Function, path = e.Path
         }));
 
-        return await RequestGroupsAsync(LegacyGroupSystemPrompt, input, ct);
+        var (groups, usage) = await RequestGroupsAsync(LegacyGroupSystemPrompt, input, ct);
+        return new LegacyGroupingResult(groups, usage);
     }
 
     public async Task<HybridSynthesisResult> SynthesizeAndGroupAsync(
         IReadOnlyList<EndpointEvidenceSlice> slices,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? batchSize = null)
     {
         if (!IsConfigured) throw new ExternalServiceException("Gemini", "Chưa cấu hình Gemini:ApiKey.");
 
+        var effectiveBatchSize = Math.Clamp(batchSize ?? HybridBatchSize, 1, 50);
         var specsById = new Dictionary<int, SynthesizedEndpointSpec>();
+        var totalUsage = LlmTokenUsage.Empty;
+        var batchWarnings = new List<string>();
+        var batches = slices.Chunk(effectiveBatchSize).ToList();
 
         // Bước 1: Total Alpha-Renaming — Không gửi tên controller/function/path cho LLM để chống thiên kiến tên 100%
-        foreach (var batch in slices.Chunk(HybridBatchSize))
+        // Cô lập lỗi theo từng batch (Fault-Tolerant Batching): nếu 1 batch lỗi sau khi retry, giữ nguyên toàn bộ token & kết quả các batch khác.
+        for (var i = 0; i < batches.Count; i++)
         {
+            var batch = batches[i];
             var batchPayload = JsonSerializer.Serialize(batch.Select(s => new
             {
                 endpoint_id = s.EndpointId,
@@ -157,14 +168,24 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
                 generationConfig = new { temperature = 0.1, responseMimeType = "application/json", responseSchema = HybridSliceResponseSchema }
             };
 
-            var text = ExtractText(await SendWithRetryAsync(body, ct));
-            var synthesizedBatch = JsonSerializer.Deserialize<List<GeminiEndpointSynthesis>>(text, JsonOptions) ?? [];
-            foreach (var item in synthesizedBatch)
+            try
             {
-                specsById[item.EndpointId] = new SynthesizedEndpointSpec(
-                    item.EndpointId,
-                    item.Summary,
-                    item.Behaviors);
+                var raw = await SendWithRetryAsync(body, ct);
+                var (text, batchUsage) = ExtractTextAndUsage(raw);
+                totalUsage = totalUsage.Add(batchUsage);
+
+                var synthesizedBatch = JsonSerializer.Deserialize<List<GeminiEndpointSynthesis>>(text, JsonOptions) ?? [];
+                foreach (var item in synthesizedBatch)
+                {
+                    specsById[item.EndpointId] = new SynthesizedEndpointSpec(
+                        item.EndpointId,
+                        item.Summary,
+                        item.Behaviors);
+                }
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                batchWarnings.Add($"Pha 4.1 Batch {i + 1}/{batches.Count} lỗi ({Truncate(ex.Message, 140)}), đã dùng fallback tĩnh cho {batch.Length} API này.");
             }
         }
 
@@ -181,11 +202,21 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             };
         }));
 
-        var groups = await RequestGroupsAsync(HybridGroupingSystemPrompt, groupingInput, ct);
-        return new HybridSynthesisResult(groups, specsById);
+        try
+        {
+            var (groups, groupUsage) = await RequestGroupsAsync(HybridGroupingSystemPrompt, groupingInput, ct);
+            totalUsage = totalUsage.Add(groupUsage);
+            return new HybridSynthesisResult(groups, specsById, totalUsage, batchWarnings);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            batchWarnings.Add($"Pha 4.2 gom nhóm nghiệp vụ lỗi ({Truncate(ex.Message, 140)}), đã giữ nguyên dữ liệu tổng hợp & gom theo controller.");
+            return new HybridSynthesisResult([], specsById, totalUsage, batchWarnings);
+        }
     }
 
-    private async Task<IReadOnlyList<SuggestedBusiness>> RequestGroupsAsync(string systemPrompt, string userJson, CancellationToken ct)
+    private async Task<(IReadOnlyList<SuggestedBusiness> Groups, LlmTokenUsage Usage)> RequestGroupsAsync(
+        string systemPrompt, string userJson, CancellationToken ct)
     {
         var body = new
         {
@@ -194,15 +225,17 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             generationConfig = new { temperature = 0.2, responseMimeType = "application/json", responseSchema = GroupResponseSchema }
         };
 
-        var text = ExtractText(await SendWithRetryAsync(body, ct));
+        var raw = await SendWithRetryAsync(body, ct);
+        var (text, usage) = ExtractTextAndUsage(raw);
         var groups = JsonSerializer.Deserialize<List<GeminiGroup>>(text, JsonOptions)
                      ?? throw new ExternalServiceException("Gemini", "Phản hồi rỗng.");
-        return groups
+        return (groups
             .Select(g => new SuggestedBusiness(g.BusinessName ?? string.Empty, g.Description, g.EndpointIds ?? []))
-            .ToList();
+            .ToList(), usage);
     }
 
-    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)];
+    private static readonly TimeSpan[] RateLimitRetryDelays = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30)];
+    private static readonly TimeSpan[] ServerRetryDelays = [TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(8)];
 
     private async Task<string> SendWithRetryAsync(object body, CancellationToken ct)
     {
@@ -215,21 +248,42 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
             };
             request.Headers.Add("x-goog-api-key", _options.ApiKey);
 
-            using var response = await _http.SendAsync(request, ct);
-            var raw = await response.Content.ReadAsStringAsync(ct);
-            if (response.IsSuccessStatusCode) return raw;
-
-            var status = (int)response.StatusCode;
-            if ((status == 429 || status >= 500) && attempt < RetryDelays.Length)
+            HttpResponseMessage response;
+            string raw;
+            try
             {
-                await Task.Delay(RetryDelays[attempt], ct);
-                continue;
+                response = await _http.SendAsync(request, ct);
+                using (response)
+                {
+                    raw = await response.Content.ReadAsStringAsync(ct);
+                    if (response.IsSuccessStatusCode) return raw;
+
+                    var status = (int)response.StatusCode;
+                    if (status == 429 && attempt < RateLimitRetryDelays.Length)
+                    {
+                        var retryAfter = response.Headers.RetryAfter?.Delta;
+                        var delay = retryAfter is { TotalSeconds: > 0 and <= 65 }
+                            ? retryAfter.Value
+                            : RateLimitRetryDelays[attempt];
+                        await Task.Delay(delay, ct);
+                        continue;
+                    }
+                    if (status >= 500 && attempt < ServerRetryDelays.Length)
+                    {
+                        await Task.Delay(ServerRetryDelays[attempt], ct);
+                        continue;
+                    }
+                    throw new ExternalServiceException("Gemini", $"HTTP {status}: {Truncate(raw, 300)}");
+                }
             }
-            throw new ExternalServiceException("Gemini", $"HTTP {status}: {Truncate(raw, 300)}");
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested && attempt < ServerRetryDelays.Length)
+            {
+                await Task.Delay(ServerRetryDelays[attempt], ct);
+            }
         }
     }
 
-    private static string ExtractText(string raw)
+    private static (string Text, LlmTokenUsage Usage) ExtractTextAndUsage(string raw)
     {
         using var doc = JsonDocument.Parse(raw);
         var builder = new StringBuilder();
@@ -240,11 +294,26 @@ public sealed class GeminiBusinessGrouper : IBusinessGroupingAi, IDisposable
                 if (part.TryGetProperty("text", out var t)) builder.Append(t.GetString());
         }
 
+        int inputTokens = 0, outputTokens = 0, totalTokens = 0;
+        if (doc.RootElement.TryGetProperty("usageMetadata", out var meta))
+        {
+            if (meta.TryGetProperty("promptTokenCount", out var pt) && pt.TryGetInt32(out var pVal))
+                inputTokens = pVal;
+            if (meta.TryGetProperty("candidatesTokenCount", out var ctProp) && ctProp.TryGetInt32(out var cVal))
+                outputTokens = cVal;
+            if (meta.TryGetProperty("thoughtsTokenCount", out var thProp) && thProp.TryGetInt32(out var thVal))
+                outputTokens += thVal;
+            if (meta.TryGetProperty("totalTokenCount", out var ttProp) && ttProp.TryGetInt32(out var tVal))
+                totalTokens = tVal;
+            else
+                totalTokens = inputTokens + outputTokens;
+        }
+
         var text = builder.ToString();
         var start = text.IndexOf('[');
         var end = text.LastIndexOf(']');
         if (start < 0 || end <= start) throw new ExternalServiceException("Gemini", $"Phản hồi không phải mảng JSON: {Truncate(text, 300)}");
-        return text[start..(end + 1)];
+        return (text[start..(end + 1)], new LlmTokenUsage(inputTokens, outputTokens, totalTokens, 1));
     }
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max] + "...";

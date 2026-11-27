@@ -77,9 +77,27 @@ public sealed record SynthesizedEndpointSpec(
 
 public sealed record SuggestedBusiness(string BusinessName, string? Description, IReadOnlyList<int> EndpointIds);
 
+public sealed record LlmTokenUsage(int InputTokens = 0, int OutputTokens = 0, int TotalTokens = 0, int ApiCalls = 0)
+{
+    public static LlmTokenUsage Empty { get; } = new(0, 0, 0, 0);
+
+    public LlmTokenUsage Add(LlmTokenUsage other)
+        => new(
+            InputTokens + other.InputTokens,
+            OutputTokens + other.OutputTokens,
+            TotalTokens + other.TotalTokens,
+            ApiCalls + other.ApiCalls);
+}
+
+public sealed record LegacyGroupingResult(
+    IReadOnlyList<SuggestedBusiness> Groups,
+    LlmTokenUsage TokenUsage);
+
 public sealed record HybridSynthesisResult(
     IReadOnlyList<SuggestedBusiness> Groups,
-    IReadOnlyDictionary<int, SynthesizedEndpointSpec> EndpointSpecs);
+    IReadOnlyDictionary<int, SynthesizedEndpointSpec> EndpointSpecs,
+    LlmTokenUsage? TokenUsage = null,
+    IReadOnlyList<string>? Warnings = null);
 
 public static partial class BusinessTemplateGenerator
 {

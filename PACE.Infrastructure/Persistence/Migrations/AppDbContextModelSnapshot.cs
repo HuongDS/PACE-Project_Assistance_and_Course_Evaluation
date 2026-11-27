@@ -138,6 +138,10 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("AssessmentRoundRevisionId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsIndividual")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_individual");
+
                     b.Property<Guid?>("OralExamId")
                         .HasColumnType("uuid")
                         .HasColumnName("oral_exam_id");
@@ -1467,6 +1471,110 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("rooms", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralSetup", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<DateTime?>("CodeDeadline")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("code_deadline");
+
+                    b.Property<DateTime?>("CommitAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("commit_at");
+
+                    b.Property<string>("CommitSha")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("difficulty");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
+
+                    b.Property<int>("QuestionsPerStudent")
+                        .HasColumnType("integer")
+                        .HasColumnName("questions_per_student");
+
+                    b.Property<DateTime?>("ScannedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scanned_at");
+
+                    b.Property<string>("SnapshotJson")
+                        .HasColumnType("text")
+                        .HasColumnName("snapshot_json");
+
+                    b.HasKey("SessionId");
+
+                    b.ToTable("individual_oral_setups", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.OralAttempt", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<string>("AiReviewJson")
+                        .HasColumnType("text")
+                        .HasColumnName("ai_review_json");
+
+                    b.Property<DateTime?>("AiReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ai_reviewed_at");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("answers_json");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("HistoryJson")
+                        .HasColumnType("text")
+                        .HasColumnName("history_json");
+
+                    b.Property<string>("QuestionsJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("questions_json");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("version");
+
+                    b.HasKey("SessionId", "StudentId");
+
+                    b.ToTable("oral_attempts", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.Semester", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2558,6 +2666,8 @@ namespace PACE.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("PACE.Domain.Entities.AssessmentSession", b =>
                 {
+                    b.Navigation("IndividualSetup");
+
                     b.Navigation("Students");
                 });
 
@@ -2713,6 +2823,27 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Navigation("StudentProfile");
 
                     b.Navigation("Submissions");
+                });
+            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralSetup", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.AssessmentSession", "Session")
+                        .WithOne("IndividualSetup")
+                        .HasForeignKey("PACE.Domain.Entities.IndividualOralSetup", "SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.OralAttempt", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.SessionStudent", "Student")
+                        .WithOne()
+                        .HasForeignKey("PACE.Domain.Entities.OralAttempt", "SessionId", "StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
                 });
 #pragma warning restore 612, 618
         }

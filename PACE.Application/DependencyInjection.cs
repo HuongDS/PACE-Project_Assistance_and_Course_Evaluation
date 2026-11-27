@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using PACE.Application.Analysis;
 using PACE.Application.QuestionGeneration.Drawio;
@@ -21,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<IMethodSourceService, MethodSourceService>();
         services.AddScoped<IRepoAnalysisService, RepoAnalysisService>();
         services.AddScoped<IQuestionGenerationService, QuestionGenerationService>();
+        services.AddScoped<PACE.Application.Oral.ICodeSnapshotReader, PACE.Application.Oral.CodeSnapshotReader>();
+        services.AddScoped<PACE.Application.Oral.IOralAssistant, PACE.Application.Oral.OralAssistant>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IStudentAnswerService, StudentAnswerService>();
         services.AddScoped<ITemplateGenerationService, TemplateGenerationService>();
         services.AddScoped<IBatchTemplateService, BatchTemplateService>();

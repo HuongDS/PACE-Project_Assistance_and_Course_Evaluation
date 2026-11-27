@@ -38,6 +38,9 @@ public class AssessmentSession
     public string? OralQuestionsJson { get; set; }
     public string RubricJson { get; set; } = "[]";
     public Guid Version { get; set; } = Guid.NewGuid();
+    /// <summary>Phiên mở trong một khoảng thời gian, mỗi sinh viên tự vào thi đề riêng.</summary>
+    public bool IsIndividual { get; set; }
+    public IndividualOralSetup? IndividualSetup { get; set; }
     public ICollection<SessionStudent> Students { get; set; } = new List<SessionStudent>();
 }
 public class SessionStudent

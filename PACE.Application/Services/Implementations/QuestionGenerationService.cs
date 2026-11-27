@@ -30,14 +30,6 @@ public class QuestionGenerationService(
     ILogger<QuestionGenerationService> logger,
     IDrawioSpecificationStorage? specStorage = null) : IQuestionGenerationService
 {
-    // Chuỗi thay thế khe ngữ cảnh bị ẩn — giữ nguyên văn như Repo_Into_Graph (QuestionGenerate.cs).
-    private const string RawModeContextPlaceholder =
-        "Chế độ Truyền thống: Không cung cấp sơ đồ Mermaid Graph. Hãy phân tích trực tiếp từ Source Code.";
-    private const string GraphModeCodePlaceholder =
-        "Chế độ Graph: Không cung cấp mã nguồn thô. Hãy phân tích logic dựa hoàn toàn vào sơ đồ Mermaid Graph được cung cấp.";
-    private const string NoFlowContext =
-        "Không có luồng nghiệp vụ (Feature) nào được map với Business này.";
-
     private const int DifficultyMaxLength = 20;
 
     private readonly QuestionGenerationOptions _options = options.Value;
@@ -66,18 +58,8 @@ public class QuestionGenerationService(
         var threshold = _options.GraphNodeThreshold;
         var route = QuestionContextRouter.Resolve(request.Mode, nodeCount, threshold);
 
-        var hasGraph = flows.Any(f => !string.IsNullOrWhiteSpace(f.MermaidGraph));
-        if (route.ContextType == ContextType.Graph && !hasGraph)
-            throw new BadRequestException("Nghiệp vụ này chưa có sơ đồ Mermaid nào nên không sinh được câu hỏi ở mode Graph. Hãy dùng Raw hoặc phân tích lại repo.");
-
         // 3. Dựng hai khe ngữ cảnh rồi ẩn khe không dùng (giống QuestionGenerate của Repo_Into_Graph).
-        var codeBuilder = BuildCode(methods, flows);
-        var contextBuilder = BuildFlowContext(flows);
-        if (route.ContextType == ContextType.Raw) contextBuilder = RawModeContextPlaceholder;
-        var frontendMethods = methods.Where(m =>
-            m.ClassName.StartsWith(RepositoryScan.FrontendClassPrefix, StringComparison.Ordinal)).ToList();
-        if (route.ContextType == ContextType.Graph)
-            codeBuilder = frontendMethods.Count == 0 ? GraphModeCodePlaceholder : BuildCode(frontendMethods, flows);
+        var context = QuestionContextComposer.Compose(methods, flows, route);
 
         // 3.5. Kiểm tra và nạp Sơ đồ nghiệp vụ chuẩn (Ground Truth từ Draw.io) nếu có.
         string? groundTruthSpec = null;
@@ -99,13 +81,13 @@ public class QuestionGenerationService(
         // 4. Gọi OpenAI với prompt có neo tri thức.
         var prompt = QuestionPromptBuilder.Build(
             businessName: business.BusinessName,
-            codeBuilder: codeBuilder,
-            contextBuilder: contextBuilder,
+            codeBuilder: context.Code,
+            contextBuilder: context.Flow,
             numberOfQuestions: request.NumberOfQuestions,
             difficulty: difficulty,
             additionalContext: request.Description,
             groundTruthSpecification: groundTruthSpec,
-            hasFrontend: frontendMethods.Count > 0);
+            hasFrontend: context.HasFrontend);
 
         var result = await llm.GenerateJsonAsync(prompt.SystemInstruction, prompt.UserPrompt, _options.Temperature, ct);
         var generated = LlmQuestionParser.Parse(result.Text).Take(request.NumberOfQuestions).ToList();
@@ -177,62 +159,7 @@ public class QuestionGenerationService(
     }
 
     /// <summary>Số hàm phân biệt xuất hiện trong các luồng (entry + hai đầu mỗi cạnh) = N_w trong bài báo.</summary>
-    public static int CountNodes(IEnumerable<FlowQuestionContext> flows)
-    {
-        var nodes = new HashSet<Guid>();
-        foreach (var flow in flows)
-        {
-            nodes.Add(flow.EntryMethodId);
-            foreach (var edge in flow.Edges)
-            {
-                nodes.Add(edge.FromMethodId);
-                nodes.Add(edge.ToMethodId);
-            }
-        }
-        return nodes.Count;
-    }
-
-    /// <summary>Mã nguồn thô, xếp theo thứ tự xuất hiện trong luồng (entry → các bước), phần còn lại theo tên.</summary>
-    private static string BuildCode(IReadOnlyList<MethodCode> methods, IReadOnlyList<FlowQuestionContext> flows)
-    {
-        var order = new Dictionary<Guid, int>();
-        foreach (var flow in flows)
-        {
-            order.TryAdd(flow.EntryMethodId, order.Count);
-            foreach (var edge in flow.Edges)
-            {
-                order.TryAdd(edge.FromMethodId, order.Count);
-                order.TryAdd(edge.ToMethodId, order.Count);
-            }
-        }
-
-        var sb = new StringBuilder();
-        foreach (var method in methods.OrderBy(m => order.TryGetValue(m.Id, out var i) ? i : int.MaxValue))
-        {
-            sb.AppendLine($"// Class: {method.ClassName}, Method: {method.MethodName}");
-            sb.AppendLine(method.SourceCode);
-            sb.AppendLine();
-        }
-        return sb.ToString();
-    }
-
-    private static string BuildFlowContext(IReadOnlyList<FlowQuestionContext> flows)
-    {
-        if (flows.Count == 0) return NoFlowContext + Environment.NewLine;
-
-        var sb = new StringBuilder();
-        foreach (var flow in flows)
-        {
-            sb.AppendLine($"### Tên luồng: {flow.Name}");
-            if (!string.IsNullOrWhiteSpace(flow.MermaidGraph))
-            {
-                sb.AppendLine("Data Mermaid Diagram:");
-                sb.AppendLine(flow.MermaidGraph);
-            }
-            sb.AppendLine();
-        }
-        return sb.ToString();
-    }
+    public static int CountNodes(IEnumerable<FlowQuestionContext> flows) => QuestionContextComposer.CountNodes(flows);
 
     private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max];
 }

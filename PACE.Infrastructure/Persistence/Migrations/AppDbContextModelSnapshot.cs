@@ -1575,6 +1575,54 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.ToTable("oral_attempts", (string)null);
                 });
 
+            modelBuilder.Entity("PACE.Domain.Entities.StudentGitAccount", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Emails")
+                        .HasMaxLength(1300)
+                        .HasColumnType("character varying(1300)")
+                        .HasColumnName("emails");
+
+                    b.Property<string>("GitHubUsername")
+                        .HasMaxLength(39)
+                        .HasColumnType("character varying(39)")
+                        .HasColumnName("github_username");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("GitHubUsername")
+                        .IsUnique();
+
+                    b.ToTable("student_git_accounts", (string)null);
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralContext", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("ContextJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("context_json");
+
+                    b.HasKey("SessionId");
+
+                    b.ToTable("individual_oral_contexts", (string)null);
+                });
+
             modelBuilder.Entity("PACE.Domain.Entities.Semester", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2673,6 +2721,26 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.StudentGitAccount", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.User", "User")
+                        .WithOne()
+                        .HasForeignKey("PACE.Domain.Entities.StudentGitAccount", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PACE.Domain.Entities.IndividualOralContext", b =>
+                {
+                    b.HasOne("PACE.Domain.Entities.IndividualOralSetup", null)
+                        .WithOne()
+                        .HasForeignKey("PACE.Domain.Entities.IndividualOralContext", "SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("PACE.Domain.Entities.AnalysisRun", b =>

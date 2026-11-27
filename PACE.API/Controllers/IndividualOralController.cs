@@ -3,6 +3,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PACE.Application.Analysis.Template;
+using PACE.Application.QuestionGeneration.Drawio;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Oral;
 using PACE.Application.Common.Interfaces;
@@ -18,8 +20,9 @@ public record ScanCodeRequest(DateTime? CodeDeadline = null);
 public record AuthorChoice([Required, MaxLength(320)] string Key, Guid? StudentId);
 public record SaveAuthorsRequest([Required, MaxLength(200)] List<AuthorChoice> Authors);
 /// <param name="Mode">replace: làm lại cả đề; add: thêm câu; swap: thay một câu.</param>
+/// <param name="ContextMode">Cách đưa mã vào prompt như trong nghiên cứu: Raw, Graph, hoặc Hybrid chọn theo số node.</param>
 public record GenerateStudentQuestionsRequest([MaxLength(2000)] string? Instructions = null, [RegularExpression("replace|add|swap")] string Mode = "replace",
-    Guid? QuestionId = null, [Range(1, 10)] int? Count = null);
+    Guid? QuestionId = null, [Range(1, 10)] int? Count = null, [RegularExpression("Raw|Graph|Hybrid")] string ContextMode = "Hybrid");
 public record OralQuestionEdit(Guid? Id, [Required, MaxLength(4000)] string Content, [MaxLength(4000)] string? SuggestedAnswer = null,
     [MaxLength(1000)] string? MethodKey = null, Guid? CriterionId = null);
 public record SaveStudentQuestionsRequest([Required, MaxLength(20)] List<OralQuestionEdit> Questions, bool Confirmed);
@@ -36,7 +39,7 @@ public record RubricSuggestionRequest(Guid? ProjectId = null, Guid? ClassId = nu
 /// </summary>
 [ApiController, Route("api/assessments/sessions/{id:guid}/individual"), Authorize]
 public class IndividualOralController(AppDbContext db, TeachingAccess access, ICurrentUserService current,
-    ICodeSnapshotReader reader, IOralAssistant assistant, TimeProvider clock) : ControllerBase
+    ICodeSnapshotReader reader, IOralAssistant assistant, TimeProvider clock, IDrawioSpecificationStorage? specifications = null) : ControllerBase
 {
     /// <summary>Câu trả lời gửi đi đúng lúc hết giờ vẫn được nhận trong khoảng này.</summary>
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(30);
@@ -87,6 +90,22 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
             : attempt.StartedAt != null ? "inProgress"
             : attempt.ConfirmedAt != null ? "ready" : "draft";
 
+    private async Task<List<RosterStudent>> Roster(AssessmentSession session, CancellationToken ct)
+    {
+        var ids = session.Students.Select(s => s.StudentId).ToList();
+        var accounts = await db.StudentGitAccounts.AsNoTracking().Where(a => ids.Contains(a.UserId)).ToDictionaryAsync(a => a.UserId, ct);
+        return session.Students.Select(s =>
+        {
+            var account = accounts.GetValueOrDefault(s.StudentId);
+            return new RosterStudent(s.StudentId, s.Student.StudentCode ?? "", s.Student.FullName ?? "", s.Student.Email,
+                account?.GitHubUsername, GitAccountRules.Split(account?.Emails));
+        }).ToList();
+    }
+
+    /// <summary>Bản đọc mã với tác giả gán theo tài khoản sinh viên đã khai tính đến lúc này, không cần đọc lại repo.</summary>
+    private async Task<CodeSnapshot?> Current(AssessmentSession session, CancellationToken ct)
+        => Snapshot(session.IndividualSetup!) is { } stored ? OralOwnership.Apply(stored, await Roster(session, ct)) : null;
+
     // ----- Giảng viên -----
 
     [HttpGet, Authorize(Roles = "Admin,Lecturer")]
@@ -99,7 +118,8 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
     private async Task<object> View(AssessmentSession session, CourseProject project, CancellationToken ct)
     {
         var setup = session.IndividualSetup!;
-        var snapshot = Snapshot(setup);
+        var roster = await Roster(session, ct);
+        var snapshot = Snapshot(setup) is { } stored ? OralOwnership.Apply(stored, roster) : null;
         var attempts = await db.OralAttempts.Where(a => a.SessionId == session.Id).ToListAsync(ct);
         return new
         {
@@ -107,6 +127,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
             session.Title,
             session.Status,
             groupName = project.AnalysisRun.Group?.Name ?? project.AnalysisRun.RepoName,
+            groupId = project.AnalysisRun.GroupId,
             repoUrl = project.AnalysisRun.RepoUrl,
             opensAt = session.ScheduledStart,
             closesAt = session.ScheduledEnd,
@@ -127,6 +148,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
                 {
                     studentId = s.StudentId,
                     studentCode = s.Student.StudentCode,
+                    gitHub = roster.First(r => r.Id == s.StudentId).GitHub,
                     fullName = string.IsNullOrWhiteSpace(s.Student.FullName) ? s.Student.Email : s.Student.FullName,
                     state = State(attempt),
                     methodCount = owned.Count,
@@ -157,8 +179,8 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         var setup = session.IndividualSetup!;
         var deadline = request.CodeDeadline?.ToUniversalTime() ?? setup.CodeDeadline;
 
-        var read = await reader.ReadAsync(repo, deadline, ct);
-        var roster = session.Students.Select(s => new RosterStudent(s.StudentId, s.Student.StudentCode ?? "", s.Student.FullName ?? "", s.Student.Email)).ToList();
+        var read = await reader.ReadAsync(repo, deadline, StoredBusinessTemplate.Load(project.AnalysisRun), ct);
+        var roster = await Roster(session, ct);
         // Tài khoản giảng viên đã gán tay thì giữ, kể cả lựa chọn ở phiên trước của cùng nhóm.
         var earlier = await db.IndividualOralSetups.AsNoTracking()
             .Where(x => x.SessionId != id && x.Session.ProjectId == session.ProjectId && x.SnapshotJson != null)
@@ -177,13 +199,16 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         setup.CommitAt = read.Revision.CommittedAt;
         setup.ScannedAt = Now;
         setup.SnapshotJson = Write(read.Snapshot with { Authors = authors });
+        var context = await db.IndividualOralContexts.SingleOrDefaultAsync(x => x.SessionId == id, ct);
+        if (context == null) db.IndividualOralContexts.Add(context = new IndividualOralContext { SessionId = id });
+        context.ContextJson = Write(read.Context);
         session.Version = Guid.NewGuid();
         access.Audit(id, "ORAL_CODE_SCANNED", $"{read.Revision.Sha} · {read.Snapshot.Methods.Count} hàm");
         await access.Save(ct);
         return Ok(await View(session, project, ct));
     }
 
-    private const string ManualChoice = "giảng viên chọn";
+    private const string ManualChoice = OralOwnership.Manual;
 
     [HttpPut("authors"), Authorize(Roles = "Admin,Lecturer")]
     public async Task<IActionResult> SaveAuthors(Guid id, SaveAuthorsRequest request, CancellationToken ct)
@@ -191,7 +216,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         var (session, project) = await LoadStaff(id, ct);
         NotCompleted(session);
         var setup = session.IndividualSetup!;
-        var snapshot = Snapshot(setup) ?? throw new ConflictException("Chưa đọc mã nguồn.");
+        var snapshot = await Current(session, ct) ?? throw new ConflictException("Chưa đọc mã nguồn.");
         var students = session.Students.Select(s => s.StudentId).ToHashSet();
         if (request.Authors.Any(a => a is null || (a.StudentId.HasValue && !students.Contains(a.StudentId.Value))
                 || snapshot.Authors.All(x => x.Key != a.Key)))
@@ -219,7 +244,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         var attempt = await Attempt(session, studentId, ct);
         if (attempt.StartedAt != null) throw new ConflictException("Sinh viên đã vào thi, không đổi đề được. Mở lại lượt trước nếu cần.");
         var setup = session.IndividualSetup!;
-        var snapshot = Snapshot(setup) ?? throw new ConflictException("Hãy đọc mã nguồn trước khi sinh câu hỏi.");
+        var snapshot = await Current(session, ct) ?? throw new ConflictException("Hãy đọc mã nguồn trước khi sinh câu hỏi.");
         if (snapshot.Methods.Any(m => m.LineOwners is null))
             throw new ConflictException("Bản đọc mã này đã cũ, chưa ghi ai viết từng dòng. Hãy bấm đọc lại mã nguồn.");
 
@@ -230,9 +255,19 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         if (request.Mode == "add" && current.Count + count > 20) throw new BadRequestException("Một đề tối đa 20 câu.");
         var kept = request.Mode == "replace" ? [] : current;
 
-        // Thêm hoặc thay câu thì ưu tiên hàm chưa được hỏi.
-        var asked = kept.Where(q => q.MethodKey != null).Select(q => q.MethodKey!).ToHashSet();
-        var methods = OralOwnership.ForPrompt(OralOwnership.OwnedBy(snapshot, studentId), asked);
+        var stored = await db.IndividualOralContexts.AsNoTracking().Where(x => x.SessionId == id).Select(x => x.ContextJson).SingleOrDefaultAsync(ct)
+            ?? throw new ConflictException("Bản đọc mã này chưa có luồng nghiệp vụ. Hãy bấm đọc lại mã nguồn.");
+        // Đơn vị đưa vào prompt là nghiệp vụ sinh viên có tham gia, kèm sơ đồ chuẩn Draw.io nếu nghiệp vụ đó đã có.
+        var units = StudentWorkload.For(JsonSerializer.Deserialize<ResearchContext>(stored, Json)!, snapshot, studentId);
+        if (specifications != null && units.Count > 0)
+        {
+            var known = await db.Businesses.AsNoTracking().Where(b => b.AnalysisRunId == project.AnalysisRun.Id)
+                .Select(b => new { b.Id, b.BusinessName }).ToListAsync(ct);
+            for (var i = 0; i < units.Count; i++)
+                if (known.FirstOrDefault(b => b.BusinessName == units[i].Business) is { } business
+                    && (await specifications.GetSpecificationAsync(business.Id, ct))?.NormalizedFlowText is { Length: > 0 } truth)
+                    units[i] = units[i] with { GroundTruth = truth };
+        }
 
         var instructions = request.Instructions;
         if (session.AssessmentRoundRevisionId is Guid revisionId)
@@ -242,12 +277,9 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
             instructions = string.Join('\n', new[] { guide, instructions }.Where(x => !string.IsNullOrWhiteSpace(x)));
         }
 
-        var batch = await assistant.GenerateQuestionsAsync(new QuestionRequest(
-            project.AnalysisRun.Group?.TopicName ?? project.AnalysisRun.RepoName ?? "phần mềm", methods, count, setup.Difficulty, instructions,
-            Lines(JsonSerializer.Deserialize<List<SessionCriterion>>(session.RubricJson, Json)!), kept.Select(q => q.Content).ToList(),
-            kept.Where(q => q.MethodKey != null && q.FromLine != null && q.ToLine != null).Select(q => new AskedRange(q.MethodKey!, q.FromLine!.Value, q.ToLine!.Value)).ToList(),
-            // Khi đổi một câu thì tiêu chí của câu bị thay coi như còn trống.
-            kept.Where((q, i) => i != swapped && q.CriterionId != null).Select(q => q.CriterionId!.Value).ToList()), ct);
+        var batch = await assistant.GenerateQuestionsAsync(new QuestionRequest(units, count, setup.Difficulty, instructions,
+            Enum.Parse<QuestionGenerationMode>(request.ContextMode), Lines(JsonSerializer.Deserialize<List<SessionCriterion>>(session.RubricJson, Json)!),
+            current.Select(q => q.Content).ToList(), kept.Where(q => q.MethodKey != null).Select(q => q.MethodKey!).ToHashSet()), ct);
 
         var questions = request.Mode switch
         {
@@ -258,7 +290,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         attempt.QuestionsJson = Write(questions);
         attempt.ConfirmedAt = null;
         attempt.Version = Guid.NewGuid();
-        access.Audit(id, "ORAL_QUESTIONS_GENERATED", $"{studentId} · {request.Mode}");
+        access.Audit(id, "ORAL_QUESTIONS_GENERATED", $"{studentId} · {request.Mode} · {request.ContextMode}");
         await access.Save(ct);
         return Ok(new { questions, batch.Note });
     }
@@ -275,7 +307,7 @@ public class IndividualOralController(AppDbContext db, TeachingAccess access, IC
         var criteria = JsonSerializer.Deserialize<List<SessionCriterion>>(session.RubricJson, Json)!.Select(c => c.Id).ToHashSet();
 
         var old = Read<List<OralQuestionItem>>(attempt.QuestionsJson).ToDictionary(q => q.Id);
-        var snapshot = Snapshot(session.IndividualSetup!);
+        var snapshot = await Current(session, ct);
         var owned = snapshot is null ? [] : OralOwnership.OwnedBy(snapshot, studentId);
         var questions = request.Questions.Select(edit =>
         {

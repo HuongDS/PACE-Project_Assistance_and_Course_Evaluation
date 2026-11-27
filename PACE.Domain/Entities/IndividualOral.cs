@@ -17,6 +17,13 @@ public class IndividualOralSetup
     public string? SnapshotJson { get; set; }
 }
 
+/// <summary>Nghiệp vụ, luồng gọi và sơ đồ tại mốc hạn. Để bảng riêng vì lớn và chỉ cần khi sinh câu hỏi.</summary>
+public class IndividualOralContext
+{
+    public Guid SessionId { get; set; }
+    public string ContextJson { get; set; } = null!;
+}
+
 /// <summary>Đề và lượt thi của một sinh viên trong phiên.</summary>
 public class OralAttempt
 {

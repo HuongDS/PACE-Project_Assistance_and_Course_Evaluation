@@ -171,7 +171,45 @@ public sealed class JavaTreeSitterParser : ILanguageParser
                     locals[varName] = declaredType == "var" && value?.Type == "object_creation_expression"
                         ? ParserText.SimpleTypeName(value.FieldText("type"))
                         : declaredType;
+                    if (value is not null)
+                        parsed.DataFlows.Add(new ParsedDataFlow(varName, ParserText.OneLine(value.Text, 60)));
                 }
+                continue;
+            }
+
+            if (node.Type == "assignment_expression")
+            {
+                var left = node.FieldText("left");
+                var right = node.FieldText("right");
+                if (!string.IsNullOrEmpty(left) && !string.IsNullOrEmpty(right))
+                    parsed.DataFlows.Add(new ParsedDataFlow(ParserText.OneLine(left, 40), ParserText.OneLine(right, 60)));
+                continue;
+            }
+
+            if (node.Type == "if_statement")
+            {
+                var cond = node.FieldText("condition");
+                if (!string.IsNullOrEmpty(cond))
+                    parsed.Branches.Add($"if ({ParserText.OneLine(ParserText.StripParens(cond), 60)})");
+                continue;
+            }
+
+            if (node.Type == "throw_statement")
+            {
+                parsed.Branches.Add(ParserText.OneLine(node.Text, 60));
+                continue;
+            }
+
+            if (node.Type == "return_statement" && parsed.ReturnExpression is null)
+            {
+                var expr = node.NamedChildren.FirstOrDefault();
+                if (expr is not null) parsed.ReturnExpression = ParserText.OneLine(expr.Text, 60);
+                continue;
+            }
+
+            if (node.Type == "string_literal")
+            {
+                InvariantAnchorExtractor.CollectInvariantLiteral(ParserText.StringLiteralValue(node.Text), parsed.InvariantLiterals);
                 continue;
             }
 
@@ -187,15 +225,25 @@ public sealed class JavaTreeSitterParser : ILanguageParser
             var calledName = node.FieldText("name");
             if (string.IsNullOrEmpty(calledName)) continue;
 
-            var receiverType = ResolveReceiver(node.Field("object"), owner.Name, fields, locals, superName);
+            var args = node.Field("arguments")?.NamedChildren.Select(a => ParserText.OneLine(a.Text, 60)).ToList() ?? [];
+            var condition = FindCondition(node, body);
+            var objNode = node.Field("object");
+            var receiverExpr = objNode is not null ? ParserText.OneLine(objNode.Text, 50) : null;
+            var receiverType = ResolveReceiver(objNode, owner.Name, fields, locals, superName);
+
+            InvariantAnchorExtractor.CollectHttpStatusFromCall(calledName, args, parsed.InvariantLiterals);
+            var sink = InvariantAnchorExtractor.ClassifyCall(receiverType, receiverExpr, calledName, args, condition);
+            if (sink is not null) parsed.Sinks.Add(sink);
+
             if (receiverType is null) continue;
 
             parsed.Calls.Add(new ParsedCall
             {
                 ReceiverType = receiverType,
                 MethodName = calledName,
-                Condition = FindCondition(node, body),
-                ArgumentCount = node.Field("arguments")?.NamedChildren.Count ?? -1
+                Condition = condition,
+                ArgumentCount = args.Count,
+                Arguments = args
             });
         }
 

@@ -126,6 +126,7 @@ public class ProposeTopicRequest
     [MaxLength(255, ErrorMessage = "Tên đề tài tối đa 255 ký tự.")]
     public string TopicName { get; set; } = null!;
 
+    [MaxLength(4000, ErrorMessage = "Mô tả đề tài tối đa 4000 ký tự.")]
     public string? Description { get; set; }
 
     [MaxLength(500, ErrorMessage = "Đường dẫn Git repository tối đa 500 ký tự.")]

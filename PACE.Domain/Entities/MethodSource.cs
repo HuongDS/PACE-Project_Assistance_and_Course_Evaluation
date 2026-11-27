@@ -10,6 +10,8 @@ public class MethodSource
     public string ClassName { get; set; } = null!;
     public string MethodName { get; set; } = null!;
     public string? Parameters { get; set; }
+    public string? HttpVerb { get; set; }
+    public string? Route { get; set; }
     public string SourceCode { get; set; } = null!;
     public ProgrammingLanguage Language { get; set; } = ProgrammingLanguage.Other;
     public NodeType NodeType { get; set; } = NodeType.Activity;

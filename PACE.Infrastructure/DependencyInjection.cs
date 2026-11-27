@@ -30,6 +30,7 @@ public static class DependencyInjection
             opt.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<PACE.Application.QuestionGeneration.Drawio.IDrawioSpecificationStorage, Services.DbDrawioSpecificationStorage>();
 
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
         services.AddSingleton<IGitCloneService, GitCloneService>();

@@ -20,5 +20,9 @@ public class GroupTopicSubmission
     public Guid? ReviewedBy { get; set; }
     public DateTime? ReviewedAt { get; set; }
     public string? Notes { get; set; }
+    public string? ProposalFileName { get; set; }
+    public string? ProposalContentType { get; set; }
+    public long? ProposalFileSize { get; set; }
+    public byte[]? ProposalFile { get; set; }
     public Group Group { get; set; } = null!;
 }

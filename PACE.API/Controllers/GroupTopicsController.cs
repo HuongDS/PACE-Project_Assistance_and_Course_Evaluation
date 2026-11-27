@@ -20,7 +20,7 @@ public record ReviewGroupTopic([Required] string Decision, [MaxLength(4000)] str
 public record GroupTopicView(
     Guid GroupId, string GroupName, int Version, string Title, string? Description,
     string Status, Guid SubmittedBy, DateTime SubmittedAt, Guid? ReviewedBy,
-    DateTime? ReviewedAt, string? Notes);
+    DateTime? ReviewedAt, string? Notes, string? ProposalFileName, long? ProposalFileSize);
 
 [ApiController, Authorize]
 public class GroupTopicsController(AppDbContext db, TeachingAccess access) : ControllerBase
@@ -28,7 +28,7 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
     private static readonly Expression<Func<GroupTopicSubmission, GroupTopicView>> View = topic =>
         new(topic.GroupId, topic.Group.Name, topic.Version, topic.Title, topic.Description,
             topic.Status.ToString(), topic.SubmittedBy, topic.SubmittedAt,
-            topic.ReviewedBy, topic.ReviewedAt, topic.Notes);
+            topic.ReviewedBy, topic.ReviewedAt, topic.Notes, topic.ProposalFileName, topic.ProposalFileSize);
 
     private static readonly Func<GroupTopicSubmission, GroupTopicView> ToView = View.Compile();
 
@@ -95,7 +95,39 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
 
     [HttpPost("api/groups/{groupId:guid}/topics")]
     [Authorize(Roles = "Student")]
-    public async Task<IActionResult> Submit(Guid groupId, SubmitGroupTopic request, CancellationToken ct)
+    public IActionResult Submit(Guid groupId, SubmitGroupTopic request)
+        => throw new BadRequestException(ProposalFileRules.RequiredMessage);
+
+    [HttpPost("api/groups/{groupId:guid}/topics/with-proposal")]
+    [Authorize(Roles = "Student")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ProposalFileRules.MaxRequestBytes)]
+    public async Task<IActionResult> SubmitWithProposal(Guid groupId, [FromForm] SubmitGroupTopicForm form, CancellationToken ct)
+    {
+        var proposal = await ProposalFileRules.ReadAsync(form.Proposal, ct);
+        return await CreateSubmission(groupId, new SubmitGroupTopic(form.Title, form.Description, form.PreviousVersion), proposal, ct);
+    }
+
+    [HttpGet("api/groups/{groupId:guid}/topics/{version:int}/proposal")]
+    public async Task<IActionResult> DownloadProposal(Guid groupId, int version, CancellationToken ct)
+    {
+        var user = await access.User(ct);
+        var group = await LoadGroup(groupId, ct);
+        if (user.Role == UserRole.Student)
+            await RequireMember(user, groupId, ct);
+        else
+            RequireReviewer(user, group.Class);
+
+        var file = await db.GroupTopicSubmissions.AsNoTracking()
+            .Where(topic => topic.GroupId == groupId && topic.Version == version && topic.ProposalFile != null)
+            .Select(topic => new { topic.ProposalFile, topic.ProposalContentType, topic.ProposalFileName })
+            .SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Phiên bản đề tài này không có file proposal.");
+
+        return File(file.ProposalFile!, file.ProposalContentType ?? "application/octet-stream", file.ProposalFileName ?? "proposal");
+    }
+
+    private async Task<IActionResult> CreateSubmission(Guid groupId, SubmitGroupTopic request, ProposalFile proposal, CancellationToken ct)
     {
         var user = await access.User(ct);
         var group = await LoadGroup(groupId, ct);
@@ -117,7 +149,11 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
             Description = request.Description?.Trim(),
             Status = GroupTopicStatus.Pending,
             SubmittedBy = user.Id,
-            SubmittedAt = DateTime.UtcNow
+            SubmittedAt = DateTime.UtcNow,
+            ProposalFileName = proposal.FileName,
+            ProposalContentType = proposal.ContentType,
+            ProposalFileSize = proposal.Content.LongLength,
+            ProposalFile = proposal.Content
         };
         db.GroupTopicSubmissions.Add(topic);
         await access.Save(ct);
@@ -152,8 +188,86 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
         topic.ReviewedBy = user.Id;
         topic.ReviewedAt = DateTime.UtcNow;
         topic.Notes = request.Notes?.Trim();
+
+        // Duyệt xong thì nhóm phải có dự án (AnalysisRun) để bước "Liên kết repo" mở ra.
+        if (status == GroupTopicStatus.Approved)
+        {
+            group.TopicName = topic.Title;
+            await EnsureProject(group, topic.Title, approved: true, ct);
+        }
+
         await access.Save(ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Tạo dự án cho nhóm nếu đề tài đã được chấp nhận mà chưa có (dữ liệu duyệt trước bản sửa này).
+    /// Đề tài được chấp nhận khi: lần gửi mới nhất đã Approved, hoặc nhóm chọn đề tài mẫu.
+    /// </summary>
+    [HttpPost("api/groups/{groupId:guid}/project/ensure")]
+    public async Task<IActionResult> EnsureGroupProject(Guid groupId, CancellationToken ct)
+    {
+        var user = await access.User(ct);
+        var group = await LoadGroup(groupId, ct);
+        if (user.Role == UserRole.Student)
+            await RequireMember(user, groupId, ct);
+        else
+            RequireReviewer(user, group.Class);
+
+        var latest = await db.GroupTopicSubmissions.AsNoTracking().Where(topic => topic.GroupId == groupId)
+            .OrderByDescending(topic => topic.Version).FirstOrDefaultAsync(ct);
+
+        string? title = null;
+        if (latest != null)
+        {
+            if (latest.Status != GroupTopicStatus.Approved)
+                throw new ConflictException("Đề tài của nhóm chưa được giảng viên duyệt.");
+            title = latest.Title;
+        }
+        else if (group.CourseTopicId != null && !string.IsNullOrWhiteSpace(group.TopicName))
+        {
+            title = group.TopicName;
+        }
+
+        if (title == null)
+            throw new ConflictException("Nhóm chưa có đề tài được chấp nhận.");
+
+        var runId = await EnsureProject(group, title, approved: true, ct);
+        await access.Save(ct);
+        return Ok(new { analysisRunId = runId });
+    }
+
+    private async Task<Guid> EnsureProject(Group group, string title, bool approved, CancellationToken ct)
+    {
+        var run = await db.AnalysisRuns.FirstOrDefaultAsync(r => r.GroupId == group.Id, ct);
+        if (run == null)
+        {
+            run = new AnalysisRun
+            {
+                Id = Guid.NewGuid(),
+                GroupId = group.Id,
+                RepoName = title,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.AnalysisRuns.Add(run);
+        }
+        else if (string.IsNullOrWhiteSpace(run.RepoUrl))
+        {
+            run.RepoName = title;
+        }
+
+        var project = await db.CourseProjects.FirstOrDefaultAsync(p => p.AnalysisRunId == run.Id, ct);
+        if (project == null)
+        {
+            project = new CourseProject { AnalysisRunId = run.Id, CourseId = group.Class.CourseId };
+            db.CourseProjects.Add(project);
+        }
+        if (approved)
+        {
+            project.IsApproved = true;
+            project.DecidedAt ??= DateTime.UtcNow;
+        }
+        return run.Id;
     }
 
     private async Task<Group> LoadGroup(Guid id, CancellationToken ct) =>

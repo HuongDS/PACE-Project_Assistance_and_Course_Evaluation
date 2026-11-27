@@ -188,8 +188,86 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
         topic.ReviewedBy = user.Id;
         topic.ReviewedAt = DateTime.UtcNow;
         topic.Notes = request.Notes?.Trim();
+
+        // Duyệt xong thì nhóm phải có dự án (AnalysisRun) để bước "Liên kết repo" mở ra.
+        if (status == GroupTopicStatus.Approved)
+        {
+            group.TopicName = topic.Title;
+            await EnsureProject(group, topic.Title, approved: true, ct);
+        }
+
         await access.Save(ct);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Tạo dự án cho nhóm nếu đề tài đã được chấp nhận mà chưa có (dữ liệu duyệt trước bản sửa này).
+    /// Đề tài được chấp nhận khi: lần gửi mới nhất đã Approved, hoặc nhóm chọn đề tài mẫu.
+    /// </summary>
+    [HttpPost("api/groups/{groupId:guid}/project/ensure")]
+    public async Task<IActionResult> EnsureGroupProject(Guid groupId, CancellationToken ct)
+    {
+        var user = await access.User(ct);
+        var group = await LoadGroup(groupId, ct);
+        if (user.Role == UserRole.Student)
+            await RequireMember(user, groupId, ct);
+        else
+            RequireReviewer(user, group.Class);
+
+        var latest = await db.GroupTopicSubmissions.AsNoTracking().Where(topic => topic.GroupId == groupId)
+            .OrderByDescending(topic => topic.Version).FirstOrDefaultAsync(ct);
+
+        string? title = null;
+        if (latest != null)
+        {
+            if (latest.Status != GroupTopicStatus.Approved)
+                throw new ConflictException("Đề tài của nhóm chưa được giảng viên duyệt.");
+            title = latest.Title;
+        }
+        else if (group.CourseTopicId != null && !string.IsNullOrWhiteSpace(group.TopicName))
+        {
+            title = group.TopicName;
+        }
+
+        if (title == null)
+            throw new ConflictException("Nhóm chưa có đề tài được chấp nhận.");
+
+        var runId = await EnsureProject(group, title, approved: true, ct);
+        await access.Save(ct);
+        return Ok(new { analysisRunId = runId });
+    }
+
+    private async Task<Guid> EnsureProject(Group group, string title, bool approved, CancellationToken ct)
+    {
+        var run = await db.AnalysisRuns.FirstOrDefaultAsync(r => r.GroupId == group.Id, ct);
+        if (run == null)
+        {
+            run = new AnalysisRun
+            {
+                Id = Guid.NewGuid(),
+                GroupId = group.Id,
+                RepoName = title,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.AnalysisRuns.Add(run);
+        }
+        else if (string.IsNullOrWhiteSpace(run.RepoUrl))
+        {
+            run.RepoName = title;
+        }
+
+        var project = await db.CourseProjects.FirstOrDefaultAsync(p => p.AnalysisRunId == run.Id, ct);
+        if (project == null)
+        {
+            project = new CourseProject { AnalysisRunId = run.Id, CourseId = group.Class.CourseId };
+            db.CourseProjects.Add(project);
+        }
+        if (approved)
+        {
+            project.IsApproved = true;
+            project.DecidedAt ??= DateTime.UtcNow;
+        }
+        return run.Id;
     }
 
     private async Task<Group> LoadGroup(Guid id, CancellationToken ct) =>

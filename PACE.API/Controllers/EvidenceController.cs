@@ -19,7 +19,7 @@ public class EvidenceController(AppDbContext db, IGitCloneService git, TeachingA
     private async Task<string> Repository(Guid id, CancellationToken ct)
     {
         var user = await access.User(ct); var run = await db.AnalysisRuns.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("Repository unavailable.");
-        if (user.Role == UserRole.Lecturer) { await access.Project(id, ct); } else if (user.Role != UserRole.Admin && user.AnalysisRunId != id) throw new ForbiddenException();
+        if (user.Role == UserRole.Lecturer) { await access.Project(id, ct); } else if (user.Role != UserRole.Admin && user.AnalysisRunId != id)     throw new ForbiddenException();
         return run.RepoUrl ?? throw new UnprocessableException("Repository URL unavailable.");
     }
     private static async Task<string> ReadGit(string directory, IEnumerable<string> args, CancellationToken ct)

@@ -88,4 +88,5 @@ public record AnalyzeResultDto(
     int BusinessCount,
     int FlowCount,
     int EdgeCount,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    int NewApiCount = 0);

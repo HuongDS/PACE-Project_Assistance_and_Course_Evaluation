@@ -122,4 +122,74 @@ public class BusinessTemplateGeneratorTests
         Assert.Equal("Budget", business.BusinessName);
         Assert.Equal(2, business.Apis.Count);
     }
+
+    [Fact]
+    public void Hybrid_pipeline_applies_total_alpha_renaming_and_extracts_anchors_across_call_chain()
+    {
+        const string code = """
+            using Microsoft.AspNetCore.Mvc;
+
+            [ApiController]
+            [Route("api/auth")]
+            public class X99Controller : ControllerBase
+            {
+                private readonly AuthSvc _svc;
+
+                [HttpPost("abc")]
+                public IActionResult DoOp(LoginDto d1)
+                {
+                    var r1 = _svc.Fn1(d1.Username, d1.Password);
+                    if (r1 == null) return Unauthorized("INVALID_CREDENTIALS");
+                    return Ok(r1);
+                }
+            }
+
+            public class AuthSvc
+            {
+                private readonly IUserRepository _usersRepository;
+                private readonly IRefreshTokensRepository _refreshTokensRepository;
+                private readonly JwtSecurityTokenHandler _jwt;
+
+                public string? Fn1(string u, string p)
+                {
+                    var user = _usersRepository.FirstOrDefault(u);
+                    if (user == null || !BCrypt.Verify(p, user.PasswordHash))
+                        return null;
+                    var token = _jwt.CreateToken(user.Id);
+                    _refreshTokensRepository.Add(user.Id, token);
+                    return token;
+                }
+            }
+            """;
+
+        var parser = new PACE.Infrastructure.Analysis.Parsing.CSharpRoslynParser();
+        var parsed = parser.Parse([new SourceFile("X99Controller.cs", "X99Controller.cs", code)], default);
+        var endpoints = BusinessTemplateGenerator.ExtractEndpoints(parsed.Methods);
+        var ep = Assert.Single(endpoints);
+
+        var resolver = new PACE.Application.Analysis.Flow.CallResolver(parsed.Classes, parsed.Methods);
+        var slicer = new EndpointSubgraphSlicer(resolver);
+        var slice = Assert.Single(slicer.SliceAll(endpoints, parsed.Methods));
+
+        Assert.Contains(slice.CodeAnchors.DbReads, r => r.Contains("users", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(slice.CodeAnchors.DbWrites, w => w.Contains("refresh_tokens", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(slice.CodeAnchors.ExternalSdks, s => s.Contains("BCrypt.Verify", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(slice.CodeAnchors.ExternalSdks, s => s.Contains("JwtSecurityTokenHandler.CreateToken", StringComparison.OrdinalIgnoreCase));
+
+        // Total Alpha-Renaming: every method in the subgraph is anonymized to fn_1 -> fn_2
+        Assert.Contains(slice.ContextGraphSummary.CallChain, c => c.Contains("fn_1 -> fn_2", StringComparison.Ordinal));
+        Assert.NotEmpty(slice.ContextGraphSummary.CalleeSummaries);
+        Assert.NotEmpty(slice.EvidenceNodes);
+
+        var slicesById = new Dictionary<int, EndpointEvidenceSlice> { [ep.Id] = slice };
+        var grouped = BusinessTemplateGenerator.GroupByController(endpoints, slicesById);
+        var business = Assert.Single(grouped);
+
+        var api = Assert.Single(business.Apis);
+        Assert.NotNull(api.Summary);
+        Assert.NotNull(api.Behaviors);
+        Assert.NotEmpty(api.Behaviors!);
+        Assert.All(api.Behaviors!, b => Assert.NotEmpty(b.EvidenceNodes));
+        Assert.NotNull(api.CodeAnchors);
+    }
 }

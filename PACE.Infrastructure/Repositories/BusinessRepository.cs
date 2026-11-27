@@ -28,6 +28,28 @@ public class BusinessRepository(AppDbContext context) : GenericRepository<Busine
     public Task<int> DeleteByRepoAsync(Guid analysisRunId, CancellationToken ct = default)
         => DbSet.Where(b => b.AnalysisRunId == analysisRunId).ExecuteDeleteAsync(ct);
 
+    public Task<List<Business>> GetWithApisByRepoAsync(Guid analysisRunId, CancellationToken ct = default)
+        => DbSet.AsNoTracking()
+            .Include(b => b.Apis)
+            .Where(b => b.AnalysisRunId == analysisRunId)
+            .OrderBy(b => b.OrderIndex)
+            .ThenBy(b => b.CreatedAt)
+            .ToListAsync(ct);
+
+    public async Task SyncApisAsync(Guid businessId, string? description, IReadOnlyCollection<BusinessApi> apis, CancellationToken ct = default)
+    {
+        await Context.BusinessApis.Where(a => a.BusinessId == businessId).ExecuteDeleteAsync(ct);
+        var now = DateTime.UtcNow;
+        if (description is null)
+            await DbSet.Where(b => b.Id == businessId).ExecuteUpdateAsync(s => s.SetProperty(b => b.UpdatedAt, now), ct);
+        else
+            await DbSet.Where(b => b.Id == businessId).ExecuteUpdateAsync(s => s
+                .SetProperty(b => b.Description, description)
+                .SetProperty(b => b.UpdatedAt, now), ct);
+        foreach (var api in apis) api.BusinessId = businessId;
+        await Context.BusinessApis.AddRangeAsync(apis, ct);
+    }
+
     private static IQueryable<BusinessSummary> ToSummary(IQueryable<Business> query)
         => query.Select(b => new BusinessSummary(b.Id, b.AnalysisRunId, b.BusinessName, b.BusinessMethods.Count, b.Flows.Count));
 }

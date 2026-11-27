@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using PACE.Application.Analysis.Abstractions;
+using PACE.Application.Analysis.Flow;
 using PACE.Application.Analysis.Models;
 using PACE.Application.Analysis.Template;
 using PACE.Application.Common;
@@ -29,7 +31,7 @@ public sealed class TemplateGenerationService(
         {
             var run = await uow.AnalysisRuns.GetByRepoUrlAsync(url, ct);
             if (run is { TemplateSource: BusinessTemplateSource.Confirmed, BusinessTemplateJson: not null })
-                return Result(url, BusinessTemplateSource.Confirmed, string.Empty, BusinessTemplateLoader.Parse(run.BusinessTemplateJson), warnings);
+                return Result(url, BusinessTemplateSource.Confirmed, string.Empty, BusinessTemplateLoader.Parse(run.BusinessTemplateJson), warnings, LlmTokenUsage.Empty);
         }
 
         using var clone = await git.CloneAsync(url, ct);
@@ -42,7 +44,7 @@ public sealed class TemplateGenerationService(
                 try
                 {
                     var templates = BusinessTemplateLoader.Parse(existing);
-                    return Result(url, BusinessTemplateSource.Repository, string.Empty, templates, warnings);
+                    return Result(url, BusinessTemplateSource.Repository, string.Empty, templates, warnings, LlmTokenUsage.Empty);
                 }
                 catch (BadRequestException ex)
                 {
@@ -51,10 +53,11 @@ public sealed class TemplateGenerationService(
             }
         }
 
+        // Giai đoạn 1: Static Analysis & Dựng Đồ Thị Phụ Thuộc G = (V, E)
         var scan = scanner.Scan(clone.WorkingPath, ct);
         warnings.AddRange(scan.Warnings);
         if (scan.TotalFiles == 0)
-            throw new UnprocessableException("Không tìm thấy mã nguồn được hỗ trợ trong repo.");
+            throw new UnprocessableException("Không tìm thấy mã nguồn backend C#, Java hoặc JavaScript/TypeScript trong repo.");
 
         var parsed = new ParseResult();
         foreach (var parser in parsers)
@@ -62,40 +65,229 @@ public sealed class TemplateGenerationService(
         warnings.AddRange(parsed.Warnings);
 
         var endpoints = BusinessTemplateGenerator.ExtractEndpoints(parsed.Methods);
-        if (endpoints.Count == 0 && scan.FrontendFiles.Count > 0)
-            return Result(url, BusinessTemplateSource.Controller, string.Join(", ", scan.Stacks),
-                BusinessTemplateGenerator.GroupFrontend(scan.FrontendEntries()), warnings);
-
         if (endpoints.Count == 0)
             throw new UnprocessableException("Không tìm thấy controller/endpoint nào trong repo để tạo template.");
 
-        var (source, businesses) = await GroupAsync(url, endpoints, request.UseAi, warnings, ct);
-        return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses.Concat(BusinessTemplateGenerator.GroupFrontend(scan.FrontendEntries()))), warnings);
+        // Giai đoạn 2 & 3: Graph Slicing & Total Alpha-Renaming + Invariant Anchors
+        var maxNodes = Math.Clamp(request.MaxNodes ?? 25, 5, 100);
+        var resolver = new CallResolver(parsed.Classes, parsed.Methods);
+        var slicer = new EndpointSubgraphSlicer(resolver, maxNodes: maxNodes);
+        var slices = slicer.SliceAll(endpoints, parsed.Methods);
+        var slicesById = slices.ToDictionary(s => s.EndpointId);
+
+        // Giai đoạn 4: Hybrid LLM Synthesis & Gom nhóm Nghiệp vụ
+        var (source, businesses, usage) = await SynthesizeAndGroupAsync(url, endpoints, slices, slicesById, request.UseAi, request.BatchSize, warnings, ct,
+            request.GroupMissingByController);
+        return Result(url, source, string.Join(", ", scan.Stacks), BusinessTemplateLoader.Normalize(businesses), warnings, usage);
     }
 
-    private async Task<(BusinessTemplateSource, List<BusinessTemplate>)> GroupAsync(
-        string url, IReadOnlyList<TemplateEndpoint> endpoints, bool useAi, List<string> warnings, CancellationToken ct)
+    public async Task<CompareTemplateResultDto> CompareAsync(CompareTemplateRequest request, CancellationToken ct = default)
+    {
+        if (RepoUrlHelper.FindProblem(request.RepoUrl) is { } problem) throw new BadRequestException(problem);
+        var url = RepoUrlHelper.Normalize(request.RepoUrl);
+        var baseWarnings = new List<string>();
+
+        using var clone = await git.CloneAsync(url, ct);
+
+        var scan = scanner.Scan(clone.WorkingPath, ct);
+        baseWarnings.AddRange(scan.Warnings);
+        if (scan.TotalFiles == 0)
+            throw new UnprocessableException("Không tìm thấy mã nguồn backend C#, Java hoặc JavaScript/TypeScript trong repo.");
+
+        var parsed = new ParseResult();
+        foreach (var parser in parsers)
+            parsed.Merge(parser.Parse(scan.FilesFor(parser.Kind), ct));
+        baseWarnings.AddRange(parsed.Warnings);
+
+        var endpoints = BusinessTemplateGenerator.ExtractEndpoints(parsed.Methods);
+        if (endpoints.Count == 0)
+            throw new UnprocessableException("Không tìm thấy controller/endpoint nào trong repo để tạo template.");
+
+        var stacks = string.Join(", ", scan.Stacks);
+
+        // 1. Chạy phương pháp CŨ (Legacy: chỉ dựa vào tên controller, http_method, function, path)
+        var legacyWarnings = new List<string>(baseWarnings);
+        var swLegacy = Stopwatch.StartNew();
+        var (legacySource, legacyRaw, legacyUsage) = await LegacyGroupAsync(url, endpoints, request.UseAi, legacyWarnings, ct);
+        var legacyBusinesses = BusinessTemplateLoader.Normalize(legacyRaw);
+        swLegacy.Stop();
+        var legacyDto = Result(url, legacySource, stacks, legacyBusinesses, legacyWarnings, legacyUsage);
+
+        // 2. Chạy phương pháp MỚI (Hybrid: Graph Slicing + Total Alpha-Renaming + Invariant Anchors + Hybrid LLM)
+        var hybridWarnings = new List<string>(baseWarnings);
+        var swHybrid = Stopwatch.StartNew();
+        var maxNodes = Math.Clamp(request.MaxNodes ?? 25, 5, 100);
+        var resolver = new CallResolver(parsed.Classes, parsed.Methods);
+        var slicer = new EndpointSubgraphSlicer(resolver, maxNodes: maxNodes);
+        var slices = slicer.SliceAll(endpoints, parsed.Methods);
+        var slicesById = slices.ToDictionary(s => s.EndpointId);
+
+        var (hybridSource, hybridRaw, hybridUsage) = await SynthesizeAndGroupAsync(url, endpoints, slices, slicesById, request.UseAi, request.BatchSize, hybridWarnings, ct);
+        var hybridBusinesses = BusinessTemplateLoader.Normalize(hybridRaw);
+        swHybrid.Stop();
+        var hybridDto = Result(url, hybridSource, stacks, hybridBusinesses, hybridWarnings, hybridUsage);
+
+        // 3. Đối chiếu từng Endpoint giữa Cũ và Mới
+        var legacyGroupByEndpoint = MapEndpointToBusiness(legacyBusinesses);
+        var hybridGroupByEndpoint = MapEndpointToBusiness(hybridBusinesses);
+        var hybridApiByEndpoint = MapEndpointToApi(hybridBusinesses);
+
+        var endpointComparisons = new List<EndpointComparisonItemDto>(endpoints.Count);
+        foreach (var ep in endpoints)
+        {
+            var key = EndpointKey(ep.Controller, ep.HttpMethod, ep.Function, ep.Path);
+            var legacyBiz = legacyGroupByEndpoint.GetValueOrDefault(key, "(Chưa phân nhóm)");
+            var hybridBiz = hybridGroupByEndpoint.GetValueOrDefault(key, "(Chưa phân nhóm)");
+            var hybridApi = hybridApiByEndpoint.GetValueOrDefault(key);
+            var slice = slicesById[ep.Id];
+
+            endpointComparisons.Add(new EndpointComparisonItemDto(
+                ep.Id,
+                ep.Controller,
+                ep.HttpMethod,
+                ep.Function,
+                ep.Path,
+                legacyBiz,
+                hybridBiz,
+                !string.Equals(legacyBiz, hybridBiz, StringComparison.OrdinalIgnoreCase),
+                hybridApi?.Summary ?? slice.FallbackSummary,
+                hybridApi?.Behaviors?.Count ?? slice.FallbackBehaviors.Count,
+                slice.EvidenceNodes.Count,
+                slice.CodeAnchors));
+        }
+
+        var metrics = new TemplateComparisonMetricsDto(
+            swLegacy.ElapsedMilliseconds,
+            swHybrid.ElapsedMilliseconds,
+            legacyUsage.InputTokens,
+            legacyUsage.OutputTokens,
+            hybridUsage.InputTokens,
+            hybridUsage.OutputTokens,
+            legacyDto.BusinessCount,
+            hybridDto.BusinessCount,
+            endpoints.Count,
+            slices.Count(s => s.CodeAnchors.DbReads.Count > 0),
+            slices.Count(s => s.CodeAnchors.DbWrites.Count > 0),
+            slices.Count(s => s.CodeAnchors.ExternalSdks.Count > 0),
+            endpointComparisons.Count(c => c.BusinessGroupChanged));
+
+        return new CompareTemplateResultDto(url, stacks, metrics, legacyDto, hybridDto, endpointComparisons);
+    }
+
+    private async Task<(BusinessTemplateSource, List<BusinessTemplate>, LlmTokenUsage)> LegacyGroupAsync(
+        string url,
+        IReadOnlyList<TemplateEndpoint> endpoints,
+        bool useAi,
+        List<string> warnings,
+        CancellationToken ct)
     {
         if (useAi && !ai.IsConfigured)
-            warnings.Add("Chưa cấu hình Gemini:ApiKey nên nghiệp vụ được gom theo controller.");
+        {
+            warnings.Add("Chưa cấu hình Gemini:ApiKey nên bản Legacy được gom theo controller.");
+        }
         else if (useAi)
         {
             try
             {
-                var groups = await ai.GroupAsync(endpoints, ct);
-                return (BusinessTemplateSource.Ai, BusinessTemplateGenerator.ApplyGrouping(endpoints, groups, warnings));
+                var legacy = await ai.GroupWithUsageAsync(endpoints, ct);
+                return (BusinessTemplateSource.Ai, BusinessTemplateGenerator.ApplyGrouping(endpoints, legacy.Groups, warnings), legacy.TokenUsage);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                logger.LogWarning(ex, "Gemini gom nghiệp vụ cho {RepoUrl} thất bại", url);
-                warnings.Add("Gemini không gom được nghiệp vụ nên đã gom theo controller.");
+                logger.LogWarning(ex, "Gemini Legacy gom nghiệp vụ cho {RepoUrl} thất bại", url);
+                warnings.Add("Gemini Legacy không gom được nghiệp vụ nên đã gom theo controller.");
             }
         }
 
-        return (BusinessTemplateSource.Controller, BusinessTemplateGenerator.GroupByController(endpoints));
+        return (BusinessTemplateSource.Controller, BusinessTemplateGenerator.GroupByController(endpoints), LlmTokenUsage.Empty);
     }
 
+    private async Task<(BusinessTemplateSource, List<BusinessTemplate>, LlmTokenUsage)> SynthesizeAndGroupAsync(
+        string url,
+        IReadOnlyList<TemplateEndpoint> endpoints,
+        IReadOnlyList<EndpointEvidenceSlice> slices,
+        IReadOnlyDictionary<int, EndpointEvidenceSlice> slicesById,
+        bool useAi,
+        int? batchSize,
+        List<string> warnings,
+        CancellationToken ct,
+        bool groupMissing = true)
+    {
+        if (useAi && !ai.IsConfigured)
+        {
+            warnings.Add("Chưa cấu hình Gemini:ApiKey nên nghiệp vụ được gom theo controller kèm phân tích tĩnh Hybrid.");
+        }
+        else if (useAi)
+        {
+            try
+            {
+                var synthesis = await ai.SynthesizeAndGroupAsync(slices, ct, batchSize);
+                if (synthesis.Warnings is { Count: > 0 })
+                    warnings.AddRange(synthesis.Warnings);
+
+                var usage = synthesis.TokenUsage ?? LlmTokenUsage.Empty;
+                if (synthesis.Groups.Count > 0)
+                {
+                    return (BusinessTemplateSource.Ai,
+                        BusinessTemplateGenerator.ApplyGrouping(endpoints, synthesis.Groups, warnings, slicesById, synthesis.EndpointSpecs, groupMissing),
+                        usage);
+                }
+
+                // Nếu Pha 4.2 gom nhóm thất bại nhưng Pha 4.1 đã tổng hợp thành công -> vẫn giữ toàn bộ summary/behaviors và token usage!
+                return (usage.ApiCalls > 0 ? BusinessTemplateSource.Ai : BusinessTemplateSource.Controller,
+                    BusinessTemplateGenerator.GroupByController(endpoints, slicesById, synthesis.EndpointSpecs),
+                    usage);
+            }
+            catch (NotSupportedException)
+            {
+                var legacy = await ai.GroupWithUsageAsync(endpoints, ct);
+                return (BusinessTemplateSource.Ai,
+                    BusinessTemplateGenerator.ApplyGrouping(endpoints, legacy.Groups, warnings, slicesById, groupMissing: groupMissing),
+                    legacy.TokenUsage);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                logger.LogWarning(ex, "Gemini Hybrid gom nghiệp vụ cho {RepoUrl} thất bại", url);
+                warnings.Add($"Gemini không gom được nghiệp vụ ({ex.Message}) nên đã gom theo controller kèm phân tích tĩnh Hybrid.");
+            }
+        }
+
+        return (BusinessTemplateSource.Controller, BusinessTemplateGenerator.GroupByController(endpoints, slicesById), LlmTokenUsage.Empty);
+    }
+
+    private static Dictionary<string, string> MapEndpointToBusiness(IEnumerable<BusinessTemplate> businesses)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in businesses)
+        {
+            foreach (var a in b.Apis)
+            {
+                var key = EndpointKey(a.Controller, a.ResolveHttpVerb() ?? string.Empty, a.ResolveFunctionName(), a.Path);
+                map.TryAdd(key, b.BusinessName);
+            }
+        }
+        return map;
+    }
+
+    private static Dictionary<string, ApiTemplate> MapEndpointToApi(IEnumerable<BusinessTemplate> businesses)
+    {
+        var map = new Dictionary<string, ApiTemplate>(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in businesses)
+        {
+            foreach (var a in b.Apis)
+            {
+                var key = EndpointKey(a.Controller, a.ResolveHttpVerb() ?? string.Empty, a.ResolveFunctionName(), a.Path);
+                map.TryAdd(key, a);
+            }
+        }
+        return map;
+    }
+
+    private static string EndpointKey(string controller, string verb, string function, string? path)
+        => $"{controller.Trim()}|{verb.Trim()}|{function.Trim()}|{(path ?? string.Empty).Trim()}";
+
     private static GeneratedTemplateDto Result(
-        string url, BusinessTemplateSource source, string stacks, List<BusinessTemplate> businesses, List<string> warnings)
-        => new(url, source, stacks, businesses.Count, businesses.Sum(b => b.Apis.Count), businesses, warnings);
+        string url, BusinessTemplateSource source, string stacks, List<BusinessTemplate> businesses, List<string> warnings, LlmTokenUsage usage)
+        => new(url, source, stacks, businesses.Count, businesses.Sum(b => b.Apis.Count), businesses, warnings,
+            usage.InputTokens, usage.OutputTokens, usage.TotalTokens, usage.ApiCalls);
 }

@@ -116,11 +116,50 @@ public sealed class CSharpRoslynParser : ILanguageParser
             SyntaxNode? body = (SyntaxNode?)method.Body ?? method.ExpressionBody;
             if (body is not null)
             {
+                CollectControlAndDataFlow(body, parsed);
                 foreach (var invocation in body.DescendantNodes().OfType<InvocationExpressionSyntax>())
-                    CollectCalls(invocation, method, className, model, mediatorHandlers, parsed.Calls);
+                    CollectCalls(invocation, method, className, model, mediatorHandlers, parsed);
             }
 
             result.Methods.Add(parsed);
+        }
+    }
+
+    private static void CollectControlAndDataFlow(SyntaxNode body, ParsedMethod parsed)
+    {
+        foreach (var node in body.DescendantNodes())
+        {
+            switch (node)
+            {
+                case IfStatementSyntax ifStmt:
+                    parsed.Branches.Add($"if ({ParserText.OneLine(ifStmt.Condition.ToString(), 60)})");
+                    break;
+                case SwitchStatementSyntax switchStmt:
+                    parsed.Branches.Add($"switch ({ParserText.OneLine(switchStmt.Expression.ToString(), 60)})");
+                    break;
+                case ThrowStatementSyntax throwStmt when throwStmt.Expression is not null:
+                    parsed.Branches.Add($"throw {ParserText.OneLine(throwStmt.Expression.ToString(), 60)}");
+                    break;
+                case ThrowExpressionSyntax throwExpr:
+                    parsed.Branches.Add($"throw {ParserText.OneLine(throwExpr.Expression.ToString(), 60)}");
+                    break;
+                case ReturnStatementSyntax retStmt when retStmt.Expression is not null:
+                    parsed.ReturnExpression ??= ParserText.OneLine(retStmt.Expression.ToString(), 60);
+                    break;
+                case VariableDeclaratorSyntax declarator when declarator.Initializer is not null:
+                    parsed.DataFlows.Add(new ParsedDataFlow(
+                        declarator.Identifier.Text,
+                        ParserText.OneLine(declarator.Initializer.Value.ToString(), 60)));
+                    break;
+                case AssignmentExpressionSyntax assign:
+                    parsed.DataFlows.Add(new ParsedDataFlow(
+                        ParserText.OneLine(assign.Left.ToString(), 40),
+                        ParserText.OneLine(assign.Right.ToString(), 60)));
+                    break;
+                case LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression):
+                    InvariantAnchorExtractor.CollectInvariantLiteral(literal.Token.ValueText, parsed.InvariantLiterals);
+                    break;
+            }
         }
     }
 
@@ -130,26 +169,52 @@ public sealed class CSharpRoslynParser : ILanguageParser
         string className,
         SemanticModel model,
         IReadOnlyDictionary<string, List<string>> mediatorHandlers,
-        List<ParsedCall> calls)
+        ParsedMethod parsed)
     {
+        var calls = parsed.Calls;
         var condition = FindCondition(invocation, owner);
-        var argCount = invocation.ArgumentList.Arguments.Count;
+        var args = invocation.ArgumentList.Arguments.Select(a => ParserText.OneLine(a.ToString(), 60)).ToList();
+        var argCount = args.Count;
+        var assignedTo = FindAssignedTarget(invocation);
+
+        var calledMethodName = invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax ma => ma.Name.Identifier.Text,
+            IdentifierNameSyntax id => id.Identifier.Text,
+            _ => string.Empty
+        };
+        var receiverExpr = invocation.Expression is MemberAccessExpressionSyntax mExpr
+            ? ParserText.OneLine(mExpr.Expression.ToString(), 50)
+            : null;
+
+        if (!string.IsNullOrEmpty(calledMethodName))
+        {
+            InvariantAnchorExtractor.CollectHttpStatusFromCall(calledMethodName, args, parsed.InvariantLiterals);
+        }
+
         var symbolInfo = model.GetSymbolInfo(invocation);
         var symbol = symbolInfo.Symbol as IMethodSymbol ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
 
         if (symbol is not null)
         {
             var declaring = symbol.ReducedFrom?.ContainingType ?? symbol.ContainingType;
+            var declaringName = declaring is not null ? NestedName(declaring) : null;
             if (declaring is not null && declaring.Locations.Any(l => l.IsInSource))
             {
                 calls.Add(new ParsedCall
                 {
-                    ReceiverType = NestedName(declaring),
+                    ReceiverType = declaringName,
                     MethodName = symbol.Name,
                     Condition = condition,
-                    ArgumentCount = symbol.ReducedFrom is null ? argCount : argCount + 1
+                    ArgumentCount = symbol.ReducedFrom is null ? argCount : argCount + 1,
+                    Arguments = args,
+                    AssignedTo = assignedTo
                 });
+                return;
             }
+
+            var sink = InvariantAnchorExtractor.ClassifyCall(declaringName, receiverExpr, symbol.Name, args, condition);
+            if (sink is not null) parsed.Sinks.Add(sink);
             return;
         }
 
@@ -159,18 +224,55 @@ public sealed class CSharpRoslynParser : ILanguageParser
             if (name is "Send" or "Publish" && TryMediatorTarget(invocation, model, mediatorHandlers, out var handlers))
             {
                 foreach (var handler in handlers)
-                    calls.Add(new ParsedCall { ReceiverType = handler, MethodName = "Handle", Condition = condition });
+                    calls.Add(new ParsedCall { ReceiverType = handler, MethodName = "Handle", Condition = condition, Arguments = args, AssignedTo = assignedTo });
                 return;
             }
 
             var receiverType = model.GetTypeInfo(memberAccess.Expression).Type;
+            var receiverTypeName = receiverType is INamedTypeSymbol named ? NestedName(named) : receiverType?.Name;
             if (receiverType is not null && receiverType.TypeKind != TypeKind.Error && receiverType.Locations.Any(l => l.IsInSource))
-                calls.Add(new ParsedCall { ReceiverType = receiverType is INamedTypeSymbol named ? NestedName(named) : receiverType.Name, MethodName = name, Condition = condition, ArgumentCount = argCount });
+            {
+                calls.Add(new ParsedCall
+                {
+                    ReceiverType = receiverTypeName,
+                    MethodName = name,
+                    Condition = condition,
+                    ArgumentCount = argCount,
+                    Arguments = args,
+                    AssignedTo = assignedTo
+                });
+                return;
+            }
+
+            var sink = InvariantAnchorExtractor.ClassifyCall(receiverTypeName, receiverExpr, name, args, condition);
+            if (sink is not null) parsed.Sinks.Add(sink);
             return;
         }
 
         if (invocation.Expression is IdentifierNameSyntax identifier)
-            calls.Add(new ParsedCall { ReceiverType = className, MethodName = identifier.Identifier.Text, Condition = condition, ArgumentCount = argCount });
+        {
+            var idName = identifier.Identifier.Text;
+            calls.Add(new ParsedCall
+            {
+                ReceiverType = className,
+                MethodName = idName,
+                Condition = condition,
+                ArgumentCount = argCount,
+                Arguments = args,
+                AssignedTo = assignedTo
+            });
+        }
+    }
+
+    private static string? FindAssignedTarget(SyntaxNode invocation)
+    {
+        for (var p = invocation.Parent; p is not null; p = p.Parent)
+        {
+            if (p is VariableDeclaratorSyntax v) return v.Identifier.Text;
+            if (p is AssignmentExpressionSyntax a) return ParserText.OneLine(a.Left.ToString(), 30);
+            if (p is StatementSyntax or MemberDeclarationSyntax) break;
+        }
+        return null;
     }
 
     private static bool TryMediatorTarget(

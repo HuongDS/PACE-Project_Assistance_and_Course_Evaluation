@@ -16,4 +16,10 @@ public class GeminiOptions
     public int MaxRetries { get; set; } = 5;
 
     public int InitialRetryDelaySeconds { get; set; } = 5;
+
+    /// <summary>
+    /// Model dự phòng khi model chính quá tải (HTTP 503/429) sau khi đã retry hết, ví dụ một bản flash khác.
+    /// Để trống thì không đổi model.
+    /// </summary>
+    public string? FallbackModel { get; set; }
 }

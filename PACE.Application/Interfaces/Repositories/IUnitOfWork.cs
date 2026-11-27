@@ -23,6 +23,7 @@ public interface IUnitOfWork
     IProfileRepository Profiles { get; }
     IOralPracticeRepository OralPractices { get; }
     IMilestoneRepository Milestones { get; }
+    IRepoBusinessRepository RepoBusinesses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 

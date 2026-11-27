@@ -22,6 +22,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<CourseProject> CourseProjects => Set<CourseProject>();
     public DbSet<AssessmentSession> AssessmentSessions => Set<AssessmentSession>();
     public DbSet<SessionStudent> SessionStudents => Set<SessionStudent>();
+    public DbSet<IndividualOralSetup> IndividualOralSetups => Set<IndividualOralSetup>();
+    public DbSet<OralAttempt> OralAttempts => Set<OralAttempt>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<StudentProfile> StudentProfiles => Set<StudentProfile>();

@@ -14,8 +14,10 @@ namespace PACE.API.Controllers;
 
 public record CreateCourseRequest([Required, MaxLength(40)] string Code, [Required, MaxLength(255)] string Name, int Credits = 3, string? Semester = null, Guid? LecturerId = null);
 public record TopicDecision(bool IsApproved, [MaxLength(4000)] string? Notes);
-public record SessionCriterion(Guid Id, [Required, MaxLength(255)] string Title, [MaxLength(4000)] string Description, [Range(0.01, 1000)] decimal MaxScore, [Range(0.01, 100)] decimal Weight);
-public record CreateSessionRequest(Guid ProjectId, [Required, MaxLength(255)] string Title, DateTime ScheduledStart, DateTime ScheduledEnd, [Required, MinLength(1), MaxLength(100)] List<Guid> StudentIds, [MinLength(1), MaxLength(100)] List<SessionCriterion>? Criteria, Guid? OralExamId = null, Guid? AssessmentRoundRevisionId = null);
+public record SessionCriterion(Guid Id, [Required, MaxLength(255)] string Title, [MaxLength(4000)] string Description, [Range(0.01, 1000)] decimal MaxScore, [Range(0.01, 100)] decimal Weight,
+    [MaxLength(6)] List<PACE.Application.Oral.RubricLevel>? Levels = null);
+public record CreateSessionRequest(Guid ProjectId, [Required, MaxLength(255)] string Title, DateTime ScheduledStart, DateTime ScheduledEnd, [Required, MinLength(1), MaxLength(100)] List<Guid> StudentIds, [MinLength(1), MaxLength(100)] List<SessionCriterion>? Criteria, Guid? OralExamId = null, Guid? AssessmentRoundRevisionId = null, IndividualOralOptions? Individual = null);
+public record SaveSessionRubricRequest([Required, MinLength(1), MaxLength(100)] List<SessionCriterion> Criteria);
 public record ScoreInput(Guid CriterionId, [Range(0, 1000)] decimal Score, [MaxLength(4000)] string? Feedback);
 public record EvaluateRequest([Required, MinLength(1), MaxLength(100)] List<ScoreInput> Evaluations);
 
@@ -396,6 +398,8 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             s.Title,
             s.OralExamId,
             s.AssessmentRoundRevisionId,
+            s.IsIndividual,
+            s.ProjectId,
             courseCode,
             groupName,
             s.Status,
@@ -403,7 +407,7 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             s.ScheduledEnd,
             s.ActualStartTime,
             s.ActualEndTime,
-            rubric = new { id = s.Id, courseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = new object[0] }), totalScore = 100 },
+            rubric = new { id = s.Id, courseId, title = s.Title, criteria = criteria.Select(c => new { c.Id, c.Title, c.Description, c.MaxScore, c.Weight, levels = c.Levels ?? [] }), totalScore = 100 },
             participants = s.Students.Select(x => new { user = new { id = x.Student.Id, email = x.Student.Email, fullName = string.IsNullOrWhiteSpace(x.Student.FullName) ? x.Student.Email : x.Student.FullName, role = "STUDENT", createdAt = x.Student.CreatedAt }, role = "CANDIDATE", isAudioActive = false, isVideoActive = false, isSpeaking = false, connectionQuality = "disconnected" }),
             oralQuestions = student || s.OralQuestionsJson is null
                 ? null : JsonSerializer.Deserialize<List<OralQuestionSnapshot>>(s.OralQuestionsJson, Json),
@@ -411,7 +415,7 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
                 .Where(x => x.OralEvidenceJson != null)
                 .ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<OralEvidenceInput>>(x.OralEvidenceJson!, Json)),
             studentEvaluations = s.Students.Where(x => x.EvaluationJson != null &&
-                (!student || (x.StudentId == current.UserId && (s.OralQuestionsJson == null || s.Status == "COMPLETED")))).ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<ScoreInput>>(x.EvaluationJson!, Json))
+                (!student || (x.StudentId == current.UserId && ((s.OralQuestionsJson == null && !s.IsIndividual) || s.Status == "COMPLETED")))).ToDictionary(x => x.StudentId, x => JsonSerializer.Deserialize<List<ScoreInput>>(x.EvaluationJson!, Json))
         };
     }
     [ProducesResponseType(typeof(SessionSummaryView[]), 200)]
@@ -429,7 +433,7 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             .OrderByDescending(s => s.ScheduledStart)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(s => new { s.Id, s.Title, s.Status, s.ProjectId, s.ScheduledStart, s.ScheduledEnd, s.OralExamId, s.AssessmentRoundRevisionId })
+            .Select(s => new { s.Id, s.Title, s.Status, s.ProjectId, s.ScheduledStart, s.ScheduledEnd, s.OralExamId, s.AssessmentRoundRevisionId, s.IsIndividual })
             .ToListAsync(ct));
     }
     [ProducesResponseType(typeof(SessionView), 200)]
@@ -445,12 +449,13 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             return Ok(Array.Empty<AssessmentRoundOption>());
         GroupTopicsController.RequireReviewer(await access.User(ct), courseClass);
 
-        return Ok(await db.AssessmentRoundRevisions.AsNoTracking()
+        var latest = await db.AssessmentRoundRevisions.AsNoTracking()
             .Where(x => x.Round.Milestone.ClassId == courseClass.Id &&
                 !db.AssessmentRoundRevisions.Any(other => other.RoundId == x.RoundId && other.Version > x.Version))
             .OrderBy(x => x.OpensAt).ThenBy(x => x.RoundId)
-            .Select(x => new AssessmentRoundOption(x.Id, x.RoundId, x.Version, x.Title, x.OpensAt, x.ClosesAt))
-            .ToListAsync(ct));
+            .ToListAsync(ct);
+        return Ok(latest.Select(x => new AssessmentRoundOption(x.Id, x.RoundId, x.Version, x.Title, x.OpensAt, x.ClosesAt, x.DueAt,
+            JsonSerializer.Deserialize<AssessmentRoundConfiguration>(x.ConfigurationJson)?.Rubric)).ToList());
     }
 
     [ProducesResponseType(typeof(ResourceCreated), 201)]
@@ -468,7 +473,12 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
         if (validStudentsCount != request.StudentIds.Count)
             return BadRequest(new { error = "Students must belong to this project." });
 
+        var individual = request.Individual;
+        if (individual != null && request.OralExamId != null)
+            return BadRequest(new { error = "An individual oral session builds its own questions; do not attach an oral exam." });
+
         var criteria = request.Criteria;
+        DateTime? roundDue = null;
         if (request.AssessmentRoundRevisionId is Guid revisionId)
         {
             var courseClass = p.AnalysisRun.Group?.Class
@@ -480,7 +490,10 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             if (request.ScheduledStart < revision.OpensAt || request.ScheduledEnd > revision.ClosesAt)
                 throw new BadRequestException("Schedule the session within the assessment round's published window.");
 
-            criteria = JsonSerializer.Deserialize<AssessmentRoundConfiguration>(revision.ConfigurationJson)!.Rubric;
+            roundDue = revision.DueAt;
+            // Phiên vấn đáp riêng cho giảng viên chỉnh rubric ngay lúc tạo; không gửi thì dùng rubric của đợt.
+            if (individual == null || criteria == null)
+                criteria = JsonSerializer.Deserialize<AssessmentRoundConfiguration>(revision.ConfigurationJson)!.Rubric;
         }
         if (criteria is null || criteria.Any(c => c is null) ||
             criteria.Select(c => c.Id).Distinct().Count() != criteria.Count || criteria.Sum(c => c.Weight) != 100)
@@ -500,6 +513,19 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
             RubricJson = JsonSerializer.Serialize(criteria, Json),
             Students = request.StudentIds.Select(id => new SessionStudent { StudentId = id }).ToList()
         };
+        if (individual != null)
+        {
+            s.IsIndividual = true;
+            s.IndividualSetup = new IndividualOralSetup
+            {
+                SessionId = s.Id,
+                DurationMinutes = individual.DurationMinutes,
+                QuestionsPerStudent = individual.QuestionsPerStudent,
+                Difficulty = string.IsNullOrWhiteSpace(individual.Difficulty) ? "Trung bình" : individual.Difficulty.Trim(),
+                CodeDeadline = individual.CodeDeadline?.ToUniversalTime() ?? roundDue
+            };
+            db.OralAttempts.AddRange(s.Students.Select(x => new OralAttempt { SessionId = s.Id, StudentId = x.StudentId, Student = x }));
+        }
         db.AssessmentSessions.Add(s); access.Audit(s.Id, "SESSION_CREATED", s.Title); await access.Save(ct); return CreatedAtAction(nameof(Get), new { id = s.Id }, new { s.Id });
     }
     [ProducesResponseType(typeof(SessionStartView), 200)]
@@ -510,6 +536,11 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
         var project = await access.Project(s.ProjectId, ct);
         await access.Staff(project, ct);
         SessionRules.Require(s.Status, "CREATED");
+        if (s.IsIndividual)
+        {
+            var waiting = await db.OralAttempts.CountAsync(a => a.SessionId == id && a.ConfirmedAt == null, ct);
+            if (waiting > 0) throw new ConflictException($"Còn {waiting} sinh viên chưa được chốt đề.");
+        }
 
         if (s.OralExamId is Guid examId)
             s.OralQuestionsJson = JsonSerializer.Serialize(await LoadOralQuestions(examId, project, ct), Json);
@@ -533,6 +564,27 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
         if (questions is null || questions.Count == 0)
             throw new BadRequestException("Select a non-empty oral exam from the project's class.");
         return questions;
+    }
+
+    /// <summary>Chỉnh tiêu chí của một phiên khi chưa chấm ai.</summary>
+    [HttpPut("{id:guid}/rubric"), Authorize(Roles = "Admin,Lecturer")]
+    public async Task<IActionResult> SaveRubric(Guid id, SaveSessionRubricRequest request, CancellationToken ct)
+    {
+        var s = await Load(id, ct); await access.Staff(await access.Project(s.ProjectId, ct), ct);
+        if (s.Status == "COMPLETED" || s.Students.Any(x => x.EvaluationJson != null))
+            throw new ConflictException("Đã có điểm theo rubric này nên không đổi được nữa.");
+        var criteria = request.Criteria;
+        if (criteria.Any(c => c is null || string.IsNullOrWhiteSpace(c.Title) || c.MaxScore <= 0 || c.Weight <= 0) ||
+            criteria.Select(c => c.Id).Distinct().Count() != criteria.Count || criteria.Sum(c => c.Weight) != 100)
+            throw new BadRequestException("Mỗi tiêu chí cần tên, trọng số dương và tổng trọng số bằng 100.");
+        s.RubricJson = JsonSerializer.Serialize(criteria, Json);
+        s.Version = Guid.NewGuid();
+        // Nhận xét cũ viết theo tiêu chí cũ.
+        foreach (var attempt in await db.OralAttempts.Where(a => a.SessionId == id && a.AiReviewJson != null).ToListAsync(ct))
+        { attempt.AiReviewJson = null; attempt.AiReviewedAt = null; attempt.Version = Guid.NewGuid(); }
+        access.Audit(id, "SESSION_RUBRIC_CHANGED", $"{criteria.Count} tiêu chí");
+        await access.Save(ct);
+        return NoContent();
     }
 
     [HttpPut("{id:guid}/students/{studentId:guid}/oral-evidence"), Authorize(Roles = "Admin,Lecturer")]
@@ -571,6 +623,12 @@ public class AssessmentSessionsController(AppDbContext db, TeachingAccess access
         var s = await Load(id, ct); await access.Staff(await access.Project(s.ProjectId, ct), ct); SessionRules.Require(s.Status, "IN_PROGRESS"); var student = s.Students.SingleOrDefault(x => x.StudentId == studentId) ?? throw new NotFoundException("Student not assigned to session.");
         if (s.OralQuestionsJson is not null && student.OralEvidenceJson is null)
             throw new ConflictException("Record this student's oral evidence before scoring.");
+        if (s.IsIndividual && DateTime.UtcNow <= s.ScheduledEnd)
+        {
+            var attempt = await db.OralAttempts.AsNoTracking().SingleAsync(a => a.SessionId == id && a.StudentId == studentId, ct);
+            if (IndividualOralController.Finished(attempt, DateTime.UtcNow) == null)
+                throw new ConflictException("Sinh viên chưa làm xong và phiên vẫn còn mở.");
+        }
         SessionRules.ValidateScores(JsonSerializer.Deserialize<List<SessionCriterion>>(s.RubricJson, Json)!, request.Evaluations);
         student.EvaluationJson = JsonSerializer.Serialize(request.Evaluations, Json); student.EvaluatorId = current.UserId; student.EvaluatedAt = DateTime.UtcNow; s.Version = Guid.NewGuid(); access.Audit(id, "SCORE_RECORDED", studentId.ToString()); await access.Save(ct); return NoContent();
     }

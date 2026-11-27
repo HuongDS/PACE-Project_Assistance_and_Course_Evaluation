@@ -620,9 +620,42 @@ internal sealed class JsFileAnalyzer
 
             foreach (var node in body.Descendants())
             {
-                if (node.Type == "variable_declarator") RegisterLocal(node, locals);
+                if (node.Type == "variable_declarator")
+                {
+                    RegisterLocal(node, locals);
+                    var vName = node.FieldText("name");
+                    var vVal = node.Field("value");
+                    if (!string.IsNullOrEmpty(vName) && vVal is not null)
+                        method.DataFlows.Add(new ParsedDataFlow(ParserText.OneLine(vName, 40), ParserText.OneLine(vVal.Text, 60)));
+                    continue;
+                }
+                if (node.Type == "assignment_expression")
+                {
+                    var left = node.FieldText("left");
+                    var right = node.FieldText("right");
+                    if (!string.IsNullOrEmpty(left) && !string.IsNullOrEmpty(right))
+                        method.DataFlows.Add(new ParsedDataFlow(ParserText.OneLine(left, 40), ParserText.OneLine(right, 60)));
+                    continue;
+                }
+                if (node.Type == "if_statement")
+                {
+                    var cond = node.FieldText("condition");
+                    if (!string.IsNullOrEmpty(cond))
+                        method.Branches.Add($"if ({ParserText.OneLine(ParserText.StripParens(cond), 60)})");
+                    continue;
+                }
+                if (node.Type == "throw_statement")
+                {
+                    method.Branches.Add(ParserText.OneLine(node.Text, 60));
+                    continue;
+                }
+                if (node.Type == "string")
+                {
+                    InvariantAnchorExtractor.CollectInvariantLiteral(ParserText.StringLiteralValue(node.Text), method.InvariantLiterals);
+                    continue;
+                }
                 if (node.Type != "call_expression") continue;
-                var call = ResolveCall(node, body, className, classContext, locals);
+                var call = ResolveCall(node, body, className, classContext, locals, method);
                 if (call is not null) method.Calls.Add(call);
             }
         }
@@ -646,21 +679,26 @@ internal sealed class JsFileAnalyzer
         locals[name.Text] = type is null ? null : ParserText.SimpleTypeName(type);
     }
 
-    private ParsedCall? ResolveCall(Node call, Node body, string className, ClassContext? classContext, Dictionary<string, string?> locals)
+    private ParsedCall? ResolveCall(Node call, Node body, string className, ClassContext? classContext, Dictionary<string, string?> locals, ParsedMethod ownerMethod)
     {
         var function = call.Field("function");
         if (function is null) return null;
-        var argCount = call.Field("arguments")?.NamedChildren.Count ?? -1;
+        var args = call.Field("arguments")?.NamedChildren.Where(a => a.Type != "comment").Select(a => ParserText.OneLine(a.Text, 60)).ToList() ?? [];
+        var argCount = args.Count;
         var condition = FindCondition(call, body);
 
         if (function.Type == "identifier")
         {
             var name = function.Text;
+            InvariantAnchorExtractor.CollectHttpStatusFromCall(name, args, ownerMethod.InvariantLiterals);
+            var idSink = InvariantAnchorExtractor.ClassifyCall(null, null, name, args, condition);
+            if (idSink is not null) ownerMethod.Sinks.Add(idSink);
+
             if (locals.ContainsKey(name)) return null;
             if (_moduleFunctionNames.Contains(name))
-                return new ParsedCall { ReceiverType = _module, MethodName = name, Condition = condition, ArgumentCount = argCount };
+                return new ParsedCall { ReceiverType = _module, MethodName = name, Condition = condition, ArgumentCount = argCount, Arguments = args };
             if (_imports.TryGetValue(name, out var imported) && imported.Export is not null)
-                return new ParsedCall { ReceiverType = imported.Module, MethodName = imported.Export, Condition = condition, ArgumentCount = argCount };
+                return new ParsedCall { ReceiverType = imported.Module, MethodName = imported.Export, Condition = condition, ArgumentCount = argCount, Arguments = args };
             return null;
         }
 
@@ -668,6 +706,9 @@ internal sealed class JsFileAnalyzer
         var property = function.FieldText("property");
         var obj = function.Field("object");
         if (string.IsNullOrEmpty(property) || obj is null) return null;
+
+        var receiverExpr = ParserText.OneLine(obj.Text, 50);
+        InvariantAnchorExtractor.CollectHttpStatusFromCall(property, args, ownerMethod.InvariantLiterals);
 
         string? receiver = null;
         switch (obj.Type)
@@ -696,9 +737,12 @@ internal sealed class JsFileAnalyzer
             }
         }
 
+        var sink = InvariantAnchorExtractor.ClassifyCall(receiver, receiverExpr, property, args, condition);
+        if (sink is not null) ownerMethod.Sinks.Add(sink);
+
         return string.IsNullOrEmpty(receiver)
             ? null
-            : new ParsedCall { ReceiverType = receiver, MethodName = property, Condition = condition, ArgumentCount = argCount };
+            : new ParsedCall { ReceiverType = receiver, MethodName = property, Condition = condition, ArgumentCount = argCount, Arguments = args };
     }
 
     private bool IsHonoRouter(Node? node, int depth = 0)

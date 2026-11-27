@@ -19,6 +19,33 @@ public sealed class BusinessTemplate
     public List<ApiTemplate> Apis { get; set; } = [];
 }
 
+public sealed class ApiBehaviorClaim
+{
+    [JsonPropertyName("claim_id")]
+    public string ClaimId { get; set; } = string.Empty;
+
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = string.Empty;
+
+    [JsonPropertyName("evidence_nodes")]
+    public List<string> EvidenceNodes { get; set; } = [];
+
+    [JsonPropertyName("confidence")]
+    public double Confidence { get; set; } = 0.95;
+}
+
+public sealed class ApiCodeAnchors
+{
+    [JsonPropertyName("db_reads")]
+    public List<string> DbReads { get; set; } = [];
+
+    [JsonPropertyName("db_writes")]
+    public List<string> DbWrites { get; set; } = [];
+
+    [JsonPropertyName("external_sdks")]
+    public List<string> ExternalSdks { get; set; } = [];
+}
+
 public sealed class ApiTemplate
 {
     [JsonPropertyName("controller")]
@@ -35,6 +62,15 @@ public sealed class ApiTemplate
 
     [JsonPropertyName("path")]
     public string? Path { get; set; }
+
+    [JsonPropertyName("summary")]
+    public string? Summary { get; set; }
+
+    [JsonPropertyName("behaviors")]
+    public List<ApiBehaviorClaim>? Behaviors { get; set; }
+
+    [JsonPropertyName("code_anchors")]
+    public ApiCodeAnchors? CodeAnchors { get; set; }
 
     public string ResolveFunctionName()
     {

@@ -5,6 +5,19 @@ namespace PACE.Application.Analysis.Models;
 
 public sealed record SourceFile(string FullPath, string RelativePath, string Content);
 
+public enum SinkKind
+{
+    DbRead,
+    DbWrite,
+    SdkCall,
+    HttpOut,
+    EventPub
+}
+
+public sealed record ParsedSink(SinkKind Kind, string Target, string? Detail = null, string? Condition = null);
+
+public sealed record ParsedDataFlow(string Variable, string Source, string? TargetCall = null);
+
 public sealed class ParsedClass
 {
     public required string Name { get; init; }
@@ -26,6 +39,8 @@ public sealed class ParsedCall
     public required string MethodName { get; init; }
     public string? Condition { get; init; }
     public int ArgumentCount { get; init; } = -1;
+    public List<string> Arguments { get; init; } = [];
+    public string? AssignedTo { get; init; }
 }
 
 public sealed class ParsedMethod
@@ -44,7 +59,11 @@ public sealed class ParsedMethod
     public bool IsDecision { get; init; }
     public string? HttpVerb { get; set; }
     public string? Route { get; set; }
-    public List<ParsedCall> Calls { get; } = [];
+    public List<ParsedCall> Calls { get; init; } = [];
+    public List<ParsedSink> Sinks { get; init; } = [];
+    public List<string> Branches { get; init; } = [];
+    public List<ParsedDataFlow> DataFlows { get; init; } = [];
+    public List<string> InvariantLiterals { get; init; } = [];
 
     public string Label => $"{ClassName}.{MethodName}";
 }

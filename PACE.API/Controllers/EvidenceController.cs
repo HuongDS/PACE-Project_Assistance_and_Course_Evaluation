@@ -18,8 +18,9 @@ public class EvidenceController(AppDbContext db, IGitCloneService git, TeachingA
 {
     private async Task<string> Repository(Guid id, CancellationToken ct)
     {
-        var user = await access.User(ct); var run = await db.AnalysisRuns.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("Repository unavailable.");
-        if (user.Role == UserRole.Lecturer) { await access.Project(id, ct); } else if (user.Role != UserRole.Admin && user.AnalysisRunId != id) throw new ForbiddenException();
+        var run = await db.AnalysisRuns.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw new NotFoundException("Repository unavailable.");
+        // Dùng chung luật với TeachingAccess.Project: Admin, Lecturer của lớp, Student (AnalysisRunId, run.Users hoặc thành viên group)
+        await access.Project(id, ct);
         return run.RepoUrl ?? throw new UnprocessableException("Repository URL unavailable.");
     }
     private static async Task<string> ReadGit(string directory, IEnumerable<string> args, CancellationToken ct)

@@ -11,7 +11,10 @@ public class GroupSubmission
     public string? FileName { get; set; }
     public string? ContentType { get; set; }
     public long? FileSize { get; set; }
+    /// <summary>Nội dung tệp khi lưu trong database; null nếu tệp nằm ở kho ngoài.</summary>
     public byte[]? Content { get; set; }
+    /// <summary>Khóa của tệp ở kho ngoài (Cloudinary); null nếu tệp nằm trong database.</summary>
+    public string? StorageKey { get; set; }
     public string? Url { get; set; }
     public string? Note { get; set; }
     public Guid SubmittedBy { get; set; }

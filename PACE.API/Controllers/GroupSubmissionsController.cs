@@ -7,6 +7,7 @@ using PACE.Application.Common.Exceptions;
 using PACE.Domain.Entities;
 using PACE.Domain.Enums;
 using PACE.Infrastructure.Persistence;
+using PACE.Infrastructure.Storage;
 
 namespace PACE.API.Controllers;
 
@@ -79,6 +80,10 @@ public static class SubmissionRules
         return (name, type);
     }
 
+    /// <summary>Khóa của tệp ở kho ngoài. Không dùng tên tệp người nộp đặt, chỉ giữ đuôi.</summary>
+    public static string StorageKey(Guid groupId, Guid id, string fileName) =>
+        $"pace/groups/{groupId:N}/{id:N}{Path.GetExtension(fileName).ToLowerInvariant()}";
+
     public static string Link(string url)
     {
         var value = url.Trim();
@@ -110,7 +115,7 @@ public static class SubmissionRules
 }
 
 [ApiController, Authorize, Route("api/groups/{groupId:guid}/submissions")]
-public class GroupSubmissionsController(AppDbContext db, TeachingAccess access) : ControllerBase
+public class GroupSubmissionsController(AppDbContext db, TeachingAccess access, IFileStore store, ILogger<GroupSubmissionsController> logger) : ControllerBase
 {
     private record Scope(User User, Group Group, bool Reviewer, bool Leader);
 
@@ -194,14 +199,30 @@ public class GroupSubmissionsController(AppDbContext db, TeachingAccess access) 
             item.FileSize = file.Length;
             using var buffer = new MemoryStream((int)file.Length);
             await file.CopyToAsync(buffer, ct);
-            item.Content = buffer.ToArray();
+            var content = buffer.ToArray();
+            if (store.Enabled)
+            {
+                item.StorageKey = SubmissionRules.StorageKey(groupId, item.Id, item.FileName);
+                await store.UploadAsync(item.StorageKey, content, item.FileName, ct);
+            }
+            else
+                item.Content = content;
         }
         else
             item.Url = SubmissionRules.Link(request.Url!);
 
         db.GroupSubmissions.Add(item);
         access.Audit(item.Id, "GROUP_WORK_SUBMITTED", item.Deliverable);
-        await access.Save(ct);
+        try
+        {
+            await access.Save(ct);
+        }
+        catch when (item.StorageKey != null)
+        {
+            // Không ghi được vào database thì tệp vừa đẩy lên thành tệp thừa, gỡ đi.
+            await Discard(item.StorageKey);
+            throw;
+        }
         return CreatedAtAction(nameof(Get), new { groupId }, new { item.Id });
     }
 
@@ -210,11 +231,12 @@ public class GroupSubmissionsController(AppDbContext db, TeachingAccess access) 
     {
         await Require(groupId, ct);
         var item = await db.GroupSubmissions.AsNoTracking().Where(x => x.Id == id && x.GroupId == groupId)
-            .Select(x => new { x.Content, x.ContentType, x.FileName }).SingleOrDefaultAsync(ct);
-        if (item?.Content == null)
+            .Select(x => new { x.Content, x.StorageKey, x.ContentType, x.FileName }).SingleOrDefaultAsync(ct);
+        var content = item?.StorageKey != null ? await store.DownloadAsync(item.StorageKey, ct) : item?.Content;
+        if (content == null)
             throw new NotFoundException("File unavailable.");
         Response.Headers.XContentTypeOptions = "nosniff";
-        return File(item.Content, item.ContentType ?? "application/octet-stream", item.FileName);
+        return File(content, item!.ContentType ?? "application/octet-stream", item.FileName);
     }
 
     /// <summary>Nhóm trưởng gỡ một lần nộp nhầm, khi mốc chưa tới hạn và giảng viên chưa xem bản đó.</summary>
@@ -236,7 +258,22 @@ public class GroupSubmissionsController(AppDbContext db, TeachingAccess access) 
         db.GroupSubmissions.Remove(item);
         access.Audit(item.Id, "GROUP_WORK_REMOVED", item.Deliverable);
         await access.Save(ct);
+        if (item.StorageKey != null)
+            await Discard(item.StorageKey);
         return NoContent();
+    }
+
+    /// <summary>Gỡ tệp ở kho ngoài. Hỏng thì chỉ ghi log: dòng trong database mới quyết định người dùng thấy gì.</summary>
+    private async Task Discard(string key)
+    {
+        try
+        {
+            await store.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (ExternalServiceException)
+        {
+            logger.LogWarning("Left an unused file in storage: {Key}", key);
+        }
     }
 
     [HttpPut("review/{milestoneId:guid}"), Authorize(Roles = "Admin,Lecturer")]

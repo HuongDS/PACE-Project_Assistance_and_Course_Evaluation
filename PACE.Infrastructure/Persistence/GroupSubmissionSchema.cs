@@ -23,6 +23,7 @@ public static class GroupSubmissionSchema
                     CONSTRAINT ""FK_group_submissions_class_milestones_milestone_id""
                         FOREIGN KEY (milestone_id) REFERENCES class_milestones(""Id"") ON DELETE SET NULL
                 );
+                ALTER TABLE group_submissions ADD COLUMN IF NOT EXISTS storage_key character varying(255);
                 CREATE INDEX IF NOT EXISTS ""IX_group_submissions_group_id_milestone_id"" ON group_submissions(group_id, milestone_id);
                 CREATE INDEX IF NOT EXISTS ""IX_group_submissions_milestone_id"" ON group_submissions(milestone_id);
 

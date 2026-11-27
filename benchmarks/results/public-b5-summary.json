@@ -1,0 +1,818 @@
+{
+  "role": "development",
+  "comparison_stage": {
+    "run_id": "20261125T100605904945Z-B4",
+    "stage": "B4",
+    "suite": "public",
+    "start_utc": "2026-11-25T10:06:05.904945+00:00",
+    "input_hashes": {
+      "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+      "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+    },
+    "status": "ok",
+    "pace_commit": "cab54ca0d12a48d3149cd28b982840821ddea64a",
+    "production_source_sha256": "26e94d06470f75a2f95506f6cbf55f0d0c9e249a1124961e75e81e8d84be4d05",
+    "production_changes": true,
+    "benchmark_harness_sha256": "48375a9db8be98d1a40fbf7a28f2c59dc76bcd6a5e4c985c8db1476401ad155c",
+    "dotnet_sdk": "9.0.124",
+    "python": "3.12.3",
+    "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+    "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+    "java_classpath": "JDK only",
+    "finish_utc": "2026-11-25T10:08:57.501753+00:00"
+  },
+  "runs": [
+    {
+      "run_id": "20261125T175210929015Z-B5",
+      "stage": "B5",
+      "suite": "public",
+      "start_utc": "2026-11-25T17:52:10.929015+00:00",
+      "input_hashes": {
+        "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+        "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "936c22c7a00d52c61f001d40d5fc1bc66c9e550ba50c51af9664e5a8bb19bc58",
+      "production_changes": true,
+      "benchmark_harness_sha256": "7f7d822b9dfde7e270b3a3e643f4887aabedc4d4566fdf6ad8c75895a2030f4d",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "observe_grounded": true,
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:54:58.973065+00:00"
+    },
+    {
+      "run_id": "20261125T175504219380Z-B5Repeat",
+      "stage": "B5Repeat",
+      "suite": "public",
+      "start_utc": "2026-11-25T17:55:04.219380+00:00",
+      "input_hashes": {
+        "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+        "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "936c22c7a00d52c61f001d40d5fc1bc66c9e550ba50c51af9664e5a8bb19bc58",
+      "production_changes": true,
+      "benchmark_harness_sha256": "7f7d822b9dfde7e270b3a3e643f4887aabedc4d4566fdf6ad8c75895a2030f4d",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "observe_grounded": true,
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:57:35.239919+00:00"
+    }
+  ],
+  "engineering_draft_runs": [
+    {
+      "run_id": "20261125T174701597675Z-B5",
+      "stage": "B5",
+      "suite": "grounded-questions",
+      "start_utc": "2026-11-25T17:47:01.597675+00:00",
+      "input_hashes": {
+        "grounded_questions": "38983f8026f5cfa2cfbc851e6c6ba0245c2d5c6f1681a55d71c2f52a4d49f15c"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "e6dabe9d904f0445d8e11207be102cc8859b4558910460ba92c593730755c55d",
+      "production_changes": true,
+      "benchmark_harness_sha256": "116ae7f6e99b4fa02bfce90ca94b14651fd0514996fa245b349cb0a47ce0b1ab",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:47:34.497572+00:00"
+    },
+    {
+      "run_id": "20261125T174828638377Z-B5",
+      "stage": "B5",
+      "suite": "public",
+      "start_utc": "2026-11-25T17:48:28.638377+00:00",
+      "input_hashes": {
+        "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+        "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+      },
+      "status": "ok",
+      "pace_commit": "dcf6f995982b3b04c8153011428ee23336e82bba",
+      "production_source_sha256": "e6dabe9d904f0445d8e11207be102cc8859b4558910460ba92c593730755c55d",
+      "production_changes": true,
+      "benchmark_harness_sha256": "116ae7f6e99b4fa02bfce90ca94b14651fd0514996fa245b349cb0a47ce0b1ab",
+      "dotnet_sdk": "9.0.124",
+      "python": "3.12.3",
+      "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+      "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+      "java_classpath": "JDK only",
+      "finish_utc": "2026-11-25T17:51:04.771003+00:00"
+    }
+  ],
+  "matched_b4": {
+    "legacy_scores": true,
+    "jcg_rows": true,
+    "research_case_csv": true,
+    "research_input_oracles": true,
+    "public_graphs": true,
+    "public_repo_unsuccessful": 0
+  },
+  "repeat_checks": {
+    "question_observations_equal_per_route": true,
+    "public_summaries_equal": true
+  },
+  "scores": {
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 467,
+        "matched": 35,
+        "missing": 26,
+        "gold_keys": 61,
+        "reported_keys": 502
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    },
+    "java_method_flow_coverage": {
+      "analyzed_methods": 4807,
+      "status_counts": {
+        "Complete": 4275,
+        "Unsupported": 531,
+        "LimitReached": 1
+      },
+      "reason_counts": {
+        "enhanced_for_statement": 93,
+        "for_statement": 28,
+        "instanceof_expression": 70,
+        "switch_expression": 13,
+        "try_statement": 118,
+        "cfg-nodes": 1,
+        "array_creation_expression": 39,
+        "do_statement": 2,
+        "lambda_expression": 114,
+        "method_reference": 45,
+        "try_with_resources_statement": 3,
+        "assert_statement": 3,
+        "array_initializer": 1,
+        "assignment_expression": 2
+      }
+    },
+    "grounded_question_observation": {
+      "totals": {
+        "discovered_routes": 692,
+        "matched_routes": 691,
+        "routes_with_questions": 591,
+        "fully_filled_routes": 380,
+        "requested": 3455,
+        "generated": 2312,
+        "unfilled": 1143
+      },
+      "kind_counts": {
+        "Definition": 1680,
+        "BranchTrue": 326,
+        "BranchFalse": 306
+      },
+      "projects": {
+        "auto-proxyprint-kitchen": {
+          "discovered_routes": 68,
+          "matched_routes": 68,
+          "routes_with_questions": 63,
+          "fully_filled_routes": 50,
+          "requested": 340,
+          "generated": 280,
+          "unfilled": 60
+        },
+        "auto-ocvn": {
+          "discovered_routes": 261,
+          "matched_routes": 261,
+          "routes_with_questions": 247,
+          "fully_filled_routes": 224,
+          "requested": 1305,
+          "generated": 1167,
+          "unfilled": 138
+        },
+        "auto-ur-codebin-api": {
+          "discovered_routes": 6,
+          "matched_routes": 6,
+          "routes_with_questions": 6,
+          "fully_filled_routes": 6,
+          "requested": 30,
+          "generated": 30,
+          "unfilled": 0
+        },
+        "auto-ohsome-api": {
+          "discovered_routes": 159,
+          "matched_routes": 159,
+          "routes_with_questions": 159,
+          "fully_filled_routes": 70,
+          "requested": 795,
+          "generated": 527,
+          "unfilled": 268
+        },
+        "auto-catwatch": {
+          "discovered_routes": 7,
+          "matched_routes": 7,
+          "routes_with_questions": 2,
+          "fully_filled_routes": 1,
+          "requested": 35,
+          "generated": 9,
+          "unfilled": 26
+        },
+        "auto-quartz-manager": {
+          "discovered_routes": 3,
+          "matched_routes": 3,
+          "routes_with_questions": 1,
+          "fully_filled_routes": 0,
+          "requested": 15,
+          "generated": 1,
+          "unfilled": 14
+        },
+        "auto-cwa-verification-server": {
+          "discovered_routes": 0,
+          "matched_routes": 0,
+          "routes_with_questions": 0,
+          "fully_filled_routes": 0,
+          "requested": 0,
+          "generated": 0,
+          "unfilled": 0
+        },
+        "micro-anilallewar_microservices-basics-spring-boot": {
+          "discovered_routes": 7,
+          "matched_routes": 7,
+          "routes_with_questions": 2,
+          "fully_filled_routes": 1,
+          "requested": 35,
+          "generated": 6,
+          "unfilled": 29
+        },
+        "micro-apssouza22_java-microservice": {
+          "discovered_routes": 21,
+          "matched_routes": 20,
+          "routes_with_questions": 14,
+          "fully_filled_routes": 5,
+          "requested": 100,
+          "generated": 39,
+          "unfilled": 61
+        },
+        "micro-callistaenterprise_blog-microservices": {
+          "discovered_routes": 10,
+          "matched_routes": 10,
+          "routes_with_questions": 8,
+          "fully_filled_routes": 7,
+          "requested": 50,
+          "generated": 36,
+          "unfilled": 14
+        },
+        "micro-ewolff_microservice": {
+          "discovered_routes": 20,
+          "matched_routes": 20,
+          "routes_with_questions": 13,
+          "fully_filled_routes": 2,
+          "requested": 100,
+          "generated": 27,
+          "unfilled": 73
+        },
+        "micro-ewolff_microservice-kafka": {
+          "discovered_routes": 10,
+          "matched_routes": 10,
+          "routes_with_questions": 6,
+          "fully_filled_routes": 1,
+          "requested": 50,
+          "generated": 11,
+          "unfilled": 39
+        },
+        "micro-fernandoabcampos_spring-netflix-oss-microservices": {
+          "discovered_routes": 8,
+          "matched_routes": 8,
+          "routes_with_questions": 2,
+          "fully_filled_routes": 1,
+          "requested": 40,
+          "generated": 9,
+          "unfilled": 31
+        },
+        "micro-georgwittberger_apache-spring-boot-microservice-example": {
+          "discovered_routes": 7,
+          "matched_routes": 7,
+          "routes_with_questions": 5,
+          "fully_filled_routes": 1,
+          "requested": 35,
+          "generated": 10,
+          "unfilled": 25
+        },
+        "micro-jferrater_tap-and-eat-microservices": {
+          "discovered_routes": 7,
+          "matched_routes": 7,
+          "routes_with_questions": 5,
+          "fully_filled_routes": 1,
+          "requested": 35,
+          "generated": 9,
+          "unfilled": 26
+        },
+        "micro-koushikkothagal_spring-boot-microservices-workshop": {
+          "discovered_routes": 4,
+          "matched_routes": 4,
+          "routes_with_questions": 3,
+          "fully_filled_routes": 1,
+          "requested": 20,
+          "generated": 10,
+          "unfilled": 10
+        },
+        "micro-mdeket_spring-cloud-movie-recommendation": {
+          "discovered_routes": 14,
+          "matched_routes": 14,
+          "routes_with_questions": 7,
+          "fully_filled_routes": 1,
+          "requested": 70,
+          "generated": 11,
+          "unfilled": 59
+        },
+        "micro-mudigal-technologies_microservices-sample": {
+          "discovered_routes": 3,
+          "matched_routes": 3,
+          "routes_with_questions": 1,
+          "fully_filled_routes": 0,
+          "requested": 15,
+          "generated": 2,
+          "unfilled": 13
+        },
+        "micro-piomin_sample-spring-oauth2-microservices": {
+          "discovered_routes": 2,
+          "matched_routes": 2,
+          "routes_with_questions": 1,
+          "fully_filled_routes": 0,
+          "requested": 10,
+          "generated": 1,
+          "unfilled": 9
+        },
+        "micro-rohitghatol_spring-boot-microservices": {
+          "discovered_routes": 7,
+          "matched_routes": 7,
+          "routes_with_questions": 2,
+          "fully_filled_routes": 0,
+          "requested": 35,
+          "generated": 3,
+          "unfilled": 32
+        },
+        "micro-shabbirdwd53_springboot-microservice": {
+          "discovered_routes": 6,
+          "matched_routes": 6,
+          "routes_with_questions": 4,
+          "fully_filled_routes": 1,
+          "requested": 30,
+          "generated": 11,
+          "unfilled": 19
+        },
+        "micro-spring-petclinic_spring-petclinic-microservices": {
+          "discovered_routes": 13,
+          "matched_routes": 13,
+          "routes_with_questions": 10,
+          "fully_filled_routes": 2,
+          "requested": 65,
+          "generated": 30,
+          "unfilled": 35
+        },
+        "micro-sqshq_piggymetrics": {
+          "discovered_routes": 11,
+          "matched_routes": 11,
+          "routes_with_questions": 11,
+          "fully_filled_routes": 3,
+          "requested": 55,
+          "generated": 37,
+          "unfilled": 18
+        },
+        "micro-yidongnan_spring-cloud-netflix-example": {
+          "discovered_routes": 2,
+          "matched_routes": 2,
+          "routes_with_questions": 0,
+          "fully_filled_routes": 0,
+          "requested": 10,
+          "generated": 0,
+          "unfilled": 10
+        },
+        "jasmine": {
+          "discovered_routes": 36,
+          "matched_routes": 36,
+          "routes_with_questions": 19,
+          "fully_filled_routes": 2,
+          "requested": 180,
+          "generated": 46,
+          "unfilled": 134
+        }
+      }
+    }
+  },
+  "timings_ms_by_run": {
+    "20261125T100605904945Z-B4": {
+      "total_ms": 72513,
+      "median_ms": 2362,
+      "by_project_ms": {
+        "auto-proxyprint-kitchen": 3835,
+        "auto-ocvn": 12425,
+        "auto-ur-codebin-api": 2500,
+        "auto-ohsome-api": 4098,
+        "auto-catwatch": 3438,
+        "auto-quartz-manager": 3125,
+        "auto-cwa-verification-server": 3015,
+        "micro-anilallewar_microservices-basics-spring-boot": 2561,
+        "micro-apssouza22_java-microservice": 3184,
+        "micro-callistaenterprise_blog-microservices": 2460,
+        "micro-ewolff_microservice": 2301,
+        "micro-ewolff_microservice-kafka": 2362,
+        "micro-fernandoabcampos_spring-netflix-oss-microservices": 2112,
+        "micro-georgwittberger_apache-spring-boot-microservice-example": 1666,
+        "micro-jferrater_tap-and-eat-microservices": 1949,
+        "micro-koushikkothagal_spring-boot-microservices-workshop": 1741,
+        "micro-mdeket_spring-cloud-movie-recommendation": 2180,
+        "micro-mudigal-technologies_microservices-sample": 2249,
+        "micro-piomin_sample-spring-oauth2-microservices": 1719,
+        "micro-rohitghatol_spring-boot-microservices": 2298,
+        "micro-shabbirdwd53_springboot-microservice": 1751,
+        "micro-spring-petclinic_spring-petclinic-microservices": 2210,
+        "micro-sqshq_piggymetrics": 2955,
+        "micro-yidongnan_spring-cloud-netflix-example": 1970,
+        "jasmine": 2409
+      }
+    },
+    "20261125T175210929015Z-B5": {
+      "total_ms": 89599,
+      "median_ms": 2951,
+      "by_project_ms": {
+        "auto-proxyprint-kitchen": 4913,
+        "auto-ocvn": 16284,
+        "auto-ur-codebin-api": 2959,
+        "auto-ohsome-api": 5198,
+        "auto-catwatch": 4251,
+        "auto-quartz-manager": 3710,
+        "auto-cwa-verification-server": 3763,
+        "micro-anilallewar_microservices-basics-spring-boot": 3188,
+        "micro-apssouza22_java-microservice": 4024,
+        "micro-callistaenterprise_blog-microservices": 3072,
+        "micro-ewolff_microservice": 2951,
+        "micro-ewolff_microservice-kafka": 2800,
+        "micro-fernandoabcampos_spring-netflix-oss-microservices": 2270,
+        "micro-georgwittberger_apache-spring-boot-microservice-example": 2052,
+        "micro-jferrater_tap-and-eat-microservices": 2340,
+        "micro-koushikkothagal_spring-boot-microservices-workshop": 2158,
+        "micro-mdeket_spring-cloud-movie-recommendation": 2714,
+        "micro-mudigal-technologies_microservices-sample": 2840,
+        "micro-piomin_sample-spring-oauth2-microservices": 2289,
+        "micro-rohitghatol_spring-boot-microservices": 3087,
+        "micro-shabbirdwd53_springboot-microservice": 1990,
+        "micro-spring-petclinic_spring-petclinic-microservices": 2873,
+        "micro-sqshq_piggymetrics": 3134,
+        "micro-yidongnan_spring-cloud-netflix-example": 2210,
+        "jasmine": 2529
+      }
+    },
+    "20261125T175504219380Z-B5Repeat": {
+      "total_ms": 77519,
+      "median_ms": 2403,
+      "by_project_ms": {
+        "auto-proxyprint-kitchen": 4084,
+        "auto-ocvn": 13793,
+        "auto-ur-codebin-api": 3997,
+        "auto-ohsome-api": 4352,
+        "auto-catwatch": 4087,
+        "auto-quartz-manager": 3430,
+        "auto-cwa-verification-server": 2928,
+        "micro-anilallewar_microservices-basics-spring-boot": 3361,
+        "micro-apssouza22_java-microservice": 3185,
+        "micro-callistaenterprise_blog-microservices": 2657,
+        "micro-ewolff_microservice": 2403,
+        "micro-ewolff_microservice-kafka": 2208,
+        "micro-fernandoabcampos_spring-netflix-oss-microservices": 1894,
+        "micro-georgwittberger_apache-spring-boot-microservice-example": 1711,
+        "micro-jferrater_tap-and-eat-microservices": 1899,
+        "micro-koushikkothagal_spring-boot-microservices-workshop": 1661,
+        "micro-mdeket_spring-cloud-movie-recommendation": 2263,
+        "micro-mudigal-technologies_microservices-sample": 2249,
+        "micro-piomin_sample-spring-oauth2-microservices": 1779,
+        "micro-rohitghatol_spring-boot-microservices": 2458,
+        "micro-shabbirdwd53_springboot-microservice": 1694,
+        "micro-spring-petclinic_spring-petclinic-microservices": 2345,
+        "micro-sqshq_piggymetrics": 3070,
+        "micro-yidongnan_spring-cloud-netflix-example": 1869,
+        "jasmine": 2142
+      }
+    }
+  },
+  "auto_oas_gt_plus": {
+    "artifact": "https://zenodo.org/records/20962871",
+    "archive_sha256": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+    "workbook_sha256": "1698eb7a851defa8e8bf224d908474077ec062c5366ac618194987145aeec87a",
+    "stages": {
+      "B4": {
+        "run": "20261125T100605904945Z-B4",
+        "reference": 551,
+        "matched": 488,
+        "missing": 63,
+        "reported": 502,
+        "outside_reference": 14
+      },
+      "B5": {
+        "run": "20261125T175210929015Z-B5",
+        "reference": 551,
+        "matched": 488,
+        "missing": 63,
+        "reported": 502,
+        "outside_reference": 14
+      },
+      "B5Repeat": {
+        "run": "20261125T175504219380Z-B5Repeat",
+        "reference": 551,
+        "matched": 488,
+        "missing": 63,
+        "reported": 502,
+        "outside_reference": 14
+      }
+    },
+    "projects": {
+      "auto-proxyprint-kitchen": {
+        "B4": {
+          "matched": 67,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 67,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 67,
+          "outside_reference": 0
+        }
+      },
+      "auto-ocvn": {
+        "B4": {
+          "matched": 246,
+          "outside_reference": 14
+        },
+        "B5": {
+          "matched": 246,
+          "outside_reference": 14
+        },
+        "B5Repeat": {
+          "matched": 246,
+          "outside_reference": 14
+        }
+      },
+      "auto-ur-codebin-api": {
+        "B4": {
+          "matched": 6,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 6,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 6,
+          "outside_reference": 0
+        }
+      },
+      "auto-ohsome-api": {
+        "B4": {
+          "matched": 159,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 159,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 159,
+          "outside_reference": 0
+        }
+      },
+      "auto-catwatch": {
+        "B4": {
+          "matched": 7,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 7,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 7,
+          "outside_reference": 0
+        }
+      },
+      "auto-quartz-manager": {
+        "B4": {
+          "matched": 3,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 3,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 3,
+          "outside_reference": 0
+        }
+      },
+      "auto-cwa-verification-server": {
+        "B4": {
+          "matched": 0,
+          "outside_reference": 0
+        },
+        "B5": {
+          "matched": 0,
+          "outside_reference": 0
+        },
+        "B5Repeat": {
+          "matched": 0,
+          "outside_reference": 0
+        }
+      }
+    }
+  },
+  "project_snapshots": [
+    {
+      "id": "auto-proxyprint-kitchen",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-ocvn",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-ur-codebin-api",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-ohsome-api",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-catwatch",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-quartz-manager",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "auto-cwa-verification-server",
+      "dataset": "auto_oas",
+      "pin": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e"
+    },
+    {
+      "id": "micro-anilallewar_microservices-basics-spring-boot",
+      "dataset": "microsecend",
+      "pin": "c1b9dc9d6f0346befa04db1b73d9099f5c397d70"
+    },
+    {
+      "id": "micro-apssouza22_java-microservice",
+      "dataset": "microsecend",
+      "pin": "69bee7a254c7de565ee3c02d4e5103b6b1b52416"
+    },
+    {
+      "id": "micro-callistaenterprise_blog-microservices",
+      "dataset": "microsecend",
+      "pin": "960d822456b1b4475091c0719f1a1c4e63014117"
+    },
+    {
+      "id": "micro-ewolff_microservice",
+      "dataset": "microsecend",
+      "pin": "84f12d9223e468306e2c0b1243fa803583cba3f0"
+    },
+    {
+      "id": "micro-ewolff_microservice-kafka",
+      "dataset": "microsecend",
+      "pin": "feb567053febae3dc73556f2fc87c424d1e98c35"
+    },
+    {
+      "id": "micro-fernandoabcampos_spring-netflix-oss-microservices",
+      "dataset": "microsecend",
+      "pin": "cd4c9376069a0ef802859679af76db64656aa6fa"
+    },
+    {
+      "id": "micro-georgwittberger_apache-spring-boot-microservice-example",
+      "dataset": "microsecend",
+      "pin": "7b32618ade84dd75190c3cad6063b6f82fd5dc99"
+    },
+    {
+      "id": "micro-jferrater_tap-and-eat-microservices",
+      "dataset": "microsecend",
+      "pin": "458728ab1ff2055da348a478ff150c6132934b0f"
+    },
+    {
+      "id": "micro-koushikkothagal_spring-boot-microservices-workshop",
+      "dataset": "microsecend",
+      "pin": "672d73a3b71aed4584d516ac8a102a5a2b12c245"
+    },
+    {
+      "id": "micro-mdeket_spring-cloud-movie-recommendation",
+      "dataset": "microsecend",
+      "pin": "7d09c7c5c141fb6a028580868a160ff464f06d9c"
+    },
+    {
+      "id": "micro-mudigal-technologies_microservices-sample",
+      "dataset": "microsecend",
+      "pin": "e8b734c324b55854610ee2bbabbd2abcb6c669ad"
+    },
+    {
+      "id": "micro-piomin_sample-spring-oauth2-microservices",
+      "dataset": "microsecend",
+      "pin": "f15b2f3bca718f9919a2e994eb6b5df310616de2"
+    },
+    {
+      "id": "micro-rohitghatol_spring-boot-microservices",
+      "dataset": "microsecend",
+      "pin": "46db8e19564ae20cbc2c8fab0325909c37fa5b74"
+    },
+    {
+      "id": "micro-shabbirdwd53_springboot-microservice",
+      "dataset": "microsecend",
+      "pin": "c4aaaeda349f904417ee2cf2f43aff980052229c"
+    },
+    {
+      "id": "micro-spring-petclinic_spring-petclinic-microservices",
+      "dataset": "microsecend",
+      "pin": "090b56aa3926e7d99d475257d1e8e156cc4b14a0"
+    },
+    {
+      "id": "micro-sqshq_piggymetrics",
+      "dataset": "microsecend",
+      "pin": "7633844d48c575237a2f6039e63d3088288ad929"
+    },
+    {
+      "id": "micro-yidongnan_spring-cloud-netflix-example",
+      "dataset": "microsecend",
+      "pin": "44724b94158c2fba22d20c16331506aa20f35713"
+    },
+    {
+      "id": "jasmine",
+      "dataset": "jasmine",
+      "pin": "79ad187a6f7ca07cfc6b874b05f5972ba9d64132"
+    }
+  ],
+  "artifacts_sha256": {
+    "20261125T175210929015Z-B5": {
+      "comparison.csv": "9dc7bbfea6bcb2cfd3efab4972ee34852dfe770b67b57b3e214189530f756c80",
+      "comparison.json": "ce144cad297dd62ecc77047f0204b500e50c0adefc3e04a6b4b225c41d82f5f1",
+      "jcg-delta.json": "e784c42c06abb4e694469b028338527995b60b53afb13b9ff4854a56f184bb8a",
+      "jcg-raw.json": "5eb5331f22c2068b18af8f6a8713eb3ee09a8d2edef9ff49bdca4998b24e9bbf",
+      "research-cases.csv": "c3dc55ec8eda0be2d29e4714e4692bd0946b0b82c1b6fb878a78c608517a57e5",
+      "research-oracles.json": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6",
+      "research-raw.json": "7978756ace829b35fa1d84a090ddf36e53ea9281256f29a2280318840d81a037",
+      "run.json": "e08d88c1afb7ed1ec15cd9b749cb1b8bca8e6b73f34babe325fbf9bfeb3c11de",
+      "run.log": "738817b649a045503cffade236d099b579f6db8d61bcce4095a3192ce7ebfa26",
+      "summary.json": "b4e26a71171079337e5d375fee832d0bc033eb3c1493b26f2480d4f10e20357b",
+      "tests.trx": "4a4a582998c78b9800432e1768bb6dce8e4bd27aa028f9b83ffc8cec59a7614e"
+    },
+    "20261125T175504219380Z-B5Repeat": {
+      "comparison.csv": "9dc7bbfea6bcb2cfd3efab4972ee34852dfe770b67b57b3e214189530f756c80",
+      "comparison.json": "ce144cad297dd62ecc77047f0204b500e50c0adefc3e04a6b4b225c41d82f5f1",
+      "jcg-delta.json": "e784c42c06abb4e694469b028338527995b60b53afb13b9ff4854a56f184bb8a",
+      "jcg-raw.json": "5eb5331f22c2068b18af8f6a8713eb3ee09a8d2edef9ff49bdca4998b24e9bbf",
+      "research-cases.csv": "c3dc55ec8eda0be2d29e4714e4692bd0946b0b82c1b6fb878a78c608517a57e5",
+      "research-oracles.json": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6",
+      "research-raw.json": "4286935919e97377ea70193545d6c30f6c6866b747811f0d0ddb8a31e41f6800",
+      "run.json": "d5e0ef3e890651b314ddc110d18ea04fd1b8165e95762ef4dc09edc091e08e4a",
+      "run.log": "db352eb2502e7fd749416f386296b636e2f68fb6138c697101092a591b1cf7bd",
+      "summary.json": "b4e26a71171079337e5d375fee832d0bc033eb3c1493b26f2480d4f10e20357b",
+      "tests.trx": "dba38b2a29da550654d74d9b441f4f77025be1881cf4bb83a4053cddca6d26f3"
+    }
+  }
+}

@@ -1,0 +1,313 @@
+{
+  "production_source_sha256": "26e94d06470f75a2f95506f6cbf55f0d0c9e249a1124961e75e81e8d84be4d05",
+  "java_signatures_input_sha256": "f49a4551bc3c063a244275ffb130f200bd03c618ebb66ebc1657779a0f69ed19",
+  "java_signatures": {
+    "cases": 10,
+    "exact": 10,
+    "correct_targets": 8,
+    "missing_targets": 0,
+    "extra_targets": 0,
+    "rows": [
+      {
+        "id": "overload-string-and-import",
+        "expected": [
+          "billing/UserService.java:save(String)"
+        ],
+        "observed": [
+          "billing/UserService.java:save(String)"
+        ]
+      },
+      {
+        "id": "overload-boxed-and-import",
+        "expected": [
+          "billing/UserService.java:save(Integer)"
+        ],
+        "observed": [
+          "billing/UserService.java:save(Integer)"
+        ]
+      },
+      {
+        "id": "explicit-package",
+        "expected": [
+          "accounts/UserService.java:save(String)"
+        ],
+        "observed": [
+          "accounts/UserService.java:save(String)"
+        ]
+      },
+      {
+        "id": "override-by-type",
+        "expected": [
+          "sample/OddlyNamed.java:apply(String)"
+        ],
+        "observed": [
+          "sample/OddlyNamed.java:apply(String)"
+        ]
+      },
+      {
+        "id": "super-dispatch",
+        "expected": [
+          "sample/Parent.java:send()"
+        ],
+        "observed": [
+          "sample/Parent.java:send()"
+        ]
+      },
+      {
+        "id": "case-sensitive-method",
+        "expected": [
+          "sample/Demo.java:call()"
+        ],
+        "observed": [
+          "sample/Demo.java:call()"
+        ]
+      },
+      {
+        "id": "source-offset-with-unicode",
+        "expected": [
+          "sample/Demo.java:call()"
+        ],
+        "observed": [
+          "sample/Demo.java:call()"
+        ]
+      },
+      {
+        "id": "external-method",
+        "expected": [],
+        "observed": []
+      },
+      {
+        "id": "missing-type",
+        "expected": [],
+        "observed": []
+      },
+      {
+        "id": "partial-attribution",
+        "expected": [
+          "sample/Incomplete.java:local()"
+        ],
+        "observed": [
+          "sample/Incomplete.java:local()"
+        ]
+      }
+    ]
+  },
+  "spring_routes": {
+    "cases": 15,
+    "exact": 15,
+    "rows": [
+      {
+        "Key": "base-and-path-aliases",
+        "Expected": "inventory",
+        "Observed": "inventory",
+        "Note": null
+      },
+      {
+        "Key": "all-explicit-verbs",
+        "Expected": "inventory",
+        "Observed": "inventory",
+        "Note": null
+      },
+      {
+        "Key": "missing-verb",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Không tìm thấy mapping Spring cho DELETE /v1/items."
+      },
+      {
+        "Key": "case-sensitive",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "exact-case",
+        "Expected": "exactCase",
+        "Observed": "exactCase",
+        "Note": null
+      },
+      {
+        "Key": "route-over-name",
+        "Expected": "create",
+        "Observed": "create",
+        "Note": null
+      },
+      {
+        "Key": "explicit-over-any",
+        "Expected": "create",
+        "Observed": "create",
+        "Note": null
+      },
+      {
+        "Key": "any-fallback",
+        "Expected": "anyJob",
+        "Observed": "anyJob",
+        "Note": null
+      },
+      {
+        "Key": "ambiguous-route",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Route Spring GET /v1/conflict có 2 handler phù hợp."
+      },
+      {
+        "Key": "named-ambiguity",
+        "Expected": "conflictTwo",
+        "Observed": "conflictTwo",
+        "Note": null
+      },
+      {
+        "Key": "variable-alias",
+        "Expected": "animal",
+        "Observed": "animal",
+        "Note": null
+      },
+      {
+        "Key": "no-suffix-fallback",
+        "Expected": null,
+        "Observed": null,
+        "Note": "Không tìm thấy mapping Spring cho GET /wrong/v1/Case."
+      },
+      {
+        "Key": "skip-unresolved-path",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      },
+      {
+        "Key": "inherited-mapping",
+        "Expected": "lookup",
+        "Observed": "lookup",
+        "Note": null
+      },
+      {
+        "Key": "recognize-spring-annotation",
+        "Expected": null,
+        "Observed": null,
+        "Note": null
+      }
+    ]
+  },
+  "call_sites": {
+    "cases": 7,
+    "exact": 7,
+    "rows": [
+      {
+        "Id": "repeated-sites",
+        "Expected": {
+          "Calls": 3,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 3,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "direct-recursion",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "mutual-recursion",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "depth-limit-at-leaf",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "depth-limit-with-work",
+        "Expected": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 2,
+          "Returns": 0,
+          "Truncated": true
+        }
+      },
+      {
+        "Id": "shorter-path-reaches-shared-method",
+        "Expected": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": false
+        },
+        "Observed": {
+          "Calls": 4,
+          "Returns": 0,
+          "Truncated": false
+        }
+      },
+      {
+        "Id": "step-budget-omits-return",
+        "Expected": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        },
+        "Observed": {
+          "Calls": 1,
+          "Returns": 0,
+          "Truncated": true
+        }
+      }
+    ]
+  },
+  "csharp_graph": {
+    "tp": 7,
+    "fp": 2,
+    "fn": 1,
+    "precision": 0.7777777777777778,
+    "recall": 0.875,
+    "f1": 0.8235294117647058,
+    "endpoint": "0/1",
+    "per_case_log": [
+      "ordinary-call: entry=True, TP=1, FP=0, FN=0",
+      "renamed-call: entry=True, TP=1, FP=0, FN=0",
+      "overload: entry=True, TP=1, FP=1, FN=0",
+      "  extra: Example.Entry() -> Example.Save(string)",
+      "namespace-collision: entry=True, TP=1, FP=1, FN=0",
+      "  extra: Example.Entry() -> B.cs:Store.Save()",
+      "repeated-call: entry=True, TP=2, FP=0, FN=0",
+      "direct-recursion: entry=True, TP=1, FP=0, FN=0",
+      "short-accessor: entry=True, TP=0, FP=0, FN=1",
+      "  missing: Example.Entry() -> Example.getDiscount()",
+      "route-vs-name: entry=False, TP=0, FP=0, FN=0",
+      "Endpoint matcher: 0/1",
+      "Call edges: TP=7 FP=2 FN=1",
+      "Precision=77.8 % Recall=87.5 % F1=82.4 %"
+    ]
+  }
+}

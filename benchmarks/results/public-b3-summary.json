@@ -1,0 +1,128 @@
+{
+  "baseline_run": "20261125T053903128722Z-B2",
+  "candidate_run": "20261125T061825691798Z-B3",
+  "input_hashes": {
+    "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+    "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+  },
+  "production_source_sha256": "dbe66a9858956d6bbffa96f6f6f5f698440e331a7121d7a8481b6a1597833872",
+  "previous_stage": "B2",
+  "before": {
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 467,
+        "matched": 35,
+        "missing": 26,
+        "gold_keys": 61,
+        "reported_keys": 502
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    }
+  },
+  "after": {
+    "jcg": {
+      "annotation_rows": 117,
+      "eligible_rows": 79,
+      "eligible_programs": 74,
+      "status_counts": {
+        "outside-direct-method-scope": 34,
+        "scored": 74,
+        "ambiguous-method-level-projection": 4,
+        "caller-missing": 5
+      },
+      "required_found": 68,
+      "required_total": 81,
+      "prohibited_reported": 1,
+      "prohibited_total": 11
+    },
+    "research": {
+      "auto_oas": {
+        "projects": 7,
+        "analyzed": 7,
+        "unmatched_observation": 467,
+        "matched": 35,
+        "missing": 26,
+        "gold_keys": 61,
+        "reported_keys": 502
+      },
+      "microsecend": {
+        "projects": 17,
+        "analyzed": 17,
+        "matched": 97,
+        "missing": 22,
+        "gold_keys": 119,
+        "reported_keys": 101,
+        "unmatched_observation": 4
+      },
+      "jasmine": {
+        "projects": 1,
+        "analyzed": 1,
+        "required_calls": 6,
+        "found_calls": 6,
+        "required_advice_methods": 8,
+        "found_advice_methods": 0
+      }
+    }
+  },
+  "graph_output_counts_without_edge_labels": {
+    "resolved_graphs_with_same_entry": 700,
+    "b2": {
+      "truncated": 4,
+      "call_edges": 17879,
+      "direct_recursive_edges": 0
+    },
+    "b3": {
+      "truncated": 27,
+      "call_edges": 20713,
+      "direct_recursive_edges": 3,
+      "call_edges_with_site": 20713,
+      "graphs_with_multiple_sites_for_same_caller_target_condition": 256,
+      "truncation_reasons": {
+        "StepLimit": 27
+      }
+    }
+  },
+  "call_site_fixture": {
+    "B2": {
+      "cases": 7,
+      "correct": 2
+    },
+    "B3": {
+      "cases": 7,
+      "correct": 7
+    }
+  }
+}

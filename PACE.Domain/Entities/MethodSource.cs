@@ -11,6 +11,7 @@ public class MethodSource
     public string MethodName { get; set; } = null!;
     public string? Parameters { get; set; }
     public string SourceCode { get; set; } = null!;
+    public string? JavaFlowJson { get; set; }
     public ProgrammingLanguage Language { get; set; } = ProgrammingLanguage.Other;
     public NodeType NodeType { get; set; } = NodeType.Activity;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -623,7 +623,9 @@ internal sealed class JsFileAnalyzer
                 if (node.Type == "variable_declarator") RegisterLocal(node, locals);
                 if (node.Type != "call_expression") continue;
                 var call = ResolveCall(node, body, className, classContext, locals);
-                if (call is not null) method.Calls.Add(call);
+                if (call is null) continue;
+                call.Site = node.CallSite();
+                method.Calls.Add(call);
             }
         }
 

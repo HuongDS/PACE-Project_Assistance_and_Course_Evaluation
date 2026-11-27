@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using PACE.Application.Analysis.Models;
+using PACE.Domain.Enums;
 
 namespace PACE.Application.Analysis.Template;
 
@@ -27,13 +28,27 @@ public static partial class BusinessTemplateGenerator
 
     public static List<TemplateEndpoint> ExtractEndpoints(IEnumerable<ParsedMethod> methods)
         => methods
-            .Where(m => m.HttpVerb is not null && !m.IsAbstract)
+            .Where(m => !m.IsAbstract)
             .OrderBy(m => m.ClassName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(m => m.FilePath, StringComparer.Ordinal)
             .ThenBy(m => m.StartLine)
-            .DistinctBy(m => (m.ClassName.ToLowerInvariant(), m.HttpVerb!.ToUpperInvariant(), m.MethodName, m.Route))
-            .Select((m, i) => new TemplateEndpoint(i, m.ClassName, m.HttpVerb!.ToUpperInvariant(), m.MethodName, ExpandRouteTokens(m)))
+            .SelectMany(EndpointCandidates)
+            .DistinctBy(endpoint => (endpoint.Owner, endpoint.HttpMethod, endpoint.Function, endpoint.Path))
+            .Select((endpoint, i) => new TemplateEndpoint(i, endpoint.Controller, endpoint.HttpMethod, endpoint.Function, endpoint.Path))
             .ToList();
+
+    private static IEnumerable<(string Owner, string Controller, string HttpMethod, string Function, string? Path)> EndpointCandidates(ParsedMethod method)
+    {
+        if (method.Language == ProgrammingLanguage.Java)
+        {
+            foreach (var endpoint in method.SpringEndpoints)
+                yield return (method.JavaOwner, method.JavaOwner, endpoint.Verb, method.MethodName, endpoint.Path);
+        }
+        else if (method.HttpVerb is { } verb)
+        {
+            yield return (method.ClassName.ToLowerInvariant(), method.ClassName, verb.ToUpperInvariant(), method.MethodName, ExpandRouteTokens(method));
+        }
+    }
 
     /// <summary>Thay token [controller]/[action] của ASP.NET bằng tên thật để path đọc được.</summary>
     private static string? ExpandRouteTokens(ParsedMethod m)

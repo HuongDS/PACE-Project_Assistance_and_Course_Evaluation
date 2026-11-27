@@ -4,14 +4,15 @@ using PACE.Domain.Enums;
 
 namespace PACE.Application.Analysis.Flow;
 
-public sealed record FlowStep(int Order, ParsedMethod From, ParsedMethod To, FlowEdgeType EdgeType, string? Condition, string? DataLabel);
+public sealed record FlowStep(int Order, ParsedMethod From, ParsedMethod To, FlowEdgeType EdgeType, string? Condition, string? DataLabel, CallSite? Site);
 
 public sealed class FlowGraph
 {
     public required ParsedMethod Entry { get; init; }
     public List<FlowStep> Steps { get; } = [];
     public HashSet<ParsedMethod> Methods { get; } = [];
-    public bool Truncated { get; set; }
+    public FlowTruncationReason TruncationReason { get; internal set; }
+    public bool Truncated => TruncationReason != FlowTruncationReason.None;
 }
 
 public sealed class FlowBuilder(CallResolver resolver, int maxDepth = 12, int maxSteps = 250)
@@ -25,49 +26,56 @@ public sealed class FlowBuilder(CallResolver resolver, int maxDepth = 12, int ma
     {
         var graph = new FlowGraph { Entry = entry };
         graph.Methods.Add(entry);
-        var expanded = new HashSet<Guid> { entry.Id };
-        var seen = new HashSet<(Guid, Guid, string?)>();
-        Visit(entry, 0, graph, expanded, seen, new HashSet<Guid> { entry.Id });
+        var pending = new Queue<(ParsedMethod Method, int Depth)>();
+        pending.Enqueue((entry, 0));
+
+        while (pending.TryDequeue(out var item))
+        {
+            foreach (var (call, target) in ResolveOccurrences(item.Method))
+            {
+                if (item.Depth >= maxDepth)
+                {
+                    graph.TruncationReason |= FlowTruncationReason.DepthLimit;
+                    break;
+                }
+
+                if (!TryAddStep(graph, item.Method, target, FlowEdgeType.Call, call.Condition, InputLabel(target), call.Site))
+                    return graph;
+
+                if (graph.Methods.Add(target)) pending.Enqueue((target, item.Depth + 1));
+
+                if (OutputLabel(target) is { } output &&
+                    !TryAddStep(graph, target, item.Method, FlowEdgeType.Return, null, output, call.Site))
+                    return graph;
+            }
+        }
         return graph;
     }
 
-    private void Visit(ParsedMethod method, int depth, FlowGraph graph, HashSet<Guid> expanded, HashSet<(Guid, Guid, string?)> seen, HashSet<Guid> path)
+    private IEnumerable<(ParsedCall Call, ParsedMethod Target)> ResolveOccurrences(ParsedMethod caller)
     {
-        foreach (var call in method.Calls)
+        var seen = new HashSet<(CallSite? Site, ParsedCall? Unlocated, Guid Target)>();
+        foreach (var call in caller.Calls)
         {
-            foreach (var target in resolver.Resolve(call, method))
+            foreach (var target in resolver.Resolve(call, caller))
             {
-                if (graph.Steps.Count >= maxSteps)
-                {
-                    graph.Truncated = true;
-                    return;
-                }
-
-                if (!seen.Add((method.Id, target.Id, call.Condition))) continue;
-
-                graph.Methods.Add(target);
-                AddStep(graph, method, target, FlowEdgeType.Call, call.Condition, InputLabel(target));
-
-                if (!path.Contains(target.Id) && depth + 1 < maxDepth && expanded.Add(target.Id))
-                {
-                    path.Add(target.Id);
-                    Visit(target, depth + 1, graph, expanded, seen, path);
-                    path.Remove(target.Id);
-                }
-                else if (depth + 1 >= maxDepth)
-                {
-                    graph.Truncated = true;
-                }
-
-                var output = OutputLabel(target);
-                if (output is not null && graph.Steps.Count < maxSteps)
-                    AddStep(graph, target, method, FlowEdgeType.Return, null, output);
+                if (seen.Add((call.Site, call.Site is null ? call : null, target.Id)))
+                    yield return (call, target);
             }
         }
     }
 
-    private static void AddStep(FlowGraph graph, ParsedMethod from, ParsedMethod to, FlowEdgeType type, string? condition, string? label)
-        => graph.Steps.Add(new FlowStep(graph.Steps.Count + 1, from, to, type, condition, label));
+    private bool TryAddStep(FlowGraph graph, ParsedMethod from, ParsedMethod to, FlowEdgeType edgeType,
+        string? condition, string? label, CallSite? site)
+    {
+        if (graph.Steps.Count >= maxSteps)
+        {
+            graph.TruncationReason |= FlowTruncationReason.StepLimit;
+            return false;
+        }
+        graph.Steps.Add(new FlowStep(graph.Steps.Count + 1, from, to, edgeType, condition, label, site));
+        return true;
+    }
 
     public static string InputLabel(ParsedMethod target)
     {

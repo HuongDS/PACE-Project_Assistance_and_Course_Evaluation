@@ -1,0 +1,1365 @@
+{
+  "artifact": "https://zenodo.org/records/20962871",
+  "archive_sha256": "c37ac64c1b1b36f0c999d7bf22ed36fed29eb8085a00422fd2ee67cfe08ec99e",
+  "member": "AutoOAS replication package/dataset/GT-plus.xlsx",
+  "workbook_sha256": "1698eb7a851defa8e8bf224d908474077ec062c5366ac618194987145aeec87a",
+  "projects": {
+    "auto-proxyprint-kitchen": {
+      "sheets": [
+        "ProxyPrint"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 75,
+          "matched": 66,
+          "missing": 9,
+          "reported": 66,
+          "outside_reference": 0
+        },
+        "B1": {
+          "reference": 75,
+          "matched": 66,
+          "missing": 9,
+          "reported": 66,
+          "outside_reference": 0
+        },
+        "B2": {
+          "reference": 75,
+          "matched": 67,
+          "missing": 8,
+          "reported": 67,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 75,
+          "matched": 67,
+          "missing": 8,
+          "reported": 67,
+          "outside_reference": 0
+        }
+      }
+    },
+    "auto-ocvn": {
+      "sheets": [
+        "OCVN"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 278,
+          "matched": 128,
+          "missing": 150,
+          "reported": 135,
+          "outside_reference": 7
+        },
+        "B1": {
+          "reference": 278,
+          "matched": 128,
+          "missing": 150,
+          "reported": 135,
+          "outside_reference": 7
+        },
+        "B2": {
+          "reference": 278,
+          "matched": 246,
+          "missing": 32,
+          "reported": 260,
+          "outside_reference": 14
+        },
+        "B3": {
+          "reference": 278,
+          "matched": 246,
+          "missing": 32,
+          "reported": 260,
+          "outside_reference": 14
+        }
+      }
+    },
+    "auto-ur-codebin-api": {
+      "sheets": [
+        "Ur-Codebin"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 6,
+          "matched": 6,
+          "missing": 0,
+          "reported": 6,
+          "outside_reference": 0
+        },
+        "B1": {
+          "reference": 6,
+          "matched": 6,
+          "missing": 0,
+          "reported": 6,
+          "outside_reference": 0
+        },
+        "B2": {
+          "reference": 6,
+          "matched": 6,
+          "missing": 0,
+          "reported": 6,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 6,
+          "matched": 6,
+          "missing": 0,
+          "reported": 6,
+          "outside_reference": 0
+        }
+      }
+    },
+    "auto-ohsome-api": {
+      "sheets": [
+        "ohsome"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 159,
+          "matched": 80,
+          "missing": 79,
+          "reported": 80,
+          "outside_reference": 0
+        },
+        "B1": {
+          "reference": 159,
+          "matched": 80,
+          "missing": 79,
+          "reported": 80,
+          "outside_reference": 0
+        },
+        "B2": {
+          "reference": 159,
+          "matched": 159,
+          "missing": 0,
+          "reported": 159,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 159,
+          "matched": 159,
+          "missing": 0,
+          "reported": 159,
+          "outside_reference": 0
+        }
+      }
+    },
+    "auto-catwatch": {
+      "sheets": [
+        "Catwatch"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 14,
+          "matched": 10,
+          "missing": 4,
+          "reported": 11,
+          "outside_reference": 1
+        },
+        "B1": {
+          "reference": 14,
+          "matched": 10,
+          "missing": 4,
+          "reported": 11,
+          "outside_reference": 1
+        },
+        "B2": {
+          "reference": 14,
+          "matched": 7,
+          "missing": 7,
+          "reported": 7,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 14,
+          "matched": 7,
+          "missing": 7,
+          "reported": 7,
+          "outside_reference": 0
+        }
+      }
+    },
+    "auto-quartz-manager": {
+      "sheets": [
+        "Quartz"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 14,
+          "matched": 3,
+          "missing": 11,
+          "reported": 10,
+          "outside_reference": 7
+        },
+        "B1": {
+          "reference": 14,
+          "matched": 3,
+          "missing": 11,
+          "reported": 10,
+          "outside_reference": 7
+        },
+        "B2": {
+          "reference": 14,
+          "matched": 3,
+          "missing": 11,
+          "reported": 3,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 14,
+          "matched": 3,
+          "missing": 11,
+          "reported": 3,
+          "outside_reference": 0
+        }
+      }
+    },
+    "auto-cwa-verification-server": {
+      "sheets": [
+        "cwa-external",
+        "cwa-internal"
+      ],
+      "stages": {
+        "B0": {
+          "reference": 5,
+          "matched": 0,
+          "missing": 5,
+          "reported": 1,
+          "outside_reference": 1
+        },
+        "B1": {
+          "reference": 5,
+          "matched": 0,
+          "missing": 5,
+          "reported": 1,
+          "outside_reference": 1
+        },
+        "B2": {
+          "reference": 5,
+          "matched": 0,
+          "missing": 5,
+          "reported": 0,
+          "outside_reference": 0
+        },
+        "B3": {
+          "reference": 5,
+          "matched": 0,
+          "missing": 5,
+          "reported": 0,
+          "outside_reference": 0
+        }
+      }
+    }
+  },
+  "stages": {
+    "B0": {
+      "run": "20261125T044805621095Z-B0",
+      "reference": 551,
+      "matched": 293,
+      "missing": 258,
+      "reported": 309,
+      "outside_reference": 16
+    },
+    "B1": {
+      "run": "20261125T051319684835Z-B1",
+      "reference": 551,
+      "matched": 293,
+      "missing": 258,
+      "reported": 309,
+      "outside_reference": 16
+    },
+    "B2": {
+      "run": "20261125T053903128722Z-B2",
+      "reference": 551,
+      "matched": 488,
+      "missing": 63,
+      "reported": 502,
+      "outside_reference": 14
+    },
+    "B3": {
+      "run": "20261125T061825691798Z-B3",
+      "reference": 551,
+      "matched": 488,
+      "missing": 63,
+      "reported": 502,
+      "outside_reference": 14
+    }
+  },
+  "pairwise_changes": [
+    {
+      "from": "B0",
+      "to": "B1",
+      "gains": [],
+      "losses": []
+    },
+    {
+      "from": "B1",
+      "to": "B2",
+      "gains": [
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/activeAwardsCount"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/averageAwardPeriod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/averageNumberOfTenderers"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/averageTenderPeriod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/avgTimeFromPlanToTenderPhase"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/awardValueInterval"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/awardsByLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/corruptionRiskOverviewTable"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/costEffectivenessAwardAmount"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/costEffectivenessTenderAmount"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/costEffectivenessTenderAwardAmount"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/countAwardsByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/countBidPlansByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/countTendersByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i002/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i002/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i002/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i003/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i003/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i003/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i004/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i004/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i004/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i007/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i007/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i007/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i019/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i019/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i019/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i038/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i038/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i038/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i077/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i077/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i077/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i085/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i085/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i085/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i171/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i171/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i171/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i180/crosstab"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i180/releases"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/flags/i180/stats"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/frequentSuppliersTimeInterval"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/frequentTenderers"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/fundingByTenderDeliveryLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/indicatorTypesMapping"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/averageNumberBidsExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/bidSelectionExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/bidSelectionMethod/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/bidTimelineExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/bidType/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/cancelledFundingExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/cancelledFundingPercentageExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/cancelledTendersByYearByRationaleExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/city/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/city/search"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/contrMethod/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/costEffectivenessExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/excelExport"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/location/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/location/search"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/numberCancelledFundingExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/numberTendersUsingEBidExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/orgDepartment/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/orgDepartment/search"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/orgGroup/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/orgGroup/search"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/buyer/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/id/{param}"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/ids"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/procuringEntity/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/organization/supplier/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/package/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/package/ocid/{param}"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/percentTendersUsingEBidExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/procurementActivityExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/procurementMethod/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/procurementMethodExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/release/all"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/release/ocid/{param}"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/tendersByItemExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/ocds/tendersWithLinkedProcurementPlanExcelChart"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentOfEligibleProjectsFlaggedByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersAwardedWithTwoOrMoreTenderers"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersCancelled"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersUsingEBid"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersUsingEgp"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersWithLinkedProcurementPlan"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTendersWithTwoOrMoreTenderers"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTotalProjectsEligibleByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentTotalProjectsFlaggedByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/percentageAwardsNarrowPublicationDates"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/plannedFundingByLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/planningByLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/qualityAverageAwardPeriod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/qualityAverageTenderPeriod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/qualityFundingByTenderDeliveryLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/qualityPlannedFundingByLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tenderPriceByAllBidSelectionMethods"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tenderPriceByBidSelectionMethod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tenderPriceByProcurementMethod"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tenderValueInterval"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tendersAwardsYears"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tendersByItemClassification"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/tendersByLocation"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/topTenLargestAwards"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/topTenLargestTenders"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/topTenSuppliers"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalCancelledTendersByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalCancelledTendersByYearByRationale"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalEligibleIndicatorsByIndicatorType"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalEligibleIndicatorsByIndicatorTypeByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalEligibleProjectsByIndicatorTypeByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalFlaggedIndicatorsByIndicatorType"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalFlaggedIndicatorsByIndicatorTypeByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalFlaggedProjectsByIndicatorTypeByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalFlags"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/totalProjectsByYear"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/api/translations/{param}"
+        ],
+        [
+          "auto-ocvn",
+          "POST",
+          "/isAuthenticated"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/bbox"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/centroid"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/count"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/count/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/count/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/count/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/geometry"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/latest/bbox"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/latest/centroid"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/latest/count"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/latest/count/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/contributions/latest/geometry"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/density/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/density/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/density/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/groupBy/key"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/ratio"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/area/ratio/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/bbox"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/centroid"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/density/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/density/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/density/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/groupBy/key"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/ratio"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/count/ratio/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/geometry"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/density/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/density/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/density/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/groupBy/key"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/ratio"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/length/ratio/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/density/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/density/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/density/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/groupBy/boundary/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/groupBy/key"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/ratio"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elements/perimeter/ratio/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elementsFullHistory/bbox"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elementsFullHistory/centroid"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/elementsFullHistory/geometry"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/density"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/density/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/density/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/density/groupBy/type"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/groupBy/boundary"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/groupBy/key"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/groupBy/tag"
+        ],
+        [
+          "auto-ohsome-api",
+          "POST",
+          "/users/count/groupBy/type"
+        ],
+        [
+          "auto-proxyprint-kitchen",
+          "OPTIONS",
+          "/*"
+        ]
+      ],
+      "losses": [
+        [
+          "auto-catwatch",
+          "GET",
+          "/contributors"
+        ],
+        [
+          "auto-catwatch",
+          "GET",
+          "/languages"
+        ],
+        [
+          "auto-catwatch",
+          "GET",
+          "/projects"
+        ],
+        [
+          "auto-ocvn",
+          "GET",
+          "/userDashboards/getCurrentAuthenticatedUserDetails"
+        ],
+        [
+          "auto-ocvn",
+          "GET",
+          "/userDashboards/saveDashboard"
+        ],
+        [
+          "auto-ocvn",
+          "GET",
+          "/userDashboards/saveDashboardForCurrentUser"
+        ],
+        [
+          "auto-ocvn",
+          "GET",
+          "/userDashboards/search/getDashboardsForCurrentUser"
+        ],
+        [
+          "auto-ocvn",
+          "GET",
+          "/userDashboards/search/getDefaultDashboardForCurrentUser"
+        ]
+      ]
+    },
+    {
+      "from": "B2",
+      "to": "B3",
+      "gains": [],
+      "losses": []
+    }
+  ]
+}

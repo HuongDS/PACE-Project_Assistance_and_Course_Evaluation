@@ -1,0 +1,27 @@
+{
+  "input_hashes": {
+    "java_signatures": "f49a4551bc3c063a244275ffb130f200bd03c618ebb66ebc1657779a0f69ed19"
+  },
+  "b0": {
+    "run": "20261125T050456681020Z-B0",
+    "production_sha256": "eeca29764b337cba133dc81868e23f956ab38493e7ebcd2d309adbbc9060efad",
+    "java_signatures": {
+      "cases": 10,
+      "exact": 3,
+      "correct_targets": 7,
+      "missing_targets": 1,
+      "extra_targets": 9
+    }
+  },
+  "b1": {
+    "run": "20261125T051250301672Z-B1",
+    "production_sha256": "d0f661b93a3e5ff444794e7e2e36256858ca5d52299bc1b194e9def3392bd4f1",
+    "java_signatures": {
+      "cases": 10,
+      "exact": 10,
+      "correct_targets": 8,
+      "missing_targets": 0,
+      "extra_targets": 0
+    }
+  }
+}

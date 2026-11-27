@@ -285,6 +285,7 @@ public sealed class RepoAnalysisService(
             MethodName = Truncate(m.MethodName, 255)!,
             Parameters = m.Parameters.Count == 0 ? null : string.Join(", ", m.Parameters.Select(p => p.ToString())),
             SourceCode = m.SourceCode,
+            JavaFlowJson = m.JavaFlow?.Serialize(),
             Language = m.Language,
             NodeType = m.IsDecision ? NodeType.DecisionGateway : NodeType.Activity
         }).ToList();
@@ -328,7 +329,8 @@ public sealed class RepoAnalysisService(
                     BusinessId = business.Id,
                     EntryMethodId = entry.Id,
                     Name = Truncate(api.DisplayName, 500)!,
-                    MermaidGraph = MermaidBuilder.Build(graph)
+                    MermaidGraph = MermaidBuilder.Build(graph),
+                    TruncationReason = graph.TruncationReason
                 };
                 flows.Add(flow);
 
@@ -341,7 +343,9 @@ public sealed class RepoAnalysisService(
                     ToMethodId = s.To.Id,
                     EdgeType = s.EdgeType,
                     ConditionContext = s.Condition,
-                    DataLabel = s.DataLabel
+                    DataLabel = s.DataLabel,
+                    CallSiteLine = s.Site?.Line,
+                    CallSiteColumn = s.Site?.Column
                 }));
 
                 methodIds.UnionWith(graph.Methods.Select(m => m.Id));

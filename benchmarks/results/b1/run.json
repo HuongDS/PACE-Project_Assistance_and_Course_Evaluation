@@ -1,0 +1,20 @@
+{
+  "stage": "B1",
+  "suite": "public",
+  "start_utc": "2026-11-25T05:13:19.684835+00:00",
+  "input_hashes": {
+    "jcg": "43690cb599334c2e02aaffea4b884ec0a1da150138b393c9925e133e3a8a62e3",
+    "research_oracles": "ac3402c03585ae7c654c3ea008e3dabbd52ee8b560119dcb9271e69ed1e9c6d6"
+  },
+  "status": "ok",
+  "pace_commit": "116444cc09fb3779593f9065d3ac79c25fdfa2f2",
+  "production_source_sha256": "d0f661b93a3e5ff444794e7e2e36256858ca5d52299bc1b194e9def3392bd4f1",
+  "production_changes": true,
+  "benchmark_harness_sha256": "f3f34bc8f22590043355e85c8363ba3b4801c7c37a6ccbef29d1b1c85302e0b6",
+  "dotnet_sdk": "9.0.124",
+  "python": "3.12.3",
+  "environment": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39",
+  "java_version": "openjdk version \"21.0.13.1\" 2026-11-17",
+  "java_classpath": "JDK only",
+  "finish_utc": "2026-11-25T05:15:44.922947+00:00"
+}

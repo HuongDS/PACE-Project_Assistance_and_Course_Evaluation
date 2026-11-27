@@ -9,6 +9,7 @@ public class BusinessFlow
     public Guid EntryMethodId { get; set; }
     public string Name { get; set; } = null!;
     public string? MermaidGraph { get; set; }
+    public FlowTruncationReason? TruncationReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Business Business { get; set; } = null!;

@@ -16,12 +16,13 @@ using PACE.Domain.Enums;
 namespace PACE.Application.Services.Implementations;
 
 /// <summary>
-/// Sinh câu hỏi vấn đáp cho một nghiệp vụ theo 3 mode:
+/// Sinh câu hỏi vấn đáp cho một nghiệp vụ:
 ///   Raw    : chỉ mã nguồn thô (arm Traditional trong bài báo 1)
 ///   Graph  : chỉ sơ đồ Mermaid (arm Pure CFG)
 ///   Hybrid : N_w &gt; ngưỡng (mặc định 10) → Graph, ngược lại → Raw
-/// Prompt dùng chung cho mọi mode (chép nguyên từ Repo_Into_Graph), chỉ khác nội dung hai khe
-/// ngữ cảnh — đúng thiết kế thực nghiệm của bài báo. Kết quả được lưu vào bảng generated_questions.
+///   Evidence: sinh theo mẫu từ các kết luận có tọa độ mã nguồn trong CFG
+/// Raw, Graph và Hybrid dùng chung prompt từ Repo_Into_Graph với hai khe ngữ cảnh.
+/// Kết quả được lưu vào bảng generated_questions.
 /// </summary>
 public class QuestionGenerationService(
     IUnitOfWork uow,
@@ -55,7 +56,10 @@ public class QuestionGenerationService(
 
         // 1. Ngữ cảnh: các luồng (Mermaid + cạnh) và mã nguồn của nghiệp vụ.
         var flows = await uow.BusinessFlows.GetQuestionContextsByBusinessAsync(businessId, ct);
-        var methods = await uow.MethodSources.GetCodeByBusinessAsync(businessId, ct);
+        var evidenceMode = request.Mode == QuestionGenerationMode.Evidence;
+        var methods = await uow.MethodSources.GetCodeByBusinessAsync(businessId, ct, includeEvidence: evidenceMode);
+        if (evidenceMode)
+            return await GenerateFromEvidenceAsync(business, request, difficulty, flows, methods, ct);
 
         // Không có mã nguồn thì DỪNG — nếu không OpenAI sẽ bịa câu hỏi chỉ từ tên nghiệp vụ.
         if (methods.Count == 0)
@@ -124,14 +128,7 @@ public class QuestionGenerationService(
             CreatedAt = DateTime.UtcNow
         }).ToList();
 
-        var deleted = await uow.ExecuteInTransactionAsync(async token =>
-        {
-            var removed = request.ReplaceExisting
-                ? await uow.GeneratedQuestions.DeleteUnansweredByBusinessAsync(business.Id, token)
-                : 0;
-            await uow.GeneratedQuestions.AddRangeAsync(entities, token);
-            return removed;
-        }, ct);
+        var deleted = await SaveQuestionsAsync(business.Id, entities, request.ReplaceExisting, ct);
 
         var questionDtos = entities
             .Select((e, i) => e.ToDto(answerCount: 0, targetedEntryPoints: generated[i].TargetedEntryPoints ?? []))
@@ -158,6 +155,48 @@ public class QuestionGenerationService(
             HasGroundTruth: groundTruthSpec != null,
             PromptText: fullPromptText);
     }
+
+    private async Task<GenerateQuestionsResponse> GenerateFromEvidenceAsync(Business business,
+        GenerateQuestionsRequest request, string difficulty, IReadOnlyList<FlowQuestionContext> flows,
+        IReadOnlyList<MethodCode> methods, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Description))
+            throw new BadRequestException("Mode Evidence sử dụng mẫu theo mã nguồn. Bỏ hướng dẫn tự do hoặc chọn mode khác.");
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var drafts = GroundedQuestionGenerator.Generate(methods, request.NumberOfQuestions);
+        var unfilled = request.NumberOfQuestions - drafts.Count;
+        var elapsed = clock.ElapsedMilliseconds;
+        var entities = drafts.Select(draft => new GeneratedQuestion
+        {
+            Id = Guid.NewGuid(),
+            BusinessId = business.Id,
+            QuestionText = draft.Question,
+            SuggestedAnswer = draft.Answer,
+            Difficulty = Truncate(difficulty, DifficultyMaxLength),
+            ContextType = ContextType.Evidence,
+            CreatedAt = DateTime.UtcNow
+        }).ToList();
+
+        var deleted = await SaveQuestionsAsync(business.Id, entities, request.ReplaceExisting && unfilled == 0, ct);
+        var nodes = CountNodes(flows);
+        var route = QuestionContextRouter.Resolve(request.Mode, nodes, _options.GraphNodeThreshold);
+        return new GenerateQuestionsResponse(business.Id, business.BusinessName, request.Mode, route.ContextType,
+            nodes, _options.GraphNodeThreshold, route.Reason, flows.Count, methods.Count,
+            GroundedQuestionGenerator.Version, 0, 0, elapsed, deleted,
+            entities.Select(question => question.ToDto(answerCount: 0)).ToArray())
+        {
+            UnfilledCount = unfilled
+        };
+    }
+
+    private Task<int> SaveQuestionsAsync(Guid businessId, List<GeneratedQuestion> questions, bool replace,
+        CancellationToken ct) => questions.Count == 0 ? Task.FromResult(0) : uow.ExecuteInTransactionAsync(async token =>
+    {
+        var removed = replace ? await uow.GeneratedQuestions.DeleteUnansweredByBusinessAsync(businessId, token) : 0;
+        await uow.GeneratedQuestions.AddRangeAsync(questions, token);
+        return removed;
+    }, ct);
 
     public async Task<IReadOnlyList<GeneratedQuestionDto>> GetByBusinessAsync(Guid businessId, CancellationToken ct = default)
     {

@@ -14,7 +14,7 @@ RUN dotnet publish PACE.API/PACE.API.csproj -c Release --no-restore -o /app/publ
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git ca-certificates openjdk-17-jdk-headless \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/publish .

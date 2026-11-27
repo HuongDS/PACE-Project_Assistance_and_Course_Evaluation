@@ -18,6 +18,8 @@ public class DataFlowEdgeRepository(AppDbContext context) : GenericRepository<Da
                 e.Id, e.StepOrder,
                 e.FromMethodId, e.FromMethod.ClassName + "." + e.FromMethod.MethodName,
                 e.ToMethodId, e.ToMethod.ClassName + "." + e.ToMethod.MethodName,
-                e.EdgeType, e.ConditionContext, e.DataLabel))
+                e.EdgeType, e.ConditionContext, e.DataLabel,
+                e.CallSiteLine == null ? null : e.EdgeType == FlowEdgeType.Return ? e.ToMethod.FilePath : e.FromMethod.FilePath,
+                e.CallSiteLine, e.CallSiteColumn))
             .ToListAsync(ct);
 }

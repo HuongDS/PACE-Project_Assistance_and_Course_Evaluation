@@ -1,3 +1,4 @@
+using PACE.Application.Analysis.Models;
 using PACE.Application.Common.Exceptions;
 using PACE.Application.Common.Models;
 using PACE.Application.Dtos;
@@ -19,6 +20,10 @@ public class MethodSourceService(IUnitOfWork uow) : IMethodSourceService
     public async Task<MethodSourceDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var method = await uow.MethodSources.GetWithBusinessesAsync(id, ct) ?? throw new NotFoundException("hàm", id);
-        return new MethodSourceDto(method.ToSummaryDto(), method.SourceCode, method.BusinessMethods.Select(b => b.BusinessId).ToList());
+        return new MethodSourceDto(method.ToSummaryDto(), method.SourceCode,
+            method.BusinessMethods.Select(b => b.BusinessId).ToList())
+        {
+            JavaFlow = MethodFlowAnalysis.Deserialize(method.JavaFlowJson)
+        };
     }
 }

@@ -1,0 +1,9 @@
+repository	commit	stack_hint	role
+https://github.com/spring-petclinic/spring-petclinic-rest	220f4ba8e92cec9ad1faa03324723a3e9da63d95	Java/Spring	annotated-endpoint-pilot
+https://github.com/apache/fineract	4a558fad45192ae4cffd3ca008b865549263d9e4	Java/Spring	candidate
+https://github.com/halo-dev/halo	d29609ae2846c3c9c98990f4902e65bea6c63f75	JVM/mixed	candidate
+https://github.com/jhipster/jhipster-sample-app	6b000b5d23a36c45e01472471b84a44fa2464044	Java/Spring	candidate
+https://github.com/dotnet-architecture/eShopOnWeb	4da8212117e87d808d4bbc7da6286fd2147ce606	C#/ASP.NET Core	candidate
+https://github.com/dotnet/eShop	3c6e531a6063676ece317644f72172fb42a935b3	C#/ASP.NET Core	candidate
+https://github.com/OrchardCMS/OrchardCore	0df190181478effba8403d28d4d31811e6caa719	C#/ASP.NET Core	candidate
+https://github.com/nopSolutions/nopCommerce	0344b61747963e57e9f70c818f517a0d59a8b528	C#/ASP.NET Core	candidate

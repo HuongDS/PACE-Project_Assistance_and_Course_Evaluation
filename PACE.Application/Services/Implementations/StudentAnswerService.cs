@@ -116,6 +116,7 @@ namespace PACE.Application.Services.Implementations
 
             switch (mode)
             {
+                case ContextType.Evidence:
                 case ContextType.Raw:
                     var codeBase = await businessService.GetCodeBaseWithBusinessAsync(businessId);
                     if (codeBase == null || codeBase.Methods == null || !codeBase.Methods.Any())
@@ -171,7 +172,7 @@ namespace PACE.Application.Services.Implementations
                     return sbGraph.ToString();
 
                 default:
-                    throw new BadRequestException($"Chế độ ContextModel '{contextModel}' không hợp lệ. Vui lòng chọn 'Raw' hoặc 'Graph'.");
+                    throw new BadRequestException($"Chế độ ContextModel '{contextModel}' không hợp lệ. Vui lòng chọn 'Raw', 'Graph' hoặc 'Evidence'.");
             }
         }
 

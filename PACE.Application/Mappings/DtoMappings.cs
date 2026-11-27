@@ -24,10 +24,11 @@ public static class DtoMappings
     public static BusinessDto ToDto(this BusinessSummary b) => new(b.Id, b.AnalysisRunId, b.BusinessName, b.MethodCount, b.FlowCount);
 
     public static BusinessFlowSummaryDto ToDto(this BusinessFlowSummary f) => new(
-        f.Id, f.BusinessId, f.Name, f.EntryMethodId, f.EntryMethod, f.EdgeCount, f.CreatedAt);
+        f.Id, f.BusinessId, f.Name, f.EntryMethodId, f.EntryMethod, f.EdgeCount, f.CreatedAt, f.TruncationReason);
 
     public static DataFlowEdgeDto ToDto(this DataFlowEdgeDetail e) => new(
-        e.Id, e.StepOrder, e.FromMethodId, e.FromMethod, e.ToMethodId, e.ToMethod, e.EdgeType, e.ConditionContext, e.DataLabel);
+        e.Id, e.StepOrder, e.FromMethodId, e.FromMethod, e.ToMethodId, e.ToMethod, e.EdgeType, e.ConditionContext, e.DataLabel,
+        e.CallSiteFile, e.CallSiteLine, e.CallSiteColumn);
 
     public static MethodSourceSummaryDto ToDto(this MethodSourceSummary m) => new(
         m.Id, m.AnalysisRunId, m.ClassName, m.MethodName, m.FilePath, m.Language, m.NodeType, m.Parameters);

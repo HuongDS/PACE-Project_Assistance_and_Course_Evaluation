@@ -305,6 +305,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int?>("TruncationReason")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BusinessId");
@@ -785,6 +788,12 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("CallSiteColumn")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CallSiteLine")
+                        .HasColumnType("integer");
 
                     b.Property<string>("ConditionContext")
                         .HasColumnType("text");
@@ -1279,6 +1288,9 @@ namespace PACE.Infrastructure.Persistence.Migrations
                     b.Property<string>("FilePath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("JavaFlowJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Language")
                         .IsRequired()

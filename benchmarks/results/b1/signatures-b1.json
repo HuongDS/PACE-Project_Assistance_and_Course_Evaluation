@@ -1,0 +1,91 @@
+{
+  "scores": [
+    {
+      "id": "overload-string-and-import",
+      "expected": [
+        "billing/UserService.java:save(String)"
+      ],
+      "observed": [
+        "billing/UserService.java:save(String)"
+      ]
+    },
+    {
+      "id": "overload-boxed-and-import",
+      "expected": [
+        "billing/UserService.java:save(Integer)"
+      ],
+      "observed": [
+        "billing/UserService.java:save(Integer)"
+      ]
+    },
+    {
+      "id": "explicit-package",
+      "expected": [
+        "accounts/UserService.java:save(String)"
+      ],
+      "observed": [
+        "accounts/UserService.java:save(String)"
+      ]
+    },
+    {
+      "id": "override-by-type",
+      "expected": [
+        "sample/OddlyNamed.java:apply(String)"
+      ],
+      "observed": [
+        "sample/OddlyNamed.java:apply(String)"
+      ]
+    },
+    {
+      "id": "super-dispatch",
+      "expected": [
+        "sample/Parent.java:send()"
+      ],
+      "observed": [
+        "sample/Parent.java:send()"
+      ]
+    },
+    {
+      "id": "case-sensitive-method",
+      "expected": [
+        "sample/Demo.java:call()"
+      ],
+      "observed": [
+        "sample/Demo.java:call()"
+      ]
+    },
+    {
+      "id": "source-offset-with-unicode",
+      "expected": [
+        "sample/Demo.java:call()"
+      ],
+      "observed": [
+        "sample/Demo.java:call()"
+      ]
+    },
+    {
+      "id": "external-method",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "id": "missing-type",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "id": "partial-attribution",
+      "expected": [
+        "sample/Incomplete.java:local()"
+      ],
+      "observed": [
+        "sample/Incomplete.java:local()"
+      ]
+    }
+  ],
+  "elapsedMs": 1344.2367,
+  "warnings": [
+    "Javac b\u00E1o 2 l\u1ED7i tr\u00EAn source \u0111\u1EA7u v\u00E0o; graph Java c\u00F3 th\u1EC3 thi\u1EBFu c\u1EA1nh.",
+    "Java: 1 l\u1EDDi g\u1ECDi ch\u01B0a ph\u00E2n gi\u1EA3i \u0111\u01B0\u1EE3c khai b\u00E1o b\u1EB1ng javac."
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "scores": [
+    {
+      "id": "overload-string-and-import",
+      "expected": [
+        "billing/UserService.java:save(String)"
+      ],
+      "observed": [
+        "accounts/UserService.java:save(String)",
+        "billing/UserService.java:save(Integer)",
+        "billing/UserService.java:save(String)"
+      ]
+    },
+    {
+      "id": "overload-boxed-and-import",
+      "expected": [
+        "billing/UserService.java:save(Integer)"
+      ],
+      "observed": [
+        "accounts/UserService.java:save(String)",
+        "billing/UserService.java:save(Integer)",
+        "billing/UserService.java:save(String)"
+      ]
+    },
+    {
+      "id": "explicit-package",
+      "expected": [
+        "accounts/UserService.java:save(String)"
+      ],
+      "observed": []
+    },
+    {
+      "id": "override-by-type",
+      "expected": [
+        "sample/OddlyNamed.java:apply(String)"
+      ],
+      "observed": [
+        "sample/OddlyNamed.java:apply(Integer)",
+        "sample/OddlyNamed.java:apply(String)",
+        "sample/ServiceImpl.java:apply(String)"
+      ]
+    },
+    {
+      "id": "super-dispatch",
+      "expected": [
+        "sample/Parent.java:send()"
+      ],
+      "observed": [
+        "sample/Child.java:send()",
+        "sample/Parent.java:send()"
+      ]
+    },
+    {
+      "id": "case-sensitive-method",
+      "expected": [
+        "sample/Demo.java:call()"
+      ],
+      "observed": [
+        "sample/Demo.java:Call()",
+        "sample/Demo.java:call()"
+      ]
+    },
+    {
+      "id": "source-offset-with-unicode",
+      "expected": [
+        "sample/Demo.java:call()"
+      ],
+      "observed": [
+        "sample/Demo.java:Call()",
+        "sample/Demo.java:call()"
+      ]
+    },
+    {
+      "id": "external-method",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "id": "missing-type",
+      "expected": [],
+      "observed": []
+    },
+    {
+      "id": "partial-attribution",
+      "expected": [
+        "sample/Incomplete.java:local()"
+      ],
+      "observed": [
+        "sample/Incomplete.java:local()"
+      ]
+    }
+  ],
+  "elapsedMs": 48.1168,
+  "warnings": []
+}

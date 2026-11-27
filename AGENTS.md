@@ -1,0 +1,12 @@
+# Liêm chính khoa học trong nghiên cứu PACE
+
+Áp dụng các quy tắc này khi sửa phương pháp phân tích graph, xây hoặc chạy benchmark, và viết tài liệu nghiên cứu hay bài báo.
+
+- **Phương pháp phải dùng chung.** Mỗi thay đổi analyzer cần có lý do từ ngữ nghĩa ngôn ngữ, hành vi framework hoặc phương pháp đã công bố. Tuyệt đối tránh luật nhắm riêng tên repo, class, method, route hay mẫu cụ thể của JCG hoặc bộ dữ liệu khác để đạt nhãn kỳ vọng. Giữ nhãn trong bộ chấm, tách khỏi logic sản phẩm. Khi phát hiện nghi vấn về nhãn, ghi lại bằng chứng, giữ kết quả gốc và xử lý theo quy tắc đã công bố.
+- **Ghi rõ vai trò và mức độ đã xem dữ liệu trước khi báo điểm.** JCG, AutoOAS Spring, microSecEnD và Spring Jasmine đã được xem trong quá trình phát triển B0–B3. Gọi số liệu trên bốn bộ đó là kết quả trên tập phát triển. Ghi riêng fixture tự tạo dùng để kiểm tra hồi quy. Giữ phạm vi đánh giá chính trên các bộ công khai có nhãn, theo quyết định của người dùng.
+- **Chốt thiết kế kiểm chứng trước khi xem kết quả.** Ghi câu hỏi nghiên cứu, commit các bản PACE, tiêu chí chọn repo, snapshot, nguồn và phạm vi nhãn, tiêu chí loại trừ, cấu hình chạy và cách chấm. Chạy B0 và bản chốt trên cùng tập độc lập chưa được dùng để phát triển, kiểm tra trùng lặp dự án và fork với tập phát triển. Nếu dùng kết quả tập đó để sửa phương pháp, ghi nhận việc đã xem và dùng tập mới cho lần kiểm chứng độc lập tiếp theo.
+- **Lưu bằng chứng đủ để chạy lại và kiểm tra.** Giữ commit hoặc fingerprint mã sản phẩm và bộ chấm, pin và hash đầu vào, phiên bản công cụ, lệnh chạy, log, đầu ra gốc và kết quả từng ca. Mọi sửa đổi về nhãn, mẫu số hoặc quy tắc chấm phải có lý do và lịch sử, đồng thời chấm lại các phiên bản so sánh trên cùng quy tắc.
+- **Báo đầy đủ trong phạm vi phép đo.** Nêu mẫu số, đơn vị chấm và phạm vi nhãn, cùng ca tốt lên, xấu đi, không đổi, lỗi chạy và ca chưa xác minh. Chỉ tính precision hoặc F1 khi nhãn và cách chấm hỗ trợ phép tính. Chỉ kết luận về khả năng tổng quát khi có kết quả kiểm chứng độc lập, và về chất lượng câu hỏi khi đã đo trực tiếp. Nếu chưa đo, ghi ngay cạnh bảng hoặc kết luận.
+- **Luôn dẫn paper gốc liên quan.** Kiểm tra paper thực sự hỗ trợ phương pháp, dữ liệu hoặc phát biểu được trích. Dẫn thêm đặc tả chính thức cho quy tắc ngôn ngữ và framework. Phân biệt kết quả paper, kết quả quan sát của PACE và giả thuyết cần kiểm chứng. Ghi rõ trạng thái preprint nếu có.
+
+Xem [quy trình đánh giá](docs/graph-benchmark.md#dữ-liệu-đánh-giá-và-cách-kết-luận) và [phạm vi benchmark hiện tại](benchmarks/README.md#chạy-và-lưu-kết-quả).

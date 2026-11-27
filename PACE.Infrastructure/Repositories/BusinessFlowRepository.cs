@@ -50,5 +50,5 @@ public class BusinessFlowRepository(AppDbContext context) : GenericRepository<Bu
         => query.Select(f => new BusinessFlowSummary(
             f.Id, f.BusinessId, f.Name, f.EntryMethodId,
             f.EntryMethod.ClassName + "." + f.EntryMethod.MethodName,
-            f.Edges.Count, f.CreatedAt));
+            f.Edges.Count, f.CreatedAt, f.TruncationReason));
 }

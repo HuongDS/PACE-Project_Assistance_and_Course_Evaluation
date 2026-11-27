@@ -1,0 +1,20 @@
+{
+  "scored_annotations": 79,
+  "cases": 74,
+  "required_targets": {
+    "total": 81,
+    "baseline_found": 56,
+    "candidate_found": 68
+  },
+  "prohibited_targets": {
+    "total": 11,
+    "baseline_reported": 3,
+    "candidate_reported": 1
+  },
+  "required_target_recall_delta_pp": 14.814814814814815,
+  "paired_case_bootstrap_95_percent_interval_pp": [
+    7.407407407407407,
+    23.376623376623378
+  ],
+  "bootstrap_samples": 10000
+}

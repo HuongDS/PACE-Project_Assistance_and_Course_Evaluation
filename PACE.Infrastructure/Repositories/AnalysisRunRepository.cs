@@ -211,7 +211,8 @@ public class AnalysisRunRepository(AppDbContext context) : GenericRepository<Ana
                 : null,
             r.Group != null && r.Group.Class != null && r.Group.Class.Semester != null
                 ? r.Group.Class.Semester.Name
-                : null));
+                : null,
+            r.GroupId));
 
     public async Task<bool> IsLecturerOfClassAsync(Guid classId, Guid lecturerUserId, CancellationToken ct = default)
     {

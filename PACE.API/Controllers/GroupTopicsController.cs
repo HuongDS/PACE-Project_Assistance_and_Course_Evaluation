@@ -50,6 +50,7 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
             {
                 group.Id,
                 group.Name,
+                group.ClassId,
                 className = group.Class.Name,
                 group.TopicName,
                 latestStatus = db.GroupTopicSubmissions.Where(topic => topic.GroupId == group.Id)
@@ -58,7 +59,7 @@ public class GroupTopicsController(AppDbContext db, TeachingAccess access) : Con
             }).ToListAsync(ct);
         return Ok(results.Select(group => new
         {
-            group.Id, group.Name, group.className, group.TopicName, latestStatus = group.latestStatus?.ToString()
+            group.Id, group.Name, group.ClassId, group.className, group.TopicName, latestStatus = group.latestStatus?.ToString()
         }));
     }
 

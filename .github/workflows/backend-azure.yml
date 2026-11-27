@@ -20,7 +20,18 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: pace_tests
+          POSTGRES_USER: pace_tests
+          POSTGRES_PASSWORD: pace_tests
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
     env:
+      PACE_TEST_POSTGRES: Host=localhost;Port=5432;Database=pace_tests;Username=pace_tests;Password=pace_tests
       AZURE_RESOURCE_GROUP: pace-demo-rg
       AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP || 'pace-api' }}
       AZURE_REGISTRY: pace638443565b84
@@ -30,6 +41,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+      - name: Migrate isolated PostgreSQL for backend tests
+        env:
+          ConnectionStrings__DefaultConnection: ${{ env.PACE_TEST_POSTGRES }}
+        run: |
+          dotnet tool install --tool-path "$RUNNER_TEMP/pace-tools" dotnet-ef --version 9.0.4
+          "$RUNNER_TEMP/pace-tools/dotnet-ef" database update --project PACE.Infrastructure --startup-project PACE.API
       - name: Test backend
         run: dotnet test PACE.Tests/PACE.Tests.csproj --configuration Release --verbosity minimal
       - name: Test deployment safeguards

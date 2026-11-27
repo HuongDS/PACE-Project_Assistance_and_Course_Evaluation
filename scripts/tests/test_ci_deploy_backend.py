@@ -20,6 +20,7 @@ class DeploymentTests(unittest.TestCase):
         with patch.object(module, 'az', return_value=application('registry/new:sha')) as azure, patch.object(module, 'healthy') as health:
             module.deploy(application(), 'registry/new:sha', 'new-sha', 'group', 'api')
         self.assertEqual(2, azure.call_count)
+        self.assertIn('Database__ApplyMigrationsOnStartup=true', azure.call_args_list[0].args)
         health.assert_called_once_with('https://example.invalid/health', 'new-sha')
 
     def test_update_failure_restores_old_image_and_revision(self):
@@ -28,6 +29,7 @@ class DeploymentTests(unittest.TestCase):
                 module.deploy(application(), 'registry/new:sha', 'new-sha', 'group', 'api')
         self.assertIn('registry/old:stable', azure.call_args_list[-1].args)
         self.assertIn('Deployment__Revision=old-sha', azure.call_args_list[-1].args)
+        self.assertIn('Database__ApplyMigrationsOnStartup=false', azure.call_args_list[-1].args)
         health.assert_called_once_with('https://example.invalid/health', 'old-sha')
 
     def test_unhealthy_new_version_triggers_rollback(self):

@@ -92,7 +92,8 @@ def deploy(app, image, revision, resource_group, app_name):
     # Capture rollback state before any mutation; never touch runtime secrets or schema.
     try:
         az('containerapp', 'update', '--name', app_name, '--resource-group', resource_group,
-           '--image', image, '--set-env-vars', 'Deployment__Revision=' + revision)
+           '--image', image, '--set-env-vars', 'Deployment__Revision=' + revision,
+           'Database__ApplyMigrationsOnStartup=true')
         current = az('containerapp', 'show', '--name', app_name, '--resource-group', resource_group)
         if current['properties']['template']['containers'][0]['image'] != image:
             raise RuntimeError('Azure did not select the requested image.')
@@ -101,7 +102,8 @@ def deploy(app, image, revision, resource_group, app_name):
         print('New deployment failed; restoring the previous image.', flush=True)
         try:
             az('containerapp', 'update', '--name', app_name, '--resource-group', resource_group,
-               '--image', previous_image, '--set-env-vars', 'Deployment__Revision=' + (previous_revision or 'previous'))
+               '--image', previous_image, '--set-env-vars', 'Deployment__Revision=' + (previous_revision or 'previous'),
+               'Database__ApplyMigrationsOnStartup=false')
             healthy(url, previous_revision)
         except Exception as rollback_failure:
             raise RuntimeError('Deployment AND rollback failed. Inspect Azure immediately; restoration is not confirmed.') from rollback_failure

@@ -111,6 +111,8 @@ public static class AcademicDataSeeder
             await db.Database.ExecuteSqlRawAsync(CourseSyllabusSchema.Up);
             await db.Database.ExecuteSqlRawAsync(GroupSubmissionSchema.Up);
             await db.Database.ExecuteSqlRawAsync(IndividualOralSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(TopicProposalSchema.Up);
+            await db.Database.ExecuteSqlRawAsync(TopicDraftRealtimeSchema.Up);
 
             // 1. Seed Semesters
             var fall2026 = await db.Semesters.FirstOrDefaultAsync(s => s.Name == "Fall 2026" || s.Name == "Fall2026");

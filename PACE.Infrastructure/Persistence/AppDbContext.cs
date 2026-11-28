@@ -33,6 +33,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupTopicSubmission> GroupTopicSubmissions => Set<GroupTopicSubmission>();
+    public DbSet<GroupTopicDraft> GroupTopicDrafts => Set<GroupTopicDraft>();
+    public DbSet<GroupTopicDraftUpdate> GroupTopicDraftUpdates => Set<GroupTopicDraftUpdate>();
+    public DbSet<GroupTopicAttachment> GroupTopicAttachments => Set<GroupTopicAttachment>();
+    public DbSet<ProposalTemplate> ProposalTemplates => Set<ProposalTemplate>();
     public DbSet<ClassMilestone> ClassMilestones => Set<ClassMilestone>();
     public DbSet<ClassScheduleImport> ClassScheduleImports => Set<ClassScheduleImport>();
     public DbSet<ClassAssessmentRound> ClassAssessmentRounds => Set<ClassAssessmentRound>();

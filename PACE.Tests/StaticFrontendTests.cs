@@ -19,16 +19,17 @@ public class StaticFrontendTests
 
             var scan = new RepositoryScanner().Scan(root.FullName, default);
             var entries = scan.FrontendEntries().ToList();
-            var templates = BusinessTemplateGenerator.GroupFrontend(entries);
-            var quiz = Assert.Single(templates, t => t.BusinessName.EndsWith("quiz.js"));
+            var quizEntry = Assert.Single(entries, e => e.FilePath.EndsWith("quiz.js"));
+            // Mã giao diện không còn được gom tự động thành nghiệp vụ; API của nghiệp vụ trỏ tới màn hình bằng tiền tố Frontend:.
+            var api = new ApiTemplate { Controller = quizEntry.ClassName, Function = quizEntry.MethodName };
             var matcher = new EntryPointMatcher(entries);
-            var method = matcher.Match(Assert.Single(quiz.Apis), out _);
+            var method = matcher.Match(api, out _);
 
             Assert.Equal(2, scan.TotalFiles);
             Assert.Empty(scan.JsTsFiles);
             Assert.NotNull(method);
             Assert.Contains("Chưa chọn đáp án", method.SourceCode);
-            var prompt = QuestionPromptBuilder.Build(quiz.BusinessName, method.SourceCode, "", 1, "trung bình", hasFrontend: true);
+            var prompt = QuestionPromptBuilder.Build("quiz.js", method!.SourceCode, "", 1, "trung bình", hasFrontend: true);
             Assert.Contains("người dùng sẽ thấy gì", prompt.SystemInstruction);
             Assert.Contains("Chưa chọn đáp án", prompt.UserPrompt);
         }

@@ -61,6 +61,13 @@ public static class DependencyInjection
 
         // LLM Service & HttpClient
         services.AddHttpClient();
+        // Kho tệp cho bài nộp: có cấu hình Cloudinary thì dùng, không thì lưu trong database.
+        var cloudinary = Storage.CloudinaryAccount.FromOrNull(configuration, Console.Error.WriteLine);
+        Console.WriteLine(cloudinary == null ? "File storage: database" : $"File storage: Cloudinary ({cloudinary.CloudName})");
+        services.AddHttpClient("cloudinary", client => client.Timeout = TimeSpan.FromSeconds(60)).RemoveAllLoggers();
+        services.AddScoped<Storage.IFileStore>(sp => new Storage.CloudinaryFileStore(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient("cloudinary"), cloudinary,
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Storage.CloudinaryFileStore>>()));
         services.AddScoped<ILlmService, DeepSeekService>();
         services.AddScoped<IGroqService, GroqService>();
         services.Configure<QuestionGenerationOptions>(configuration.GetSection(QuestionGenerationOptions.SectionName));

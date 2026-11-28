@@ -18,6 +18,7 @@ public class GroupSubmissionConfiguration : IEntityTypeConfiguration<GroupSubmis
         entity.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(127);
         entity.Property(x => x.FileSize).HasColumnName("file_size");
         entity.Property(x => x.Content).HasColumnName("content");
+        entity.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(255);
         entity.Property(x => x.Url).HasColumnName("url").HasMaxLength(2000);
         entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(1000);
         entity.Property(x => x.SubmittedBy).HasColumnName("submitted_by");

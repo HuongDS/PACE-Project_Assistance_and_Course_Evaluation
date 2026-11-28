@@ -16,6 +16,10 @@ using PACE.Infrastructure.Identity;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<PACE.API.Controllers.TeachingAccess>();
+// Soạn đề xuất đề tài cùng lúc: thay đổi Yjs và con trỏ đi qua SignalR. Trạng thái đã gộp có thể vài MB.
+builder.Services.AddSingleton<PACE.API.Hubs.TopicDraftPresence>();
+builder.Services.AddSignalR()
+    .AddHubOptions<PACE.API.Hubs.TopicDraftHub>(o => o.MaximumReceiveMessageSize = 8 * 1024 * 1024);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -58,6 +62,15 @@ if (authEnabled)
             };
             options.Events = new JwtBearerEvents
             {
+                // WebSocket của trình duyệt không gửi được header Authorization; SignalR đặt token vào query string.
+                // Chỉ nhận cách này cho đường dẫn /hubs để token không lọt vào log của các API thường.
+                OnMessageReceived = context =>
+                {
+                    var token = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                        context.Token = token;
+                    return Task.CompletedTask;
+                },
                 OnTokenValidated = async context =>
                 {
                     var principal = context.Principal!;
@@ -175,6 +188,8 @@ if (authEnabled) healthDetails.RequireAuthorization(new Microsoft.AspNetCore.Aut
 else healthDetails.AllowAnonymous();
 var controllers = app.MapControllers();
 if (!authEnabled) controllers.AllowAnonymous();
+var topicDraftHub = app.MapHub<PACE.API.Hubs.TopicDraftHub>("/hubs/topic-draft");
+if (!authEnabled) topicDraftHub.AllowAnonymous();
 
 await app.SeedAdminsAsync();
 await app.SeedAcademicDataAsync();
